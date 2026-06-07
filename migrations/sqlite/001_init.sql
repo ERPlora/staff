@@ -1,7 +1,7 @@
 -- Staff · esquema inicial (SQLite). Portado fielmente de old_modules/m_staff/models.py.
 -- Modelos: StaffSettings (singleton por hub), StaffRole, StaffMember, StaffSchedule,
 -- StaffWorkingHours, StaffTimeOff, StaffService. Es el módulo HR base (sin dependencias).
--- Contrato de fila estándar de hub-next (§2.5): hub_id + soft-delete + auditoría.
+-- Contrato de fila estándar de hub (§2.5): hub_id + soft-delete + auditoría.
 
 -- Configuración de staff por hub (singleton: único registro por hub_id).
 CREATE TABLE IF NOT EXISTS staff_settings (

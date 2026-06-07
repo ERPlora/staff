@@ -10,9 +10,3 @@ SELECT m.id, m.first_name, m.last_name,
 FROM staff_member m
 LEFT JOIN staff_role r ON r.id = m.role_id AND r.is_deleted = 0
 WHERE m.hub_id = :hub_id AND m.is_deleted = 0
-  AND (:status = '' OR m.status = :status)
-  AND (:status <> '' OR m.status <> 'terminated')
-  AND (:role_id = '' OR m.role_id = :role_id)
-  AND (:is_bookable = -1 OR m.is_bookable = :is_bookable)
-  AND (:search = '' OR m.first_name LIKE '%' || :search || '%' OR m.last_name LIKE '%' || :search || '%')
-ORDER BY m."order" ASC, m.first_name ASC;

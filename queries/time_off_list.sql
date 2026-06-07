@@ -8,6 +8,3 @@ SELECT t.id, t.staff_id,
 FROM staff_time_off t
 JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0
 WHERE t.hub_id = :hub_id AND t.is_deleted = 0
-  AND (:staff_id = '' OR t.staff_id = :staff_id)
-  AND (:status = '' OR t.status = :status)
-ORDER BY t.start_date DESC;
