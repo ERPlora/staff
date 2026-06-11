@@ -1,5 +1,14 @@
 # staff — lógica para handler Rust→WASM (Tier 2)
 
+> **Estado 2026-06-11: §1–§4 IMPLEMENTADOS** en `handler/src/lib.rs` → `dist/handler.wasm`
+> (Extism PDK, exports `deactivate_staff_member`, `bulk_create_staff_members`,
+> `create_schedule`, `create_time_off`). Adaptación al runtime actual (sin lecturas
+> pre-cargadas, patrón `payment_gateways`/`kitchen`): los invariantes que dependen del
+> estado de la BD viven en SQL condicional de commands internos (`commands/_*.sql`,
+> `staff._deactivate_member`, `staff._unset_default_schedules`, `staff._insert_schedule`,
+> `staff._insert_working_hours`, `staff._insert_time_off`) — si la guarda no se cumple,
+> la operación es un no-op de 0 filas. §5 sigue siendo no-bloqueante.
+
 El CRUD plano y las
 transiciones de estado simples ya están en SQL declarativo Tier 0 (`commands/*.sql`).
 Lo que sigue es lógica de validación cruzada / batch / multi-tabla atómica que **no** cabe
