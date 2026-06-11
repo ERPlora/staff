@@ -59,6 +59,12 @@
       "label": "Time Off",
       "icon": "calendar-outline",
       "component": "erp-staff-time-off"
+    },
+    {
+      "id": "schedules",
+      "label": "Horarios",
+      "icon": "time-outline",
+      "component": "erp-staff-schedules"
     }
   ],
   "migrations": {
