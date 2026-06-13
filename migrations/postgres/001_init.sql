@@ -5,7 +5,7 @@
 -- Tipos: subconjunto portable "ERPlora SQL" (ADR-0007):
 --   * ids/refs → TEXT (UUIDs del runtime como texto);
 --   * flags 0/1 → INTEGER (los commands bindean 0/1; Postgres no castea entero→bool);
---   * importes → NUMERIC;
+--   * importes → INTEGER en céntimos (ADR-0007); tasas % → REAL;
 --   * FECHAS → TEXT ISO-8601 (NO TIMESTAMPTZ): el motor de sync (ADR-0031) compara
 --     updated_at como string lexicográfico; timestamptz rompería el LWW entre dialectos.
 
@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS staff_member (
     is_bookable      INTEGER NOT NULL DEFAULT 1,
     color            TEXT NOT NULL DEFAULT '',
     booking_buffer   INTEGER NOT NULL DEFAULT 0,    -- minutos entre citas
-    hourly_rate      NUMERIC NOT NULL DEFAULT 0,
-    commission_rate  NUMERIC NOT NULL DEFAULT 0,    -- % (0..100)
+    hourly_rate      INTEGER NOT NULL DEFAULT 0,  -- céntimos/hora (ADR-0007)
+    commission_rate  REAL NOT NULL DEFAULT 0,       -- % (0..100), no es dinero
     "order"          INTEGER NOT NULL DEFAULT 0,
     notes            TEXT NOT NULL DEFAULT '',
     is_deleted       INTEGER NOT NULL DEFAULT 0,
@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS staff_service (
     service_id      TEXT,                            -- referencia opaca a services.* (sin FK cross-módulo)
     service_name    TEXT NOT NULL,
     custom_duration INTEGER,                         -- minutos (override)
-    custom_price    NUMERIC,                         -- override de precio
+    custom_price    INTEGER,                         -- override de precio (céntimos, ADR-0007)
     is_primary      INTEGER NOT NULL DEFAULT 0,
     is_active       INTEGER NOT NULL DEFAULT 1,
     is_deleted      INTEGER NOT NULL DEFAULT 0,

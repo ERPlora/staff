@@ -462,9 +462,7 @@
     }
   },
   "events": {
-    "listen": [
-      "appointment.created"
-    ]
+    "listen": {}
   },
   "ui": {
     "entry": "dist/staff.esm.js"
