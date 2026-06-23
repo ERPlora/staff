@@ -1,0 +1,17 @@
+{
+  "name": "Staff",
+  "navigation": {
+    "staff": {
+      "label": "Staff"
+    },
+    "roles": {
+      "label": "Roles"
+    },
+    "time_off": {
+      "label": "Time Off"
+    },
+    "schedules": {
+      "label": "Horarios"
+    }
+  }
+}
