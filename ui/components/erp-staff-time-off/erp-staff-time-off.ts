@@ -5,12 +5,17 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+import esLocale from '../../../locales/es.json';
+import enLocale from '../../../locales/en.json';
+const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  locale: string;
+  t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
 }
 
 interface TimeOff {
@@ -51,36 +56,45 @@ export class ErpStaffTimeOff extends LitElement {
 
   private unsub?: () => void;
 
-  private columns: DataTableColumn[] = [
-    { key: 'staff_name', header: 'Miembro', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'leave_type', header: 'Tipo', sortable: true, filterable: true, filterType: 'text' },
-    { key: 'start_date', header: 'Desde', sortable: true, filterable: true, filterType: 'daterange' },
-    { key: 'end_date', header: 'Hasta', sortable: true, filterable: true, filterType: 'daterange' },
+  private get columns(): DataTableColumn[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { key: 'staff_name', header: t('ui.colMember'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'leave_type', header: t('ui.colType'), sortable: true, filterable: true, filterType: 'text' },
+    { key: 'start_date', header: t('ui.colFrom'), sortable: true, filterable: true, filterType: 'daterange' },
+    { key: 'end_date', header: t('ui.colTo'), sortable: true, filterable: true, filterType: 'daterange' },
     {
       key: 'status',
-      header: 'Estado',
+      header: t('ui.colStatus'),
       sortable: true,
       filterable: true,
       filterType: 'select',
       options: [
-        { value: 'pending', label: 'Pendientes' },
-        { value: 'approved', label: 'Aprobadas' },
-        { value: 'rejected', label: 'Rechazadas' },
-        { value: 'cancelled', label: 'Canceladas' },
+        { value: 'pending', label: t('ui.statusPending') },
+        { value: 'approved', label: t('ui.statusApproved') },
+        { value: 'rejected', label: t('ui.statusRejected') },
+        { value: 'cancelled', label: t('ui.statusCancelled') },
       ],
     },
   ];
+  }
 
-  private actions: DataTableAction[] = [
-    { id: 'approve', label: 'Aprobar', color: 'primary' },
-    { id: 'reject', label: 'Rechazar', color: 'medium' },
+  private get actions(): DataTableAction[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { id: 'approve', label: t('ui.actionApprove'), color: 'primary' },
+    { id: 'reject', label: t('ui.actionReject'), color: 'medium' },
   ];
+  }
+
+  private readonly onLocaleChange = (): void => this.requestUpdate();
 
   // TODO-LIT: componentWillLoad → connectedCallback. Recuerda: connectedCallback se dispara
   // en CADA reconexión al DOM (no solo en el primer montaje). Si la init debe correr una
   // sola vez tras el primer render, considera firstUpdated() en su lugar.
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener('erplora:locale-changed', this.onLocaleChange);
     this.ctrl = createListController<TimeOff>(erplora(), 'staff.time_off.list', () => this.requestUpdate(), {
       pageSize: 50,
       sort: 'id',
@@ -100,6 +114,7 @@ export class ErpStaffTimeOff extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -114,20 +129,21 @@ export class ErpStaffTimeOff extends LitElement {
       await erplora().command('staff.time_off.set_status', { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo cambiar el estado';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errSetStatus');
     } finally {
       this.busyId = '';
     }
   }
 
   render() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div>
         <header>
-          <h2>Ausencias</h2>
+          <h2>${t('ui.timeOffTitle')}</h2>
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${"Buscar miembro…"} .emptyMessage=${this.ctrl?.loading ? 'Cargando…' : 'Sin solicitudes de ausencia.'} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
             this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }

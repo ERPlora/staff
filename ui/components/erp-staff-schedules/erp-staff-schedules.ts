@@ -4,12 +4,17 @@ import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn } from '@erplora/outfitkit';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+import esLocale from '../../../locales/es.json';
+import enLocale from '../../../locales/en.json';
+const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
+  locale: string;
+  t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
 }
 
 interface StaffMember {
@@ -31,7 +36,6 @@ interface Schedule {
 /** Fila editable del horario semanal (day_of_week 0=Lunes..6=Domingo, como la BD). */
 interface DayRow {
   day: number;
-  label: string;
   working: boolean;
   start: string;
   end: string;
@@ -39,12 +43,13 @@ interface DayRow {
   breakEnd: string;
 }
 
-const DAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+// Claves i18n por día (0=Lunes..6=Domingo, como la BD). El texto se resuelve reactivamente con
+// `erplora.t()` (ADR-0055), no en carga del módulo (el cliente aún no existe entonces).
+const DAY_KEYS = ['ui.dayMonday', 'ui.dayTuesday', 'ui.dayWednesday', 'ui.dayThursday', 'ui.dayFriday', 'ui.daySaturday', 'ui.daySunday'];
 
 function defaultWeek(): DayRow[] {
-  return DAY_LABELS.map((label, day) => ({
+  return DAY_KEYS.map((_key, day) => ({
     day,
-    label,
     working: day < 5, // L-V por defecto
     start: '09:00',
     end: '18:00',
@@ -93,7 +98,7 @@ export class ErpStaffSchedules extends LitElement {
 
   @state() saving = false;
 
-  @state() newName = 'Horario habitual';
+  @state() newName = '';
 
   @state() newDefault = true;
 
@@ -105,16 +110,27 @@ export class ErpStaffSchedules extends LitElement {
 
   private unsub?: () => void;
 
-  private columns: DataTableColumn[] = [
-    { key: 'name', header: 'Horario', sortable: true },
-    { key: 'is_default', header: 'Por defecto', sortable: true, format: (r) => (Number(r.is_default) ? 'Sí' : '—') },
-    { key: 'effective_from', header: 'Desde', sortable: true, format: (r) => (r.effective_from as string) || '—' },
-    { key: 'effective_until', header: 'Hasta', sortable: true, format: (r) => (r.effective_until as string) || '—' },
-    { key: 'is_active', header: 'Activo', sortable: true, format: (r) => (Number(r.is_active) ? 'Sí' : 'No') },
+  private get columns(): DataTableColumn[] {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return [
+    { key: 'name', header: t('ui.colSchedule'), sortable: true },
+    { key: 'is_default', header: t('ui.colDefault'), sortable: true, format: (r) => (Number(r.is_default) ? t('ui.valYes') : '—') },
+    { key: 'effective_from', header: t('ui.colFrom'), sortable: true, format: (r) => (r.effective_from as string) || '—' },
+    { key: 'effective_until', header: t('ui.colTo'), sortable: true, format: (r) => (r.effective_until as string) || '—' },
+    { key: 'is_active', header: t('ui.colActive'), sortable: true, format: (r) => (Number(r.is_active) ? t('ui.valYes') : t('ui.valNo')) },
   ];
+  }
+
+  /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
+  private dayLabel(day: number): string {
+    return erplora().t(CATALOG, DAY_KEYS[day]);
+  }
+
+  private readonly onLocaleChange = (): void => this.requestUpdate();
 
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener('erplora:locale-changed', this.onLocaleChange);
     await this.loadMembers();
     try {
       this.unsub = erplora().on('staff.schedule.created', () => this.loadSchedules());
@@ -124,6 +140,7 @@ export class ErpStaffSchedules extends LitElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -136,7 +153,7 @@ export class ErpStaffSchedules extends LitElement {
         await this.loadSchedules();
       }
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudieron cargar los miembros';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
     }
   }
 
@@ -149,7 +166,7 @@ export class ErpStaffSchedules extends LitElement {
     try {
       this.schedules = (await erplora().query<Schedule[]>('staff.schedules.list_for_member', { staff_id: this.staffId })) ?? [];
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudieron cargar los horarios';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadSchedules');
     } finally {
       this.loading = false;
     }
@@ -167,16 +184,18 @@ export class ErpStaffSchedules extends LitElement {
 
   /** Valida en cliente lo mismo que el handler WASM para dar feedback inmediato. */
   private validateWeek(): string {
+    const t = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
     const active = this.week.filter((d) => d.working);
-    if (!active.length) return 'Marca al menos un día de trabajo';
+    if (!active.length) return t('ui.valNeedWorkingDay');
     for (const d of active) {
-      if (!d.start || !d.end) return `${d.label}: indica hora de inicio y fin`;
-      if (d.start >= d.end) return `${d.label}: la hora de inicio debe ser anterior a la de fin`;
+      const day = this.dayLabel(d.day);
+      if (!d.start || !d.end) return t('ui.valNeedStartEnd', { day });
+      if (d.start >= d.end) return t('ui.valStartBeforeEnd', { day });
       const hasBs = !!d.breakStart;
       const hasBe = !!d.breakEnd;
-      if (hasBs !== hasBe) return `${d.label}: el descanso necesita inicio y fin (o ninguno)`;
+      if (hasBs !== hasBe) return t('ui.valBreakBoth', { day });
       if (hasBs && !(d.start <= d.breakStart && d.breakStart < d.breakEnd && d.breakEnd <= d.end)) {
-        return `${d.label}: el descanso debe caer dentro del intervalo de trabajo`;
+        return t('ui.valBreakInside', { day });
       }
     }
     return '';
@@ -195,7 +214,7 @@ export class ErpStaffSchedules extends LitElement {
     try {
       await erplora().command('staff.schedules.create', {
         staff_id: this.staffId,
-        name: this.newName.trim() || 'Horario habitual',
+        name: this.newName.trim() || erplora().t(CATALOG, 'ui.defaultScheduleName'),
         is_default: this.newDefault ? 1 : 0,
         effective_from: this.effectiveFrom || null,
         effective_until: this.effectiveUntil || null,
@@ -210,51 +229,52 @@ export class ErpStaffSchedules extends LitElement {
             is_working: 1,
           })),
       });
-      this.newName = 'Horario habitual';
+      this.newName = '';
       this.newDefault = true;
       this.effectiveFrom = '';
       this.effectiveUntil = '';
       this.week = defaultWeek();
       await this.loadSchedules();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : 'No se pudo crear el horario';
+      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errCreateSchedule');
     } finally {
       this.saving = false;
     }
   }
 
   render() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div>
         <header>
-          <h2>Horarios</h2>
-          <ion-select placeholder="Miembro…" .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
+          <h2>${t('ui.schedulesTitle')}</h2>
+          <ion-select placeholder=${t('ui.phMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
-        ${!this.members.length ? html`<p class="hint">Da de alta miembros del staff para poder asignarles horarios.</p>` : nothing}
-        <ok-data-table .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? 'Cargando…' : 'Este miembro aún no tiene horarios.'}></ok-data-table>
+        ${!this.members.length ? html`<p class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
+        <ok-data-table .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')}></ok-data-table>
 
-        <h3>Nuevo horario</h3>
+        <h3>${t('ui.newScheduleTitle')}</h3>
         <form class="form" @submit=${(e: Event) => this.createSchedule(e)}>
-          <ion-input placeholder="Nombre del horario" .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-          <ion-input type="date" label="Vigente desde" label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
-          <ion-input type="date" label="Vigente hasta" label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
-          <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>Por defecto</ion-checkbox>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? 'Guardando…' : 'Crear horario'}</ion-button>
+          <ion-input placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+          <ion-input type="date" label=${t('ui.labelEffectiveFrom')} label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
+          <ion-input type="date" label=${t('ui.labelEffectiveUntil')} label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
+          <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : t('ui.actionCreateSchedule')}</ion-button>
         </form>
         <div class="week">
           ${this.week.map(
             (d) => html`<div class="day">
               <ion-checkbox label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}></ion-checkbox>
-              <span class="name">${d.label}</span>
+              <span class="name">${this.dayLabel(d.day)}</span>
               ${d.working
-                ? html`<ion-input type="time" aria-label="Inicio" .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
-                    <span class="sep">a</span>
-                    <ion-input type="time" aria-label="Fin" .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
-                    <span class="sep">descanso</span>
-                    <ion-input type="time" aria-label="Inicio descanso" .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
-                    <span class="sep">a</span>
-                    <ion-input type="time" aria-label="Fin descanso" .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
-                : html`<span class="sep">No trabaja</span>`}
+                ? html`<ion-input type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
+                    <span class="sep">${t('ui.sepTo')}</span>
+                    <ion-input type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
+                    <span class="sep">${t('ui.sepBreak')}</span>
+                    <ion-input type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
+                    <span class="sep">${t('ui.sepTo')}</span>
+                    <ion-input type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
+                : html`<span class="sep">${t('ui.notWorking')}</span>`}
             </div>`,
           )}
         </div>

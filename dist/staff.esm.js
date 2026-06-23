@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
 var ElementInternalsShim = class ElementInternals {
   get shadowRoot() {
     return this.__host.__shadowRoot;
@@ -88,7 +88,7 @@ var ElementInternalsShim = class ElementInternals {
   }
 };
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/events.js
 var __classPrivateFieldSet = function(receiver, state, value, kind, f3) {
   if (kind === "m") throw new TypeError("Private method is not writable");
   if (kind === "a" && !f3) throw new TypeError("Private accessor was defined without a setter");
@@ -246,7 +246,7 @@ Object.defineProperties(CustomEventShim.prototype, {
 var EventShimWithRealType = EventShim;
 var CustomEventShimWithRealType = CustomEventShim;
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
+// node_modules/@lit-labs/ssr-dom-shim/lib/css.js
 var _a2;
 var CSSRuleShim = (_a2 = class CSSRule {
   constructor() {
@@ -277,7 +277,7 @@ var CSSRuleShim = (_a2 = class CSSRule {
   }
 }, _a2.STYLE_RULE = 1, _a2.CHARSET_RULE = 2, _a2.IMPORT_RULE = 3, _a2.MEDIA_RULE = 4, _a2.FONT_FACE_RULE = 5, _a2.PAGE_RULE = 6, _a2.NAMESPACE_RULE = 10, _a2.KEYFRAMES_RULE = 7, _a2.KEYFRAME_RULE = 8, _a2.SUPPORTS_RULE = 12, _a2.COUNTER_STYLE_RULE = 11, _a2.FONT_FEATURE_VALUES_RULE = 14, _a2.MARGIN_RULE = 9, _a2);
 
-// ../../node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/index.js
+// node_modules/@lit-labs/ssr-dom-shim/index.js
 globalThis.Event ??= EventShimWithRealType;
 globalThis.CustomEvent ??= CustomEventShimWithRealType;
 var constructionToken = Symbol();
@@ -674,7 +674,7 @@ var CustomElementRegistryShimWithRealType = CustomElementRegistry;
 var customElements2 = new CustomElementRegistryShimWithRealType();
 var windowShim = new WindowShim(constructionToken);
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/css-tag.js
+// node_modules/@lit/reactive-element/node/css-tag.js
 var t = globalThis;
 var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype;
 var s = Symbol();
@@ -719,7 +719,7 @@ var c = e || void 0 === t.CSSStyleSheet ? (t5) => t5 : (t5) => t5 instanceof CSS
   return r(e5);
 })(t5) : t5;
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/reactive-element.js
+// node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
 var l = globalThis;
 l.customElements ??= customElements2;
@@ -942,7 +942,7 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
+// node_modules/lit-html/lit-html.js
 var t2 = globalThis;
 var i2 = (t5) => t5;
 var s2 = t2.trustedTypes;
@@ -1197,7 +1197,7 @@ var D = (t5, i7, s5) => {
   return h4._$AI(t5), h4;
 };
 
-// ../../node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
+// node_modules/lit-element/lit-element.js
 var s3 = globalThis;
 var i3 = class extends g {
   constructor() {
@@ -1226,7 +1226,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i3 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/property.js
+// node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
 var r4 = (t5 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
@@ -1256,19 +1256,19 @@ function n4(t5) {
   })(t5, e5, o7);
 }
 
-// ../../node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/state.js
+// node_modules/@lit/reactive-element/node/decorators/state.js
 function r5(r6) {
   return n4({ ...r6, state: true, attribute: false });
 }
 
-// ../../node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/define.js
+// ../outfitkit/dist/define.js
 function define(tag, ctor) {
   if (typeof customElements !== "undefined" && !customElements.get(tag)) {
     customElements.define(tag, ctor);
   }
 }
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
+// node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
 var e4 = (t5) => (...e5) => ({ _$litDirective$: t5, values: e5 });
 var i4 = class {
@@ -1288,7 +1288,7 @@ var i4 = class {
   }
 };
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
+// node_modules/lit-html/directive-helpers.js
 var { I: t4 } = j;
 var i5 = (o7) => o7;
 var s4 = () => document.createComment("");
@@ -1321,7 +1321,7 @@ var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
+// node_modules/lit-html/directives/repeat.js
 var u4 = (e5, s5, t5) => {
   const r6 = /* @__PURE__ */ new Map();
   for (let l3 = s5; l3 <= t5; l3++) r6.set(e5[l3], l3);
@@ -1374,7 +1374,7 @@ var c4 = e4(class extends i4 {
   }
 });
 
-// ../../node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
+// node_modules/lit-html/directives/style-map.js
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
@@ -1403,7 +1403,7 @@ var o6 = e4(class extends i4 {
   }
 });
 
-// ../../node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/ok-data-table.js
+// ../outfitkit/dist/ok-data-table.js
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1571,12 +1571,15 @@ var OkDataTable = class extends i3 {
 
     /* ── Topbar / cabecera (relieve) ─────────────────────────────────────────────────────── */
     .bar { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.65rem 1rem; border-bottom: 1px solid var(--border-color); background: var(--header-background); }
-    /* Toolbar CONSOLIDADA: TODOS los controles (buscador, filtros, page-size, vistas, columnas,
-     * CSV, ⋮, alta) son hijos directos de UNA sola fila flex que envuelve ELEMENTO A ELEMENTO
-     * (no por bloques): caben en una línea → una línea; los que no caben bajan a la(s) línea(s)
-     * que hagan falta. El cluster derecho se empuja al borde con .tk-spacer (hueco flexible)
-     * solo cuando todo cabe en una línea; al envolver, el spacer se oculta y todo se apila a la
-     * izquierda. */
+    /* Toolbar CONSOLIDADA: TODOS los controles son hijos directos de UNA sola fila flex que
+     * envuelve ELEMENTO A ELEMENTO (no por bloques): caben en una línea → una línea; los que no
+     * caben bajan a la(s) línea(s) que hagan falta. El cluster derecho se empuja al borde con
+     * .tk-spacer (hueco flexible) solo cuando todo cabe en una línea; al envolver, el spacer se
+     * oculta y todo se apila a la izquierda.
+     * ORDEN CANÓNICO (2026-06-22, izquierda→derecha): [buscador] · [filtros en línea] · ‹spacer› ·
+     * [SELECTORES: columnas → filas/página] · [BOTONES: vistas → filtros(funnel) → import → export →
+     * alta → ⋮ → acción primaria]. Es decir: buscador al inicio, filtros en medio, y al final los
+     * selectores (columnas, luego «N por página») seguidos de los botones de acción. */
     .bar-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
     .bar-main > ion-button { --padding-start: 0.5rem; --padding-end: 0.5rem; margin: 0; }
     /* Spacer que absorbe el hueco libre en pantallas anchas (empuja el cluster derecho al borde).
@@ -2287,6 +2290,19 @@ var OkDataTable = class extends i3 {
                   ${this.hasSearch ? b2`<div class="search">${searchbar}</div>` : A}
                   ${this.inlineFilters ? this.renderInlineFilters() : A}
                   <span class="tk-spacer"></span>
+                    ${this.effColumnPicker ? b2`
+                          <ion-select
+                            class="tk-cols"
+                            multiple
+                            interface="popover"
+                            aria-label=${this.t.columnsVisible}
+                            .value=${this.visibleColumns.map((c5) => c5.key)}
+                            .selectedText=${this.t.columns}
+                            @ionChange=${(e5) => this.setVisibleColumns(e5.detail.value)}
+                          >
+                            ${this.columns.map((c5) => b2`<ion-select-option value=${c5.key}>${c5.header}</ion-select-option>`)}
+                          </ion-select>
+                        ` : A}
                     ${this.effPageSizes.length ? b2`
                           <ion-select
                             class="tk-psize"
@@ -2303,19 +2319,6 @@ var OkDataTable = class extends i3 {
                             ${this.toolButton("list-outline", this.viewMode === "table", () => this.setViewMode("table"), this.t.viewList)}
                             ${this.toolButton("grid-outline", this.viewMode === "cards", () => this.setViewMode("cards"), this.t.viewCards)}
                           </span>
-                        ` : A}
-                    ${this.effColumnPicker ? b2`
-                          <ion-select
-                            class="tk-cols"
-                            multiple
-                            interface="popover"
-                            aria-label=${this.t.columnsVisible}
-                            .value=${this.visibleColumns.map((c5) => c5.key)}
-                            .selectedText=${this.t.columns}
-                            @ionChange=${(e5) => this.setVisibleColumns(e5.detail.value)}
-                          >
-                            ${this.columns.map((c5) => b2`<ion-select-option value=${c5.key}>${c5.header}</ion-select-option>`)}
-                          </ion-select>
                         ` : A}
                     ${this.hasFilterRow && !this.inlineFilters ? this.toolButton("funnel-outline", this.panel === "filters" || this.activeFilterCount > 0, () => this.toggle("filters"), this.t.filters, this.serverSide ? void 0 : this.activeFilterCount) : A}
                     ${this.effImport ? b2`
@@ -2678,7 +2681,7 @@ __decorateClass2([
 ], OkDataTable.prototype, "menuOpen");
 define("ok-data-table", OkDataTable);
 
-// ../../node_modules/.pnpm/@erplora+module-sdk@file+..+hub+packages+module-sdk/node_modules/@erplora/module-sdk/src/index.ts
+// ../hub/packages/module-sdk/src/index.ts
 function isEmpty(v3) {
   return v3 === null || v3 === void 0 || v3 === "";
 }
@@ -2796,7 +2799,208 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// ui/components/erp-staff-members/erp-staff-members.ts
+// ../modules-workspace/modules/staff/locales/es.json
+var es_default = {
+  name: "Personal",
+  navigation: {
+    staff: {
+      label: "Personal"
+    },
+    roles: {
+      label: "Roles"
+    },
+    time_off: {
+      label: "Ausencias"
+    },
+    schedules: {
+      label: "Horarios"
+    }
+  },
+  ui: {
+    staffTitle: "Personal",
+    colName: "Nombre",
+    colRole: "Rol",
+    colEmail: "Email",
+    colPhone: "Tel\xE9fono",
+    colStatus: "Estado",
+    colHourlyRate: "\u20AC/h",
+    statusActive: "Activo",
+    statusInactive: "Inactivo",
+    phFirstName: "Nombre",
+    phLastName: "Apellidos",
+    phEmail: "Email",
+    phRole: "Rol\u2026",
+    actionAdd: "A\xF1adir",
+    actionSaving: "Guardando\u2026",
+    searchMember: "Buscar miembro\u2026",
+    loading: "Cargando\u2026",
+    emptyMembers: "Sin miembros del staff.",
+    errCreateMember: "No se pudo crear el miembro",
+    rolesTitle: "Roles",
+    colDescription: "Descripci\xF3n",
+    colMembers: "Miembros",
+    phRoleName: "Nombre del rol",
+    phDescription: "Descripci\xF3n",
+    phColor: "Color (#RRGGBB)",
+    searchRole: "Buscar rol\u2026",
+    emptyRoles: "Sin roles definidos.",
+    errCreateRole: "No se pudo crear el rol",
+    timeOffTitle: "Ausencias",
+    colMember: "Miembro",
+    colType: "Tipo",
+    colFrom: "Desde",
+    colTo: "Hasta",
+    statusPending: "Pendientes",
+    statusApproved: "Aprobadas",
+    statusRejected: "Rechazadas",
+    statusCancelled: "Canceladas",
+    actionApprove: "Aprobar",
+    actionReject: "Rechazar",
+    emptyTimeOff: "Sin solicitudes de ausencia.",
+    errSetStatus: "No se pudo cambiar el estado",
+    schedulesTitle: "Horarios",
+    phMember: "Miembro\u2026",
+    colSchedule: "Horario",
+    colDefault: "Por defecto",
+    colActive: "Activo",
+    valYes: "S\xED",
+    valNo: "No",
+    hintNoMembers: "Da de alta miembros del staff para poder asignarles horarios.",
+    emptySchedules: "Este miembro a\xFAn no tiene horarios.",
+    newScheduleTitle: "Nuevo horario",
+    phScheduleName: "Nombre del horario",
+    defaultScheduleName: "Horario habitual",
+    labelEffectiveFrom: "Vigente desde",
+    labelEffectiveUntil: "Vigente hasta",
+    labelDefault: "Por defecto",
+    actionCreateSchedule: "Crear horario",
+    errLoadMembers: "No se pudieron cargar los miembros",
+    errLoadSchedules: "No se pudieron cargar los horarios",
+    errCreateSchedule: "No se pudo crear el horario",
+    valNeedWorkingDay: "Marca al menos un d\xEDa de trabajo",
+    valNeedStartEnd: "{day}: indica hora de inicio y fin",
+    valStartBeforeEnd: "{day}: la hora de inicio debe ser anterior a la de fin",
+    valBreakBoth: "{day}: el descanso necesita inicio y fin (o ninguno)",
+    valBreakInside: "{day}: el descanso debe caer dentro del intervalo de trabajo",
+    dayMonday: "Lunes",
+    dayTuesday: "Martes",
+    dayWednesday: "Mi\xE9rcoles",
+    dayThursday: "Jueves",
+    dayFriday: "Viernes",
+    daySaturday: "S\xE1bado",
+    daySunday: "Domingo",
+    sepTo: "a",
+    sepBreak: "descanso",
+    notWorking: "No trabaja",
+    ariaStart: "Inicio",
+    ariaEnd: "Fin",
+    ariaBreakStart: "Inicio descanso",
+    ariaBreakEnd: "Fin descanso"
+  }
+};
+
+// ../modules-workspace/modules/staff/locales/en.json
+var en_default = {
+  name: "Staff",
+  navigation: {
+    staff: {
+      label: "Staff"
+    },
+    roles: {
+      label: "Roles"
+    },
+    time_off: {
+      label: "Time Off"
+    },
+    schedules: {
+      label: "Horarios"
+    }
+  },
+  ui: {
+    staffTitle: "Staff",
+    colName: "Name",
+    colRole: "Role",
+    colEmail: "Email",
+    colPhone: "Phone",
+    colStatus: "Status",
+    colHourlyRate: "\u20AC/h",
+    statusActive: "Active",
+    statusInactive: "Inactive",
+    phFirstName: "First name",
+    phLastName: "Last name",
+    phEmail: "Email",
+    phRole: "Role\u2026",
+    actionAdd: "Add",
+    actionSaving: "Saving\u2026",
+    searchMember: "Search member\u2026",
+    loading: "Loading\u2026",
+    emptyMembers: "No staff members.",
+    errCreateMember: "Could not create the member",
+    rolesTitle: "Roles",
+    colDescription: "Description",
+    colMembers: "Members",
+    phRoleName: "Role name",
+    phDescription: "Description",
+    phColor: "Color (#RRGGBB)",
+    searchRole: "Search role\u2026",
+    emptyRoles: "No roles defined.",
+    errCreateRole: "Could not create the role",
+    timeOffTitle: "Time Off",
+    colMember: "Member",
+    colType: "Type",
+    colFrom: "From",
+    colTo: "To",
+    statusPending: "Pending",
+    statusApproved: "Approved",
+    statusRejected: "Rejected",
+    statusCancelled: "Cancelled",
+    actionApprove: "Approve",
+    actionReject: "Reject",
+    emptyTimeOff: "No time-off requests.",
+    errSetStatus: "Could not change the status",
+    schedulesTitle: "Schedules",
+    phMember: "Member\u2026",
+    colSchedule: "Schedule",
+    colDefault: "Default",
+    colActive: "Active",
+    valYes: "Yes",
+    valNo: "No",
+    hintNoMembers: "Add staff members so you can assign them schedules.",
+    emptySchedules: "This member has no schedules yet.",
+    newScheduleTitle: "New schedule",
+    phScheduleName: "Schedule name",
+    defaultScheduleName: "Regular schedule",
+    labelEffectiveFrom: "Effective from",
+    labelEffectiveUntil: "Effective until",
+    labelDefault: "Default",
+    actionCreateSchedule: "Create schedule",
+    errLoadMembers: "Could not load the members",
+    errLoadSchedules: "Could not load the schedules",
+    errCreateSchedule: "Could not create the schedule",
+    valNeedWorkingDay: "Mark at least one working day",
+    valNeedStartEnd: "{day}: enter a start and end time",
+    valStartBeforeEnd: "{day}: the start time must be earlier than the end time",
+    valBreakBoth: "{day}: the break needs a start and end (or neither)",
+    valBreakInside: "{day}: the break must fall within the working interval",
+    dayMonday: "Monday",
+    dayTuesday: "Tuesday",
+    dayWednesday: "Wednesday",
+    dayThursday: "Thursday",
+    dayFriday: "Friday",
+    daySaturday: "Saturday",
+    daySunday: "Sunday",
+    sepTo: "to",
+    sepBreak: "break",
+    notWorking: "Off",
+    ariaStart: "Start",
+    ariaEnd: "End",
+    ariaBreakStart: "Break start",
+    ariaBreakEnd: "Break end"
+  }
+};
+
+// ../modules-workspace/modules/staff/ui/components/erp-staff-members/erp-staff-members.ts
+var CATALOG = { es: es_default, en: en_default };
 function erplora() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -2813,32 +3017,7 @@ var ErpStaffMembers = class extends i3 {
     this.newRole = "";
     this.saving = false;
     this.tick = 0;
-    this.columns = [
-      { key: "full_name", header: "Nombre", sortable: true, filterable: true, filterType: "text" },
-      { key: "role_name", header: "Rol", sortable: true, filterable: true, filterType: "text", format: (r6) => r6.role_name || "\u2014" },
-      { key: "email", header: "Email", sortable: true, filterable: true, filterType: "text" },
-      { key: "phone", header: "Tel\xE9fono", sortable: true, filterable: true, filterType: "text" },
-      {
-        key: "status",
-        header: "Estado",
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        options: [
-          { value: "active", label: "Activo" },
-          { value: "inactive", label: "Inactivo" }
-        ]
-      },
-      {
-        key: "hourly_rate",
-        header: "\u20AC/h",
-        align: "right",
-        sortable: true,
-        filterable: true,
-        filterType: "range",
-        format: (r6) => Number(r6.hourly_rate).toFixed(2)
-      }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -2850,11 +3029,41 @@ var ErpStaffMembers = class extends i3 {
     .err { color:#d9480f; font-weight:600; }
   `;
   }
+  get columns() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
+    return [
+      { key: "full_name", header: t5("ui.colName"), sortable: true, filterable: true, filterType: "text" },
+      { key: "role_name", header: t5("ui.colRole"), sortable: true, filterable: true, filterType: "text", format: (r6) => r6.role_name || "\u2014" },
+      { key: "email", header: t5("ui.colEmail"), sortable: true, filterable: true, filterType: "text" },
+      { key: "phone", header: t5("ui.colPhone"), sortable: true, filterable: true, filterType: "text" },
+      {
+        key: "status",
+        header: t5("ui.colStatus"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: [
+          { value: "active", label: t5("ui.statusActive") },
+          { value: "inactive", label: t5("ui.statusInactive") }
+        ]
+      },
+      {
+        key: "hourly_rate",
+        header: t5("ui.colHourlyRate"),
+        align: "right",
+        sortable: true,
+        filterable: true,
+        filterType: "range",
+        format: (r6) => Number(r6.hourly_rate).toFixed(2)
+      }
+    ];
+  }
   // TODO-LIT: componentWillLoad → connectedCallback. Recuerda: connectedCallback se dispara
   // en CADA reconexión al DOM (no solo en el primer montaje). Si la init debe correr una
   // sola vez tras el primer render, considera firstUpdated() en su lugar.
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora(), "staff.members.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "id",
@@ -2876,6 +3085,7 @@ var ErpStaffMembers = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -2905,26 +3115,27 @@ var ErpStaffMembers = class extends i3 {
       this.newRole = "";
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo crear el miembro";
+      this.formError = e5 instanceof Error ? e5.message : erplora().t(CATALOG, "ui.errCreateMember");
     } finally {
       this.saving = false;
     }
   }
   render() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
     return b2`<div>
         <header>
-          <h2>Staff</h2>
+          <h2>${t5("ui.staffTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createMember(e5)}>
-          <ion-input placeholder="Nombre" .value=${this.newFirst} @ionInput=${(e5) => this.newFirst = e5.target.value}></ion-input>
-          <ion-input placeholder="Apellidos" .value=${this.newLast} @ionInput=${(e5) => this.newLast = e5.target.value}></ion-input>
-          <ion-input type="email" placeholder="Email" .value=${this.newEmail} @ionInput=${(e5) => this.newEmail = e5.target.value}></ion-input>
-          <ion-select placeholder="Rol…" .value=${this.newRole} @ionChange=${(e5) => this.newRole = e5.target.value}>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? "Guardando\u2026" : "A\xF1adir"}</ion-button>
+          <ion-input placeholder=${t5("ui.phFirstName")} .value=${this.newFirst} @ionInput=${(e5) => this.newFirst = e5.target.value}></ion-input>
+          <ion-input placeholder=${t5("ui.phLastName")} .value=${this.newLast} @ionInput=${(e5) => this.newLast = e5.target.value}></ion-input>
+          <ion-input type="email" placeholder=${t5("ui.phEmail")} .value=${this.newEmail} @ionInput=${(e5) => this.newEmail = e5.target.value}></ion-input>
+          <ion-select placeholder=${t5("ui.phRole")} .value=${this.newRole} @ionChange=${(e5) => this.newRole = e5.target.value}>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${"Buscar miembro\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin miembros del staff."} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -2954,7 +3165,8 @@ __decorateClass([
 ], ErpStaffMembers.prototype, "tick", 2);
 define("erp-staff-members", ErpStaffMembers);
 
-// ui/components/erp-staff-roles/erp-staff-roles.ts
+// ../modules-workspace/modules/staff/ui/components/erp-staff-roles/erp-staff-roles.ts
+var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -2969,11 +3181,7 @@ var ErpStaffRoles = class extends i3 {
     this.newColor = "";
     this.saving = false;
     this.tick = 0;
-    this.columns = [
-      { key: "name", header: "Rol", sortable: true, filterable: true, filterType: "text" },
-      { key: "description", header: "Descripci\xF3n", sortable: true, filterable: true, filterType: "text" },
-      { key: "member_count", header: "Miembros", align: "right", sortable: true, filterable: true, filterType: "range" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -2985,11 +3193,20 @@ var ErpStaffRoles = class extends i3 {
     .err { color:#d9480f; font-weight:600; }
   `;
   }
+  get columns() {
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    return [
+      { key: "name", header: t5("ui.colRole"), sortable: true, filterable: true, filterType: "text" },
+      { key: "description", header: t5("ui.colDescription"), sortable: true, filterable: true, filterType: "text" },
+      { key: "member_count", header: t5("ui.colMembers"), align: "right", sortable: true, filterable: true, filterType: "range" }
+    ];
+  }
   // TODO-LIT: componentWillLoad → connectedCallback. Recuerda: connectedCallback se dispara
   // en CADA reconexión al DOM (no solo en el primer montaje). Si la init debe correr una
   // sola vez tras el primer render, considera firstUpdated() en su lugar.
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora2(), "staff.roles.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "name",
@@ -3002,6 +3219,7 @@ var ErpStaffRoles = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -3022,25 +3240,26 @@ var ErpStaffRoles = class extends i3 {
       this.newColor = "";
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo crear el rol";
+      this.formError = e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, "ui.errCreateRole");
     } finally {
       this.saving = false;
     }
   }
   render() {
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div>
         <header>
-          <h2>Roles</h2>
+          <h2>${t5("ui.rolesTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createRole(e5)}>
-          <ion-input placeholder="Nombre del rol" .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-          <ion-input placeholder="Descripción" .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
-          <ion-input placeholder="Color (#RRGGBB)" .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? "Guardando\u2026" : "A\xF1adir"}</ion-button>
+          <ion-input placeholder=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+          <ion-input placeholder=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
+          <ion-input placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${"Buscar rol\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin roles definidos."} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchRole")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyRoles")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
@@ -3064,12 +3283,12 @@ __decorateClass([
 ], ErpStaffRoles.prototype, "tick", 2);
 define("erp-staff-roles", ErpStaffRoles);
 
-// ui/components/erp-staff-schedules/erp-staff-schedules.ts
-var DAY_LABELS = ["Lunes", "Martes", "Mi\xE9rcoles", "Jueves", "Viernes", "S\xE1bado", "Domingo"];
+// ../modules-workspace/modules/staff/ui/components/erp-staff-schedules/erp-staff-schedules.ts
+var CATALOG3 = { es: es_default, en: en_default };
+var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
 function defaultWeek() {
-  return DAY_LABELS.map((label, day) => ({
+  return DAY_KEYS.map((_key, day) => ({
     day,
-    label,
     working: day < 5,
     // L-V por defecto
     start: "09:00",
@@ -3092,18 +3311,12 @@ var ErpStaffSchedules = class extends i3 {
     this.loading = false;
     this.formError = "";
     this.saving = false;
-    this.newName = "Horario habitual";
+    this.newName = "";
     this.newDefault = true;
     this.effectiveFrom = "";
     this.effectiveUntil = "";
     this.week = defaultWeek();
-    this.columns = [
-      { key: "name", header: "Horario", sortable: true },
-      { key: "is_default", header: "Por defecto", sortable: true, format: (r6) => Number(r6.is_default) ? "S\xED" : "\u2014" },
-      { key: "effective_from", header: "Desde", sortable: true, format: (r6) => r6.effective_from || "\u2014" },
-      { key: "effective_until", header: "Hasta", sortable: true, format: (r6) => r6.effective_until || "\u2014" },
-      { key: "is_active", header: "Activo", sortable: true, format: (r6) => Number(r6.is_active) ? "S\xED" : "No" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -3122,8 +3335,23 @@ var ErpStaffSchedules = class extends i3 {
     .hint { color:var(--ink-soft,#6f6a5e); font-size:.9rem; }
   `;
   }
+  get columns() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    return [
+      { key: "name", header: t5("ui.colSchedule"), sortable: true },
+      { key: "is_default", header: t5("ui.colDefault"), sortable: true, format: (r6) => Number(r6.is_default) ? t5("ui.valYes") : "\u2014" },
+      { key: "effective_from", header: t5("ui.colFrom"), sortable: true, format: (r6) => r6.effective_from || "\u2014" },
+      { key: "effective_until", header: t5("ui.colTo"), sortable: true, format: (r6) => r6.effective_until || "\u2014" },
+      { key: "is_active", header: t5("ui.colActive"), sortable: true, format: (r6) => Number(r6.is_active) ? t5("ui.valYes") : t5("ui.valNo") }
+    ];
+  }
+  /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
+  dayLabel(day) {
+    return erplora3().t(CATALOG3, DAY_KEYS[day]);
+  }
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     await this.loadMembers();
     try {
       this.unsub = erplora3().on("staff.schedule.created", () => this.loadSchedules());
@@ -3131,6 +3359,7 @@ var ErpStaffSchedules = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -3142,7 +3371,7 @@ var ErpStaffSchedules = class extends i3 {
         await this.loadSchedules();
       }
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudieron cargar los miembros";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errLoadMembers");
     }
   }
   async loadSchedules() {
@@ -3154,7 +3383,7 @@ var ErpStaffSchedules = class extends i3 {
     try {
       this.schedules = await erplora3().query("staff.schedules.list_for_member", { staff_id: this.staffId }) ?? [];
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudieron cargar los horarios";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errLoadSchedules");
     } finally {
       this.loading = false;
     }
@@ -3169,16 +3398,18 @@ var ErpStaffSchedules = class extends i3 {
   }
   /** Valida en cliente lo mismo que el handler WASM para dar feedback inmediato. */
   validateWeek() {
+    const t5 = (k2, p4) => erplora3().t(CATALOG3, k2, p4);
     const active = this.week.filter((d3) => d3.working);
-    if (!active.length) return "Marca al menos un d\xEDa de trabajo";
+    if (!active.length) return t5("ui.valNeedWorkingDay");
     for (const d3 of active) {
-      if (!d3.start || !d3.end) return `${d3.label}: indica hora de inicio y fin`;
-      if (d3.start >= d3.end) return `${d3.label}: la hora de inicio debe ser anterior a la de fin`;
+      const day = this.dayLabel(d3.day);
+      if (!d3.start || !d3.end) return t5("ui.valNeedStartEnd", { day });
+      if (d3.start >= d3.end) return t5("ui.valStartBeforeEnd", { day });
       const hasBs = !!d3.breakStart;
       const hasBe = !!d3.breakEnd;
-      if (hasBs !== hasBe) return `${d3.label}: el descanso necesita inicio y fin (o ninguno)`;
+      if (hasBs !== hasBe) return t5("ui.valBreakBoth", { day });
       if (hasBs && !(d3.start <= d3.breakStart && d3.breakStart < d3.breakEnd && d3.breakEnd <= d3.end)) {
-        return `${d3.label}: el descanso debe caer dentro del intervalo de trabajo`;
+        return t5("ui.valBreakInside", { day });
       }
     }
     return "";
@@ -3196,7 +3427,7 @@ var ErpStaffSchedules = class extends i3 {
     try {
       await erplora3().command("staff.schedules.create", {
         staff_id: this.staffId,
-        name: this.newName.trim() || "Horario habitual",
+        name: this.newName.trim() || erplora3().t(CATALOG3, "ui.defaultScheduleName"),
         is_default: this.newDefault ? 1 : 0,
         effective_from: this.effectiveFrom || null,
         effective_until: this.effectiveUntil || null,
@@ -3209,48 +3440,49 @@ var ErpStaffSchedules = class extends i3 {
           is_working: 1
         }))
       });
-      this.newName = "Horario habitual";
+      this.newName = "";
       this.newDefault = true;
       this.effectiveFrom = "";
       this.effectiveUntil = "";
       this.week = defaultWeek();
       await this.loadSchedules();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo crear el horario";
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errCreateSchedule");
     } finally {
       this.saving = false;
     }
   }
   render() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div>
         <header>
-          <h2>Horarios</h2>
-          <ion-select placeholder="Miembro…" .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
+          <h2>${t5("ui.schedulesTitle")}</h2>
+          <ion-select placeholder=${t5("ui.phMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
-        ${!this.members.length ? b2`<p class="hint">Da de alta miembros del staff para poder asignarles horarios.</p>` : A}
-        <ok-data-table .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? "Cargando\u2026" : "Este miembro a\xFAn no tiene horarios."}></ok-data-table>
+        ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
+        <ok-data-table .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")}></ok-data-table>
 
-        <h3>Nuevo horario</h3>
+        <h3>${t5("ui.newScheduleTitle")}</h3>
         <form class="form" @submit=${(e5) => this.createSchedule(e5)}>
-          <ion-input placeholder="Nombre del horario" .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-          <ion-input type="date" label="Vigente desde" label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
-          <ion-input type="date" label="Vigente hasta" label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
-          <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>Por defecto</ion-checkbox>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? "Guardando\u2026" : "Crear horario"}</ion-button>
+          <ion-input placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+          <ion-input type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
+          <ion-input type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
+          <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
+          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionCreateSchedule")}</ion-button>
         </form>
         <div class="week">
           ${this.week.map(
       (d3) => b2`<div class="day">
               <ion-checkbox label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}></ion-checkbox>
-              <span class="name">${d3.label}</span>
-              ${d3.working ? b2`<ion-input type="time" aria-label="Inicio" .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
-                    <span class="sep">a</span>
-                    <ion-input type="time" aria-label="Fin" .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
-                    <span class="sep">descanso</span>
-                    <ion-input type="time" aria-label="Inicio descanso" .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
-                    <span class="sep">a</span>
-                    <ion-input type="time" aria-label="Fin descanso" .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">No trabaja</span>`}
+              <span class="name">${this.dayLabel(d3.day)}</span>
+              ${d3.working ? b2`<ion-input type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
+                    <span class="sep">${t5("ui.sepTo")}</span>
+                    <ion-input type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
+                    <span class="sep">${t5("ui.sepBreak")}</span>
+                    <ion-input type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
+                    <span class="sep">${t5("ui.sepTo")}</span>
+                    <ion-input type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
             </div>`
     )}
         </div>
@@ -3292,7 +3524,8 @@ __decorateClass([
 ], ErpStaffSchedules.prototype, "week", 2);
 define("erp-staff-schedules", ErpStaffSchedules);
 
-// ui/components/erp-staff-time-off/erp-staff-time-off.ts
+// ../modules-workspace/modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts
+var CATALOG4 = { es: es_default, en: en_default };
 function erplora4() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -3304,29 +3537,7 @@ var ErpStaffTimeOff = class extends i3 {
     this.formError = "";
     this.busyId = "";
     this.tick = 0;
-    this.columns = [
-      { key: "staff_name", header: "Miembro", sortable: true, filterable: true, filterType: "text" },
-      { key: "leave_type", header: "Tipo", sortable: true, filterable: true, filterType: "text" },
-      { key: "start_date", header: "Desde", sortable: true, filterable: true, filterType: "daterange" },
-      { key: "end_date", header: "Hasta", sortable: true, filterable: true, filterType: "daterange" },
-      {
-        key: "status",
-        header: "Estado",
-        sortable: true,
-        filterable: true,
-        filterType: "select",
-        options: [
-          { value: "pending", label: "Pendientes" },
-          { value: "approved", label: "Aprobadas" },
-          { value: "rejected", label: "Rechazadas" },
-          { value: "cancelled", label: "Canceladas" }
-        ]
-      }
-    ];
-    this.actions = [
-      { id: "approve", label: "Aprobar", color: "primary" },
-      { id: "reject", label: "Rechazar", color: "medium" }
-    ];
+    this.onLocaleChange = () => this.requestUpdate();
   }
   static {
     this.styles = i`
@@ -3338,11 +3549,41 @@ var ErpStaffTimeOff = class extends i3 {
     .err { color:#d9480f; font-weight:600; }
   `;
   }
+  get columns() {
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    return [
+      { key: "staff_name", header: t5("ui.colMember"), sortable: true, filterable: true, filterType: "text" },
+      { key: "leave_type", header: t5("ui.colType"), sortable: true, filterable: true, filterType: "text" },
+      { key: "start_date", header: t5("ui.colFrom"), sortable: true, filterable: true, filterType: "daterange" },
+      { key: "end_date", header: t5("ui.colTo"), sortable: true, filterable: true, filterType: "daterange" },
+      {
+        key: "status",
+        header: t5("ui.colStatus"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: [
+          { value: "pending", label: t5("ui.statusPending") },
+          { value: "approved", label: t5("ui.statusApproved") },
+          { value: "rejected", label: t5("ui.statusRejected") },
+          { value: "cancelled", label: t5("ui.statusCancelled") }
+        ]
+      }
+    ];
+  }
+  get actions() {
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    return [
+      { id: "approve", label: t5("ui.actionApprove"), color: "primary" },
+      { id: "reject", label: t5("ui.actionReject"), color: "medium" }
+    ];
+  }
   // TODO-LIT: componentWillLoad → connectedCallback. Recuerda: connectedCallback se dispara
   // en CADA reconexión al DOM (no solo en el primer montaje). Si la init debe correr una
   // sola vez tras el primer render, considera firstUpdated() en su lugar.
   async connectedCallback() {
     super.connectedCallback();
+    window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     this.ctrl = createListController(erplora4(), "staff.time_off.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "id",
@@ -3360,6 +3601,7 @@ var ErpStaffTimeOff = class extends i3 {
     }
   }
   disconnectedCallback() {
+    window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
   }
@@ -3373,19 +3615,20 @@ var ErpStaffTimeOff = class extends i3 {
       await erplora4().command("staff.time_off.set_status", { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : "No se pudo cambiar el estado";
+      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errSetStatus");
     } finally {
       this.busyId = "";
     }
   }
   render() {
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return b2`<div>
         <header>
-          <h2>Ausencias</h2>
+          <h2>${t5("ui.timeOffTitle")}</h2>
         </header>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${this.ctrl?.error ? b2`<p class="err">${this.ctrl.error}</p>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${"Buscar miembro\u2026"} .emptyMessage=${this.ctrl?.loading ? "Cargando\u2026" : "Sin solicitudes de ausencia."} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
       </div>`;
   }
 };
