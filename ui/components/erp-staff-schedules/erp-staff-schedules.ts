@@ -75,12 +75,12 @@ export class ErpStaffSchedules extends LitElement {
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
     h3 { margin:1rem 0 .5rem; font-size:1rem; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select, header ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
+    .form ion-input, .form ion-select, header ion-select { flex:1 1 11rem; min-width:9rem; }
     .week { display:flex; flex-direction:column; gap:.25rem; margin:.5rem 0 1rem; }
     .day { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .day .name { width:6.5rem; font-weight:600; }
-    .day ion-input { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; max-width:8rem; }
+    .day ion-input { max-width:8rem; }
     .day .sep { color:var(--ink-soft,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
     .hint { color:var(--ink-soft,#6f6a5e); font-size:.9rem; }
@@ -247,7 +247,7 @@ export class ErpStaffSchedules extends LitElement {
     return html`<div>
         <header>
           <h2>${t('ui.schedulesTitle')}</h2>
-          <ion-select placeholder=${t('ui.phMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
+          <ion-select fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${!this.members.length ? html`<p class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
@@ -255,9 +255,9 @@ export class ErpStaffSchedules extends LitElement {
 
         <h3>${t('ui.newScheduleTitle')}</h3>
         <form class="form" @submit=${(e: Event) => this.createSchedule(e)}>
-          <ion-input placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-          <ion-input type="date" label=${t('ui.labelEffectiveFrom')} label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
-          <ion-input type="date" label=${t('ui.labelEffectiveUntil')} label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+          <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
+          <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
           <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
           <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : t('ui.actionCreateSchedule')}</ion-button>
         </form>
@@ -267,13 +267,13 @@ export class ErpStaffSchedules extends LitElement {
               <ion-checkbox label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}></ion-checkbox>
               <span class="name">${this.dayLabel(d.day)}</span>
               ${d.working
-                ? html`<ion-input type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
+                ? html`<ion-input fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
                     <span class="sep">${t('ui.sepTo')}</span>
-                    <ion-input type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
+                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
                     <span class="sep">${t('ui.sepBreak')}</span>
-                    <ion-input type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
+                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
                     <span class="sep">${t('ui.sepTo')}</span>
-                    <ion-input type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
+                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
                 : html`<span class="sep">${t('ui.notWorking')}</span>`}
             </div>`,
           )}

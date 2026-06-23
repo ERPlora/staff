@@ -39,6 +39,7 @@
     "colMembers": "Members",
     "phRoleName": "Role name",
     "phDescription": "Description",
+    "colColor": "Color",
     "phColor": "Color (#RRGGBB)",
     "searchRole": "Search role…",
     "emptyRoles": "No roles defined.",

@@ -9,7 +9,7 @@ var __decorateClass = (decorators, target, key, kind) => {
   return result;
 };
 
-// node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
+// node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/element-internals.js
 var ElementInternalsShim = class ElementInternals {
   get shadowRoot() {
     return this.__host.__shadowRoot;
@@ -88,7 +88,7 @@ var ElementInternalsShim = class ElementInternals {
   }
 };
 
-// node_modules/@lit-labs/ssr-dom-shim/lib/events.js
+// node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/events.js
 var __classPrivateFieldSet = function(receiver, state, value, kind, f3) {
   if (kind === "m") throw new TypeError("Private method is not writable");
   if (kind === "a" && !f3) throw new TypeError("Private accessor was defined without a setter");
@@ -246,7 +246,7 @@ Object.defineProperties(CustomEventShim.prototype, {
 var EventShimWithRealType = EventShim;
 var CustomEventShimWithRealType = CustomEventShim;
 
-// node_modules/@lit-labs/ssr-dom-shim/lib/css.js
+// node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/lib/css.js
 var _a2;
 var CSSRuleShim = (_a2 = class CSSRule {
   constructor() {
@@ -277,7 +277,7 @@ var CSSRuleShim = (_a2 = class CSSRule {
   }
 }, _a2.STYLE_RULE = 1, _a2.CHARSET_RULE = 2, _a2.IMPORT_RULE = 3, _a2.MEDIA_RULE = 4, _a2.FONT_FACE_RULE = 5, _a2.PAGE_RULE = 6, _a2.NAMESPACE_RULE = 10, _a2.KEYFRAMES_RULE = 7, _a2.KEYFRAME_RULE = 8, _a2.SUPPORTS_RULE = 12, _a2.COUNTER_STYLE_RULE = 11, _a2.FONT_FEATURE_VALUES_RULE = 14, _a2.MARGIN_RULE = 9, _a2);
 
-// node_modules/@lit-labs/ssr-dom-shim/index.js
+// node_modules/.pnpm/@lit-labs+ssr-dom-shim@1.6.0/node_modules/@lit-labs/ssr-dom-shim/index.js
 globalThis.Event ??= EventShimWithRealType;
 globalThis.CustomEvent ??= CustomEventShimWithRealType;
 var constructionToken = Symbol();
@@ -674,7 +674,7 @@ var CustomElementRegistryShimWithRealType = CustomElementRegistry;
 var customElements2 = new CustomElementRegistryShimWithRealType();
 var windowShim = new WindowShim(constructionToken);
 
-// node_modules/@lit/reactive-element/node/css-tag.js
+// node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/css-tag.js
 var t = globalThis;
 var e = t.ShadowRoot && (void 0 === t.ShadyCSS || t.ShadyCSS.nativeShadow) && "adoptedStyleSheets" in Document.prototype && "replace" in CSSStyleSheet.prototype;
 var s = Symbol();
@@ -719,7 +719,7 @@ var c = e || void 0 === t.CSSStyleSheet ? (t5) => t5 : (t5) => t5 instanceof CSS
   return r(e5);
 })(t5) : t5;
 
-// node_modules/@lit/reactive-element/node/reactive-element.js
+// node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/reactive-element.js
 var { is: h, defineProperty: r2, getOwnPropertyDescriptor: o2, getOwnPropertyNames: n2, getOwnPropertySymbols: a, getPrototypeOf: c2 } = Object;
 var l = globalThis;
 l.customElements ??= customElements2;
@@ -942,7 +942,7 @@ var g = class extends (globalThis.HTMLElement ?? HTMLElementShimWithRealType) {
 };
 g.elementStyles = [], g.shadowRootOptions = { mode: "open" }, g[f("elementProperties")] = /* @__PURE__ */ new Map(), g[f("finalized")] = /* @__PURE__ */ new Map(), u?.({ ReactiveElement: g }), (l.reactiveElementVersions ??= []).push("2.1.2");
 
-// node_modules/lit-html/lit-html.js
+// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/lit-html.js
 var t2 = globalThis;
 var i2 = (t5) => t5;
 var s2 = t2.trustedTypes;
@@ -1197,7 +1197,7 @@ var D = (t5, i7, s5) => {
   return h4._$AI(t5), h4;
 };
 
-// node_modules/lit-element/lit-element.js
+// node_modules/.pnpm/lit-element@4.2.2/node_modules/lit-element/lit-element.js
 var s3 = globalThis;
 var i3 = class extends g {
   constructor() {
@@ -1226,7 +1226,7 @@ var o4 = s3.litElementPolyfillSupport;
 o4?.({ LitElement: i3 });
 (s3.litElementVersions ??= []).push("4.2.2");
 
-// node_modules/@lit/reactive-element/node/decorators/property.js
+// node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/property.js
 var o5 = { attribute: true, type: String, converter: b, reflect: false, hasChanged: m };
 var r4 = (t5 = o5, e5, r6) => {
   const { kind: n6, metadata: i7 } = r6;
@@ -1256,19 +1256,19 @@ function n4(t5) {
   })(t5, e5, o7);
 }
 
-// node_modules/@lit/reactive-element/node/decorators/state.js
+// node_modules/.pnpm/@lit+reactive-element@2.1.2/node_modules/@lit/reactive-element/node/decorators/state.js
 function r5(r6) {
   return n4({ ...r6, state: true, attribute: false });
 }
 
-// ../outfitkit/dist/define.js
+// node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/define.js
 function define(tag, ctor) {
   if (typeof customElements !== "undefined" && !customElements.get(tag)) {
     customElements.define(tag, ctor);
   }
 }
 
-// node_modules/lit-html/directive.js
+// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive.js
 var t3 = { ATTRIBUTE: 1, CHILD: 2, PROPERTY: 3, BOOLEAN_ATTRIBUTE: 4, EVENT: 5, ELEMENT: 6 };
 var e4 = (t5) => (...e5) => ({ _$litDirective$: t5, values: e5 });
 var i4 = class {
@@ -1288,7 +1288,7 @@ var i4 = class {
   }
 };
 
-// node_modules/lit-html/directive-helpers.js
+// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directive-helpers.js
 var { I: t4 } = j;
 var i5 = (o7) => o7;
 var s4 = () => document.createComment("");
@@ -1321,7 +1321,7 @@ var h3 = (o7) => {
   o7._$AR(), o7._$AA.remove();
 };
 
-// node_modules/lit-html/directives/repeat.js
+// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/repeat.js
 var u4 = (e5, s5, t5) => {
   const r6 = /* @__PURE__ */ new Map();
   for (let l3 = s5; l3 <= t5; l3++) r6.set(e5[l3], l3);
@@ -1374,7 +1374,7 @@ var c4 = e4(class extends i4 {
   }
 });
 
-// node_modules/lit-html/directives/style-map.js
+// node_modules/.pnpm/lit-html@3.3.3/node_modules/lit-html/directives/style-map.js
 var n5 = "important";
 var i6 = " !" + n5;
 var o6 = e4(class extends i4 {
@@ -1403,7 +1403,7 @@ var o6 = e4(class extends i4 {
   }
 });
 
-// ../outfitkit/dist/ok-data-table.js
+// node_modules/.pnpm/@outfitkit+core@file+..+outfitkit/node_modules/@outfitkit/core/dist/ok-data-table.js
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -2681,7 +2681,7 @@ __decorateClass2([
 ], OkDataTable.prototype, "menuOpen");
 define("ok-data-table", OkDataTable);
 
-// ../hub/packages/module-sdk/src/index.ts
+// node_modules/.pnpm/@erplora+module-sdk@file+..+hub+packages+module-sdk/node_modules/@erplora/module-sdk/src/index.ts
 function isEmpty(v3) {
   return v3 === null || v3 === void 0 || v3 === "";
 }
@@ -2799,7 +2799,7 @@ function createListController(client, queryName, onChange = () => {
   return new ListController(client, queryName, onChange, opts);
 }
 
-// ../modules-workspace/modules/staff/locales/es.json
+// modules/staff/locales/es.json
 var es_default = {
   name: "Personal",
   navigation: {
@@ -2841,6 +2841,7 @@ var es_default = {
     colMembers: "Miembros",
     phRoleName: "Nombre del rol",
     phDescription: "Descripci\xF3n",
+    colColor: "Color",
     phColor: "Color (#RRGGBB)",
     searchRole: "Buscar rol\u2026",
     emptyRoles: "Sin roles definidos.",
@@ -2899,7 +2900,7 @@ var es_default = {
   }
 };
 
-// ../modules-workspace/modules/staff/locales/en.json
+// modules/staff/locales/en.json
 var en_default = {
   name: "Staff",
   navigation: {
@@ -2941,6 +2942,7 @@ var en_default = {
     colMembers: "Members",
     phRoleName: "Role name",
     phDescription: "Description",
+    colColor: "Color",
     phColor: "Color (#RRGGBB)",
     searchRole: "Search role\u2026",
     emptyRoles: "No roles defined.",
@@ -2999,7 +3001,7 @@ var en_default = {
   }
 };
 
-// ../modules-workspace/modules/staff/ui/components/erp-staff-members/erp-staff-members.ts
+// modules/staff/ui/components/erp-staff-members/erp-staff-members.ts
 var CATALOG = { es: es_default, en: en_default };
 function erplora() {
   const c5 = globalThis.erplora;
@@ -3024,8 +3026,8 @@ var ErpStaffMembers = class extends i3 {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ink, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
+    .form ion-input, .form ion-select { flex:1 1 11rem; min-width:9rem; }
     .err { color:#d9480f; font-weight:600; }
   `;
   }
@@ -3127,10 +3129,10 @@ var ErpStaffMembers = class extends i3 {
           <h2>${t5("ui.staffTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createMember(e5)}>
-          <ion-input placeholder=${t5("ui.phFirstName")} .value=${this.newFirst} @ionInput=${(e5) => this.newFirst = e5.target.value}></ion-input>
-          <ion-input placeholder=${t5("ui.phLastName")} .value=${this.newLast} @ionInput=${(e5) => this.newLast = e5.target.value}></ion-input>
-          <ion-input type="email" placeholder=${t5("ui.phEmail")} .value=${this.newEmail} @ionInput=${(e5) => this.newEmail = e5.target.value}></ion-input>
-          <ion-select placeholder=${t5("ui.phRole")} .value=${this.newRole} @ionChange=${(e5) => this.newRole = e5.target.value}>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.phFirstName")} .value=${this.newFirst} @ionInput=${(e5) => this.newFirst = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.phLastName")} .value=${this.newLast} @ionInput=${(e5) => this.newLast = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.newEmail} @ionInput=${(e5) => this.newEmail = e5.target.value}></ion-input>
+          <ion-select fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.newRole} @ionChange=${(e5) => this.newRole = e5.target.value}>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
           <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
@@ -3165,7 +3167,7 @@ __decorateClass([
 ], ErpStaffMembers.prototype, "tick", 2);
 define("erp-staff-members", ErpStaffMembers);
 
-// ../modules-workspace/modules/staff/ui/components/erp-staff-roles/erp-staff-roles.ts
+// modules/staff/ui/components/erp-staff-roles/erp-staff-roles.ts
 var CATALOG2 = { es: es_default, en: en_default };
 function erplora2() {
   const c5 = globalThis.erplora;
@@ -3188,8 +3190,8 @@ var ErpStaffRoles = class extends i3 {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ink, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
+    .form ion-input { flex:1 1 11rem; min-width:9rem; }
     .err { color:#d9480f; font-weight:600; }
   `;
   }
@@ -3252,9 +3254,9 @@ var ErpStaffRoles = class extends i3 {
           <h2>${t5("ui.rolesTitle")}</h2>
         </header>
         <form class="form" @submit=${(e5) => this.createRole(e5)}>
-          <ion-input placeholder=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-          <ion-input placeholder=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
-          <ion-input placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
           <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
         </form>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
@@ -3283,7 +3285,7 @@ __decorateClass([
 ], ErpStaffRoles.prototype, "tick", 2);
 define("erp-staff-roles", ErpStaffRoles);
 
-// ../modules-workspace/modules/staff/ui/components/erp-staff-schedules/erp-staff-schedules.ts
+// modules/staff/ui/components/erp-staff-schedules/erp-staff-schedules.ts
 var CATALOG3 = { es: es_default, en: en_default };
 var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
 function defaultWeek() {
@@ -3324,12 +3326,12 @@ var ErpStaffSchedules = class extends i3 {
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
     h3 { margin:1rem 0 .5rem; font-size:1rem; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-input, .form ion-select, header ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
+    .form ion-input, .form ion-select, header ion-select { flex:1 1 11rem; min-width:9rem; }
     .week { display:flex; flex-direction:column; gap:.25rem; margin:.5rem 0 1rem; }
     .day { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .day .name { width:6.5rem; font-weight:600; }
-    .day ion-input { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; max-width:8rem; }
+    .day ion-input { max-width:8rem; }
     .day .sep { color:var(--ink-soft,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
     .hint { color:var(--ink-soft,#6f6a5e); font-size:.9rem; }
@@ -3457,7 +3459,7 @@ var ErpStaffSchedules = class extends i3 {
     return b2`<div>
         <header>
           <h2>${t5("ui.schedulesTitle")}</h2>
-          <ion-select placeholder=${t5("ui.phMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
+          <ion-select fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? b2`<p class="err">${this.formError}</p>` : A}
         ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
@@ -3465,9 +3467,9 @@ var ErpStaffSchedules = class extends i3 {
 
         <h3>${t5("ui.newScheduleTitle")}</h3>
         <form class="form" @submit=${(e5) => this.createSchedule(e5)}>
-          <ion-input placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-          <ion-input type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="stacked" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
-          <ion-input type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="stacked" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
+          <ion-input fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+          <ion-input fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
+          <ion-input fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
           <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
           <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionCreateSchedule")}</ion-button>
         </form>
@@ -3476,13 +3478,13 @@ var ErpStaffSchedules = class extends i3 {
       (d3) => b2`<div class="day">
               <ion-checkbox label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}></ion-checkbox>
               <span class="name">${this.dayLabel(d3.day)}</span>
-              ${d3.working ? b2`<ion-input type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
+              ${d3.working ? b2`<ion-input fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
                     <span class="sep">${t5("ui.sepTo")}</span>
-                    <ion-input type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
+                    <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
                     <span class="sep">${t5("ui.sepBreak")}</span>
-                    <ion-input type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
+                    <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
                     <span class="sep">${t5("ui.sepTo")}</span>
-                    <ion-input type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
+                    <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
             </div>`
     )}
         </div>
@@ -3524,7 +3526,7 @@ __decorateClass([
 ], ErpStaffSchedules.prototype, "week", 2);
 define("erp-staff-schedules", ErpStaffSchedules);
 
-// ../modules-workspace/modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts
+// modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts
 var CATALOG4 = { es: es_default, en: en_default };
 function erplora4() {
   const c5 = globalThis.erplora;
@@ -3544,8 +3546,8 @@ var ErpStaffTimeOff = class extends i3 {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ink, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1rem; }
-    .form ion-select { --background:var(--surface-2,#f7f4ec); border:1px solid var(--line,#e7e2d6); border-radius:8px; min-width:8rem; }
+    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
+    .form ion-select { flex:1 1 11rem; min-width:9rem; }
     .err { color:#d9480f; font-weight:600; }
   `;
   }
