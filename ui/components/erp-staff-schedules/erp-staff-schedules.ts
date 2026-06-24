@@ -71,7 +71,7 @@ function erplora(): ErploraClientLike {
  */
 export class ErpStaffSchedules extends LitElement {
   static styles = css`
-    :host { display:block; font-family: system-ui, sans-serif; color: var(--ink, #1c1b18); }
+    :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
     h3 { margin:1rem 0 .5rem; font-size:1rem; }
@@ -81,9 +81,9 @@ export class ErpStaffSchedules extends LitElement {
     .day { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     .day .name { width:6.5rem; font-weight:600; }
     .day ion-input { max-width:8rem; }
-    .day .sep { color:var(--ink-soft,#6f6a5e); font-size:.85rem; }
+    .day .sep { color:var(--ion-color-medium,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
-    .hint { color:var(--ink-soft,#6f6a5e); font-size:.9rem; }
+    .hint { color:var(--ion-color-medium,#6f6a5e); font-size:.9rem; }
   `;
 
   @state() members: StaffMember[] = [];
