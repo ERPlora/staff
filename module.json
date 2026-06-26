@@ -67,6 +67,13 @@
       "component": "erp-staff-schedules"
     }
   ],
+  "settings": {
+    "title": "Personal",
+    "icon": "people-outline",
+    "schema": "schemas/settings_update.json",
+    "get": "staff.settings.get",
+    "set": "staff.settings.update"
+  },
   "migrations": {
     "sqlite": [
       "migrations/sqlite/001_init.sql"
