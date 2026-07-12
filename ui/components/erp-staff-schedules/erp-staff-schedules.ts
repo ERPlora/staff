@@ -79,7 +79,11 @@ export class ErpStaffSchedules extends LitElement {
     .form ion-input, .form ion-select, header ion-select { flex:1 1 11rem; min-width:9rem; }
     .week { display:flex; flex-direction:column; gap:.25rem; margin:.5rem 0 1rem; }
     .day { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
-    .day .name { width:6.5rem; font-weight:600; }
+    /* El nombre del día es la LABEL del checkbox (va slotteada dentro de él): así el texto es
+       clicable y da nombre accesible al input. Ionic trunca esa label (white-space:nowrap en su
+       shadow) → se vence por el shadow part, no con .ion-text-wrap. */
+    .day ion-checkbox::part(label) { white-space:normal; }
+    .day .name { display:block; width:6.5rem; font-weight:600; }
     .day ion-input { max-width:8rem; }
     .day .sep { color:var(--ion-color-medium,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
@@ -264,8 +268,7 @@ export class ErpStaffSchedules extends LitElement {
         <div class="week">
           ${this.week.map(
             (d) => html`<div class="day">
-              <ion-checkbox label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}></ion-checkbox>
-              <span class="name">${this.dayLabel(d.day)}</span>
+              <ion-checkbox justify="start" label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}><span class="name">${this.dayLabel(d.day)}</span></ion-checkbox>
               ${d.working
                 ? html`<ion-input fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
                     <span class="sep">${t('ui.sepTo')}</span>
