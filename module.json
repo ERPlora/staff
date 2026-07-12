@@ -1,7 +1,7 @@
 {
   "id": "staff",
   "name": "Staff",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "agent": {
     "description": "Manages staff members, roles, schedules and time-off requests: list, create, update and deactivate employees, manage work schedules, and approve or reject time-off.",
     "keywords": [
@@ -67,6 +67,13 @@
       "component": "erp-staff-schedules"
     }
   ],
+  "settings": {
+    "title": "Personal",
+    "icon": "people-outline",
+    "schema": "schemas/settings_update.json",
+    "get": "staff.settings.get",
+    "set": "staff.settings.update"
+  },
   "migrations": {
     "sqlite": [
       "migrations/sqlite/001_init.sql"
@@ -148,14 +155,16 @@
       },
       "ai": {
         "description": "Lists all staff members with their status and role."
-      }
+      },
+      "expose_api": true
     },
     "staff.members.get": {
       "permission": "staff.view_staff_member",
       "sql": "queries/member_get.sql",
       "ai": {
         "description": "Returns the details of a single staff member by their identifier."
-      }
+      },
+      "expose_api": true
     },
     "staff.roles.list": {
       "permission": "staff.view_staff_member",
@@ -196,7 +205,8 @@
       },
       "ai": {
         "description": "Lists all available staff roles and their assigned permissions."
-      }
+      },
+      "expose_api": true
     },
     "staff.time_off.list": {
       "permission": "staff.view_time_off",
@@ -270,6 +280,28 @@
         "description": "Lists time-off requests for staff members, optionally filtered by status or member."
       }
     },
+    "staff.time_off.today": {
+      "permission": "staff.view_time_off",
+      "sql": "queries/time_off_today.sql",
+      "ai": {
+        "description": "Lists approved time-off entries whose date range covers today (who is unavailable today)."
+      }
+    },
+    "staff.members.stats": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/members_stats.sql",
+      "ai": {
+        "description": "Returns aggregated staff statistics (total/active/on-leave members, members on leave today, pending time-off requests)."
+      }
+    },
+    "staff.commissions.summary": {
+      "permission": "staff.view_staff_member",
+      "expose_api": true,
+      "sql": "queries/commissions_summary.sql",
+      "ai": {
+        "description": "Returns each active staff member's id, full name and commission_rate (percent). The commission side of the per-professional day close: combine with sales.by_staff by staff_id to compute commission = gross_total x commission_rate/100."
+      }
+    },
     "staff.settings.get": {
       "permission": "staff.view_staff_member",
       "sql": "queries/settings_get.sql",
@@ -298,7 +330,8 @@
       ],
       "ai": {
         "description": "Creates a new staff member and emits a member-created event."
-      }
+      },
+      "expose_api": true
     },
     "staff.members.update": {
       "permission": "staff.change_staff_member",
@@ -312,7 +345,8 @@
       ],
       "ai": {
         "description": "Updates the details of an existing staff member."
-      }
+      },
+      "expose_api": true
     },
     "staff.members.deactivate": {
       "permission": "staff.delete_staff_member",
@@ -463,6 +497,137 @@
   },
   "events": {
     "listen": {}
+  },
+  "widgets": {
+    "staff.headcount": {
+      "title": "Plantilla activa",
+      "icon": "people-outline",
+      "category": "Personal",
+      "size": "sm",
+      "permission": "staff.view_staff_member",
+      "sectors": [
+        "rrhh",
+        "hosteleria",
+        "retail",
+        "general",
+        "belleza"
+      ],
+      "default": true,
+      "kind": "kpi",
+      "query": "staff.members.stats",
+      "map": {
+        "value": "active_members"
+      },
+      "options": {
+        "label": "Empleados activos",
+        "icon": "people-outline",
+        "format": "number",
+        "locale": "es-ES"
+      }
+    },
+    "staff.on_leave_today": {
+      "title": "Ausentes hoy",
+      "icon": "airplane-outline",
+      "category": "Personal",
+      "size": "sm",
+      "permission": "staff.view_time_off",
+      "sectors": [
+        "rrhh",
+        "hosteleria",
+        "retail",
+        "general",
+        "belleza"
+      ],
+      "default": true,
+      "kind": "stat",
+      "query": "staff.members.stats",
+      "map": {
+        "value": "on_leave_today"
+      },
+      "options": {
+        "label": "Ausentes hoy",
+        "icon": "airplane-outline",
+        "format": "number"
+      }
+    },
+    "staff.pending_time_off": {
+      "title": "Ausencias pendientes",
+      "icon": "hourglass-outline",
+      "category": "Personal",
+      "size": "sm",
+      "permission": "staff.view_time_off",
+      "sectors": [
+        "rrhh",
+        "hosteleria",
+        "retail",
+        "general",
+        "belleza"
+      ],
+      "default": false,
+      "kind": "kpi",
+      "query": "staff.members.stats",
+      "map": {
+        "value": "pending_time_off"
+      },
+      "options": {
+        "label": "Solicitudes por aprobar",
+        "icon": "hourglass-outline",
+        "format": "number",
+        "locale": "es-ES"
+      }
+    },
+    "staff.time_off_today": {
+      "title": "Ausencias de hoy",
+      "icon": "calendar-outline",
+      "category": "Personal",
+      "size": "md",
+      "permission": "staff.view_time_off",
+      "sectors": [
+        "rrhh",
+        "hosteleria",
+        "retail",
+        "general",
+        "belleza"
+      ],
+      "default": true,
+      "kind": "timeline",
+      "query": "staff.time_off.today",
+      "map": {
+        "id": "id",
+        "title": "staff_name",
+        "description": "reason",
+        "status": "leave_type"
+      },
+      "options": {
+        "align": "left"
+      }
+    },
+    "staff.by_role": {
+      "title": "Empleados por rol",
+      "icon": "shield-outline",
+      "category": "Personal",
+      "size": "md",
+      "permission": "staff.view_staff_member",
+      "sectors": [
+        "rrhh",
+        "hosteleria",
+        "retail",
+        "general",
+        "belleza"
+      ],
+      "default": false,
+      "kind": "bar-list",
+      "query": "staff.roles.list",
+      "map": {
+        "label": "name",
+        "value": "member_count",
+        "color": "color"
+      },
+      "options": {
+        "valueFormat": "number",
+        "max": 10
+      }
+    }
   },
   "ui": {
     "entry": "dist/staff.esm.js"
