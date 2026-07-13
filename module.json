@@ -112,19 +112,19 @@
         "default_dir": "asc",
         "filters": {
           "first_name": {
-            "op": "eq"
+            "op": "like"
           },
           "last_name": {
-            "op": "eq"
+            "op": "like"
           },
           "full_name": {
-            "op": "eq"
+            "op": "like"
           },
           "email": {
-            "op": "eq"
+            "op": "like"
           },
           "phone": {
-            "op": "eq"
+            "op": "like"
           },
           "role_id": {
             "op": "eq"
@@ -186,10 +186,10 @@
         "default_dir": "asc",
         "filters": {
           "name": {
-            "op": "eq"
+            "op": "like"
           },
           "description": {
-            "op": "eq"
+            "op": "like"
           },
           "color": {
             "op": "eq"
@@ -238,7 +238,7 @@
             "op": "eq"
           },
           "staff_name": {
-            "op": "eq"
+            "op": "like"
           },
           "leave_type": {
             "op": "eq"
@@ -268,10 +268,10 @@
             "op": "range"
           },
           "reason": {
-            "op": "eq"
+            "op": "like"
           },
           "notes": {
-            "op": "eq"
+            "op": "like"
           }
         },
         "page_size": 50
