@@ -71,13 +71,16 @@ function erplora(): ErploraClientLike {
  */
 export class ErpStaffSchedules extends LitElement {
   static styles = css`
-    :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
+    /* Cadena de altura: sin ella, el modo fill de la tabla no tiene alto que llenar. */
+    :host { display:flex; flex-direction:column; height:100%; min-height:0; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
+    .page { display:flex; flex-direction:column; min-height:0; flex:1 1 auto; }
+    .page > ok-data-table { flex:1 1 auto; min-height:0; }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; }
-    h2 { margin:0; font-size:1.15rem; flex:1; }
-    h3 { margin:1rem 0 .5rem; font-size:1rem; }
-    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
-    .form ion-input, .form ion-select, header ion-select { flex:1 1 11rem; min-width:9rem; }
-    .week { display:flex; flex-direction:column; gap:.25rem; margin:.5rem 0 1rem; }
+    /* El alta vive en el panel lateral de la tabla: columna estrecha, no fila que se desborda. */
+    .form { display:flex; flex-direction:column; gap:.7rem; }
+    .form ion-button { align-self:flex-end; }
+    header ion-select { flex:1 1 11rem; min-width:9rem; }
+    .week { display:flex; flex-direction:column; gap:.25rem; margin:.25rem 0; }
     .day { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
     /* El nombre del día es la LABEL del checkbox (va slotteada dentro de él): así el texto es
        clicable y da nombre accesible al input. Ionic trunca esa label (white-space:nowrap en su
@@ -205,6 +208,13 @@ export class ErpStaffSchedules extends LitElement {
     return '';
   }
 
+  /** Referencia al panel lateral de la tabla: guardar lo cierra. */
+  private dataTable(): { open(p?: 'filters' | 'create'): void; close(): void } | null {
+    return this.renderRoot.querySelector('ok-data-table') as
+      | { open(p?: 'filters' | 'create'): void; close(): void }
+      | null;
+  }
+
   private async createSchedule(ev: Event) {
     ev.preventDefault();
     if (!this.staffId) return;
@@ -238,6 +248,7 @@ export class ErpStaffSchedules extends LitElement {
       this.effectiveFrom = '';
       this.effectiveUntil = '';
       this.week = defaultWeek();
+      this.dataTable()?.close();
       await this.loadSchedules();
     } catch (e) {
       this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errCreateSchedule');
@@ -248,39 +259,42 @@ export class ErpStaffSchedules extends LitElement {
 
   render() {
     const t = (k: string): string => erplora().t(CATALOG, k);
-    return html`<div>
+    return html`<div class="page">
+        <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
+             (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
         <header>
-          <h2>${t('ui.schedulesTitle')}</h2>
           <ion-select fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${!this.members.length ? html`<p class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
-        <ok-data-table .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')}></ok-data-table>
-
-        <h3>${t('ui.newScheduleTitle')}</h3>
-        <form class="form" @submit=${(e: Event) => this.createSchedule(e)}>
-          <ion-input fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-          <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
-          <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
-          <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
-          <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : t('ui.actionCreateSchedule')}</ion-button>
-        </form>
-        <div class="week">
-          ${this.week.map(
-            (d) => html`<div class="day">
-              <ion-checkbox justify="start" label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}><span class="name">${this.dayLabel(d.day)}</span></ion-checkbox>
-              ${d.working
-                ? html`<ion-input fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
-                    <span class="sep">${t('ui.sepTo')}</span>
-                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
-                    <span class="sep">${t('ui.sepBreak')}</span>
-                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
-                    <span class="sep">${t('ui.sepTo')}</span>
-                    <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
-                : html`<span class="sep">${t('ui.notWorking')}</span>`}
-            </div>`,
-          )}
-        </div>
+        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')}>
+          <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
+               abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
+               DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
+          <form slot="create" class="form" @submit=${(e: Event) => this.createSchedule(e)}>
+            <ion-input fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+            <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
+            <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
+            <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
+            <div class="week">
+              ${this.week.map(
+                (d) => html`<div class="day">
+                  <ion-checkbox justify="start" label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}><span class="name">${this.dayLabel(d.day)}</span></ion-checkbox>
+                  ${d.working
+                    ? html`<ion-input fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
+                        <span class="sep">${t('ui.sepTo')}</span>
+                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
+                        <span class="sep">${t('ui.sepBreak')}</span>
+                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
+                        <span class="sep">${t('ui.sepTo')}</span>
+                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
+                    : html`<span class="sep">${t('ui.notWorking')}</span>`}
+                </div>`,
+              )}
+            </div>
+            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : t('ui.actionCreateSchedule')}</ion-button>
+          </form>
+        </ok-data-table>
       </div>`;
   }
 }

@@ -29,6 +29,8 @@
     "phEmail": "Email",
     "phRole": "Rol…",
     "actionAdd": "Añadir",
+    "actionEdit": "Editar",
+    "actionSave": "Guardar",
     "actionSaving": "Guardando…",
     "searchMember": "Buscar miembro…",
     "loading": "Cargando…",
