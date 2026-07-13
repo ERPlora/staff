@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "module": "staff",
+  "consumes": {
+    "queries": [
+      "staff.members.list",
+      "staff.roles.list",
+      "staff.schedules.list_for_member",
+      "staff.time_off.list"
+    ],
+    "optional_queries": [],
+    "commands": [
+      "staff.members.create",
+      "staff.members.update",
+      "staff.roles.create",
+      "staff.schedules.create",
+      "staff.time_off.set_status"
+    ],
+    "events": [
+      "staff.member.created",
+      "staff.member.deactivated",
+      "staff.member.terminated",
+      "staff.member.updated",
+      "staff.role.created",
+      "staff.schedule.created",
+      "staff.time_off.created",
+      "staff.time_off.status_changed"
+    ],
+    "slots": []
+  }
+}
