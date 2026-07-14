@@ -267,7 +267,7 @@ export class ErpStaffSchedules extends LitElement {
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${!this.members.length ? html`<p class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
-        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')}>
+        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->

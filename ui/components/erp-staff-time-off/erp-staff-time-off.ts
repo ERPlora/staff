@@ -82,8 +82,9 @@ export class ErpStaffTimeOff extends LitElement {
   private get actions(): DataTableAction[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
-    { id: 'approve', label: t('ui.actionApprove'), color: 'primary' },
-    { id: 'reject', label: t('ui.actionReject'), color: 'medium' },
+    // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
+    { id: 'approve', label: t('ui.actionApprove'), icon: 'checkmark-circle-outline', color: 'primary' },
+    { id: 'reject', label: t('ui.actionReject'), icon: 'close-circle-outline', color: 'medium' },
   ];
   }
 
@@ -143,7 +144,7 @@ export class ErpStaffTimeOff extends LitElement {
         </header>
         ${this.formError ? html`<p class="err">${this.formError}</p>` : nothing}
         ${this.ctrl?.error ? html`<p class="err">${this.ctrl.error}</p>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
+        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
             this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
       </div>`;
   }
