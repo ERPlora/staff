@@ -100,13 +100,16 @@
   },
   "widgets": {
     "staff.headcount": {
-      "title": "Plantilla activa"
+      "title": "Plantilla activa",
+      "label": "Empleados activos"
     },
     "staff.on_leave_today": {
-      "title": "Ausentes hoy"
+      "title": "Ausentes hoy",
+      "label": "Ausentes hoy"
     },
     "staff.pending_time_off": {
-      "title": "Ausencias pendientes"
+      "title": "Ausencias pendientes",
+      "label": "Solicitudes por aprobar"
     },
     "staff.time_off_today": {
       "title": "Ausencias de hoy"

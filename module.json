@@ -524,7 +524,7 @@
         "value": "active_members"
       },
       "options": {
-        "label": "Empleados activos",
+        "label": "Active employees",
         "icon": "people-outline",
         "format": "number",
         "locale": "es-ES"
@@ -554,7 +554,7 @@
         "value": "on_leave_today"
       },
       "options": {
-        "label": "Ausentes hoy",
+        "label": "On leave today",
         "icon": "airplane-outline",
         "format": "number"
       }
@@ -583,7 +583,7 @@
         "value": "pending_time_off"
       },
       "options": {
-        "label": "Solicitudes por aprobar",
+        "label": "Requests to approve",
         "icon": "hourglass-outline",
         "format": "number",
         "locale": "es-ES"
