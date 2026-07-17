@@ -500,7 +500,7 @@
   },
   "widgets": {
     "staff.headcount": {
-      "title": "Plantilla activa",
+      "title": "Active staff",
       "icon": "people-outline",
       "category": "Personal",
       "size": "sm",
@@ -531,7 +531,7 @@
       }
     },
     "staff.on_leave_today": {
-      "title": "Ausentes hoy",
+      "title": "On leave today",
       "icon": "airplane-outline",
       "category": "Personal",
       "size": "sm",
@@ -560,7 +560,7 @@
       }
     },
     "staff.pending_time_off": {
-      "title": "Ausencias pendientes",
+      "title": "Pending time off",
       "icon": "hourglass-outline",
       "category": "Personal",
       "size": "sm",
@@ -590,7 +590,7 @@
       }
     },
     "staff.time_off_today": {
-      "title": "Ausencias de hoy",
+      "title": "Today's time off",
       "icon": "calendar-outline",
       "category": "Personal",
       "size": "md",
@@ -620,7 +620,7 @@
       }
     },
     "staff.by_role": {
-      "title": "Empleados por rol",
+      "title": "Staff by role",
       "icon": "shield-outline",
       "category": "Personal",
       "size": "md",

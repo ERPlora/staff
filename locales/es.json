@@ -97,5 +97,22 @@
     "ariaEnd": "Fin",
     "ariaBreakStart": "Inicio descanso",
     "ariaBreakEnd": "Fin descanso"
+  },
+  "widgets": {
+    "staff.headcount": {
+      "title": "Plantilla activa"
+    },
+    "staff.on_leave_today": {
+      "title": "Ausentes hoy"
+    },
+    "staff.pending_time_off": {
+      "title": "Ausencias pendientes"
+    },
+    "staff.time_off_today": {
+      "title": "Ausencias de hoy"
+    },
+    "staff.by_role": {
+      "title": "Empleados por rol"
+    }
   }
 }
