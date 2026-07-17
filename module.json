@@ -515,6 +515,7 @@
       "default": true,
       "kind": "kpi",
       "query": "staff.members.stats",
+      "refresh_on": ["staff.member.created", "staff.member.deactivated", "staff.member.terminated"],
       "map": {
         "value": "active_members"
       },
@@ -541,6 +542,7 @@
       "default": true,
       "kind": "stat",
       "query": "staff.members.stats",
+      "refresh_on": ["staff.time_off.created", "staff.time_off.status_changed"],
       "map": {
         "value": "on_leave_today"
       },
@@ -566,6 +568,7 @@
       "default": false,
       "kind": "kpi",
       "query": "staff.members.stats",
+      "refresh_on": ["staff.time_off.created", "staff.time_off.status_changed"],
       "map": {
         "value": "pending_time_off"
       },
@@ -592,6 +595,7 @@
       "default": true,
       "kind": "timeline",
       "query": "staff.time_off.today",
+      "refresh_on": ["staff.time_off.created", "staff.time_off.status_changed"],
       "map": {
         "id": "id",
         "title": "staff_name",
@@ -618,6 +622,7 @@
       "default": false,
       "kind": "bar-list",
       "query": "staff.roles.list",
+      "refresh_on": ["staff.member.created", "staff.member.deactivated", "staff.member.terminated", "staff.role.created"],
       "map": {
         "label": "name",
         "value": "member_count",
