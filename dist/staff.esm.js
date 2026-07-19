@@ -1552,6 +1552,16 @@ function okIcon(value) {
 }
 
 // node_modules/.pnpm/@erplora+outfitkit@file+..+outfitkit/node_modules/@erplora/outfitkit/dist/ok-data-table.js
+var CSV_BOM = "\uFEFF";
+function decodeCsvBuffer(buf) {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    text = new TextDecoder("windows-1252").decode(buf);
+  }
+  return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
+}
 var __defProp2 = Object.defineProperty;
 var __decorateClass2 = (decorators, target, key, kind) => {
   var result = void 0;
@@ -1956,7 +1966,7 @@ var OkDataTable = class extends i3 {
     const head = cols.map((c5) => this.csvEscape(c5.key)).join(",");
     const lines = this.rows.map((r6) => cols.map((c5) => this.csvEscape(r6[c5.key])).join(","));
     const csv = [head, ...lines].join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([CSV_BOM + csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a3 = document.createElement("a");
     a3.href = url;
@@ -2004,7 +2014,7 @@ var OkDataTable = class extends i3 {
     const input = ev.target;
     const file = input.files?.[0];
     if (!file) return;
-    const text = await file.text();
+    const text = decodeCsvBuffer(await file.arrayBuffer());
     const { headers, rows } = this.parseCsv(text);
     this.emit("csvImport", { headers, rows });
     this.emit("import", { headers, rows });
@@ -2369,8 +2379,6 @@ var OkDataTable = class extends i3 {
       (a3) => {
         const loading = a3.loading?.(row) === true;
         const disabled = loading || a3.disabled?.(row) === true;
-        const iconOnly = !!a3.icon;
-        const name = iconOnly && a3.label ? a3.label : A;
         return b2`
             <ion-button
               size="small"
@@ -2378,8 +2386,6 @@ var OkDataTable = class extends i3 {
               color=${a3.color ?? "medium"}
               ?disabled=${disabled}
               aria-disabled=${disabled ? "true" : A}
-              title=${name}
-              aria-label=${name}
               @click=${() => this.emit("rowAction", { actionId: a3.id, row })}
             >
               ${loading ? b2`<ion-spinner slot="icon-only" name="dots"></ion-spinner>` : a3.icon ? b2`<ion-icon slot="icon-only" .icon=${okIcon(a3.icon)}></ion-icon>` : a3.label}
@@ -3080,6 +3086,26 @@ var es_default = {
     ariaEnd: "Fin",
     ariaBreakStart: "Inicio descanso",
     ariaBreakEnd: "Fin descanso"
+  },
+  widgets: {
+    "staff.headcount": {
+      title: "Plantilla activa",
+      label: "Empleados activos"
+    },
+    "staff.on_leave_today": {
+      title: "Ausentes hoy",
+      label: "Ausentes hoy"
+    },
+    "staff.pending_time_off": {
+      title: "Ausencias pendientes",
+      label: "Solicitudes por aprobar"
+    },
+    "staff.time_off_today": {
+      title: "Ausencias de hoy"
+    },
+    "staff.by_role": {
+      title: "Empleados por rol"
+    }
   }
 };
 
@@ -3253,7 +3279,8 @@ var ErpStaffMembers = class extends i3 {
         sortable: true,
         filterable: true,
         filterType: "range",
-        format: (r6) => Number(r6.hourly_rate).toFixed(2)
+        // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
+        format: (r6) => erplora().formatMoney(Number(r6.hourly_rate || 0))
       }
     ];
   }

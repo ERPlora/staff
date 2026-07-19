@@ -16,6 +16,9 @@ interface ErploraClientLike extends ListClient {
   on(event: string, cb: (payload: unknown) => void): () => void;
   locale: string;
   t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
+  /** Dinero (ADR-0123): `formatMoney` recibe CÉNTIMOS y divide según la moneda. */
+  currency: string;
+  formatMoney(cents: number, opts?: { currency?: string; locale?: string }): string;
 }
 
 interface StaffMember {
@@ -117,7 +120,8 @@ export class ErpStaffMembers extends LitElement {
       sortable: true,
       filterable: true,
       filterType: 'range',
-      format: (r) => Number(r.hourly_rate).toFixed(2),
+      // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
+      format: (r) => erplora().formatMoney(Number(r.hourly_rate || 0)),
     },
   ];
   }

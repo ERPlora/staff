@@ -17,7 +17,7 @@
       "default": null
     },
     "hire_date": { "type": ["string", "null"], "format": "date", "default": null },
-    "hourly_rate": { "type": ["number", "null"], "minimum": 0, "default": null },
+    "hourly_rate": { "type": ["integer", "null"], "minimum": 0, "default": null, "description": "Céntimos por hora (dinero, ADR-0123)" },
     "commission_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "default": null },
     "is_bookable": { "type": ["integer", "null"], "enum": [0, 1, null], "default": null },
     "bio": { "type": ["string", "null"], "default": null },

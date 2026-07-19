@@ -21,7 +21,7 @@
     "specialties": { "type": "string", "default": "" },
     "is_bookable": { "type": "integer", "enum": [0, 1], "default": 1 },
     "color": { "type": "string", "default": "", "maxLength": 7 },
-    "hourly_rate": { "type": "number", "minimum": 0, "default": 0 },
+    "hourly_rate": { "type": "integer", "minimum": 0, "default": 0, "description": "Céntimos por hora (dinero, ADR-0123)" },
     "commission_rate": { "type": "number", "minimum": 0, "maximum": 100, "default": 0 },
     "notes": { "type": "string", "default": "" }
   }
