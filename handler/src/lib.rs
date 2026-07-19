@@ -18,6 +18,7 @@
 //! Ids: el host pasa `context.new_ids` (autoridad de ids); el guest solo los reparte.
 //! La fecha de hoy se deriva de `context.now` (RFC3339 del host, no falsificable).
 
+use erplora_guest_sdk::money;
 use erplora_guest_sdk::{Operation, Output};
 use serde_json::{json, Map, Value};
 
@@ -214,7 +215,8 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
                 }
             }
         };
-        let hourly_rate = item.get("hourly_rate").map(|v| as_f64(v, 0.0)).unwrap_or(0.0);
+        // hourly_rate es DINERO (céntimos/hora, ADR-0123): entero i64 vía SDK, nunca f64.
+        let hourly_rate = item.get("hourly_rate").map(|v| money::from_json(v, 0)).unwrap_or(0);
 
         let mut p = Map::new();
         p.insert("first_name".into(), json!(first_name.trim()));
@@ -232,7 +234,7 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
             json!(item.get("is_bookable").map(|v| as_i01(v, 1)).unwrap_or(1)),
         );
         p.insert("color".into(), json!(""));
-        p.insert("hourly_rate".into(), json!(hourly_rate.max(0.0)));
+        p.insert("hourly_rate".into(), json!(hourly_rate.max(0))); // céntimos (INTEGER)
         p.insert("commission_rate".into(), json!(0));
         p.insert("notes".into(), json!(""));
         ops.push(Operation::sql("staff.members.create", p));
@@ -409,4 +411,26 @@ pub fn create_time_off_pure(input: Value) -> Result<Output, String> {
         operations: vec![Operation::sql("staff._insert_time_off", p)],
         events: vec![],
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bulk_create_passes_hourly_rate_as_integer_cents() {
+        // ADR-0123 §1: hourly_rate es DINERO (céntimos/hora, INTEGER en BD y en el JSON).
+        // El passthrough en f64 mandaba 1500.0 (float) a una columna INTEGER — el único
+        // importe de la flota que viajaba como number (falso negativo del validador).
+        let input = serde_json::json!({
+            "payload": { "members": [
+                { "first_name": "Ana", "last_name": "Ruiz", "hourly_rate": 1500 },
+                { "first_name": "Luz", "last_name": "Vega" }
+            ] },
+            "context": { "new_ids": ["id-0", "id-1"] }
+        });
+        let out = bulk_create_staff_members_pure(input).expect("bulk válido");
+        assert_eq!(out.operations[0].params["hourly_rate"], serde_json::json!(1500), "entero, no 1500.0");
+        assert_eq!(out.operations[1].params["hourly_rate"], serde_json::json!(0), "default entero");
+    }
 }

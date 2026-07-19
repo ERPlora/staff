@@ -21,6 +21,8 @@ beforeEach(() => {
   comandos.length = 0;
   (globalThis as Record<string, unknown>).erplora = {
     query: async (name: string) => (name === 'staff.roles.list' ? ROLES : []),
+    currency: 'EUR',
+    formatMoney: (cents: number) => `${(cents / 100).toFixed(2)} €`,
     queryPage: async () => ({
       rows: [
         {
@@ -133,5 +135,16 @@ describe('el alta sigue funcionando desde el panel', () => {
     expect(alta, 'no se mandó el alta del miembro').toBeTruthy();
     expect(alta!.payload.first_name).toBe('Ana');
     expect(alta!.payload.role_id).toBe('r1');
+  });
+});
+
+
+describe('la tarifa por hora habla céntimos → formatMoney (bug ×100)', () => {
+  it('1500 céntimos/hora se pintan «15.00 €», no «1500.00»', async () => {
+    const el = await montar();
+    const cols = (el as unknown as { columns: { key: string; format?: (r: unknown) => string }[] }).columns;
+    const rate = cols.find((c) => c.key === 'hourly_rate');
+    expect(rate?.format, 'la columna hourly_rate no tiene formato de dinero').toBeTruthy();
+    expect(rate!.format!({ hourly_rate: 1500 })).toBe('15.00 €');
   });
 });
