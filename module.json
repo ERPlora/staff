@@ -1,7 +1,7 @@
 {
   "id": "staff",
   "name": "Staff",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "agent": {
     "description": "Manages staff members, roles, schedules and time-off requests: list, create, update and deactivate employees, manage work schedules, and approve or reject time-off.",
     "keywords": [
@@ -75,9 +75,6 @@
     "set": "staff.settings.update"
   },
   "migrations": {
-    "sqlite": [
-      "migrations/sqlite/001_init.sql"
-    ],
     "postgres": [
       "migrations/postgres/001_init.sql"
     ]
