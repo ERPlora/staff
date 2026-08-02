@@ -96,7 +96,9 @@
     "ariaStart": "Inicio",
     "ariaEnd": "Fin",
     "ariaBreakStart": "Inicio descanso",
-    "ariaBreakEnd": "Fin descanso"
+    "ariaBreakEnd": "Fin descanso",
+    "hubUser": "Usuario del Hub",
+    "hubUserNone": "Sin acceso al Hub"
   },
   "widgets": {
     "staff.headcount": {

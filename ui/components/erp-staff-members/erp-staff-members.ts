@@ -31,6 +31,8 @@ interface StaffMember {
   phone: string;
   role_id: string | null;
   role_name: string | null;
+  /** Usuario del Hub del que cuelga la ficha (ADR-0192); `null` = ficha sin acceso al Hub. */
+  user_id: string | null;
   status: string;
   is_bookable: number;
   hourly_rate: string;
@@ -39,6 +41,18 @@ interface StaffMember {
 interface StaffRole {
   id: string;
   name: string;
+}
+
+/**
+ * Usuario del Hub (core). Llega por `hub.users.list`, el namespace RESERVADO del dispatcher
+ * (ADR-0192): un módulo no habla con las rutas HTTP del core, así que la identidad se le sirve como
+ * una query más. Trae lo justo para vincular — sin email ni vía de acceso.
+ */
+interface HubUser {
+  id: string;
+  name: string;
+  role: string;
+  is_active: boolean;
 }
 
 /** Panel lateral de la tabla (drawer): el «+» de la barra y la acción «editar» abren el MISMO. */
@@ -67,6 +81,9 @@ export class ErpStaffMembers extends LitElement {
 
   @state() roles: StaffRole[] = [];
 
+  /** Usuarios ACTIVOS del Hub, para elegir de quién es esta ficha. */
+  @state() hubUsers: HubUser[] = [];
+
   @state() formError = '';
 
   @state() newFirst = '';
@@ -76,6 +93,9 @@ export class ErpStaffMembers extends LitElement {
   @state() newEmail = '';
 
   @state() newRole = '';
+
+  /** Usuario del Hub vinculado. Vacío = ficha sin acceso (o desvincular, al editar). */
+  @state() newUserId = '';
 
   /** Id del miembro en edición; vacío = el panel está dando de ALTA (mismo panel, dos modos). */
   @state() editingId = '';
@@ -144,6 +164,7 @@ export class ErpStaffMembers extends LitElement {
     this.newLast = m.last_name;
     this.newEmail = m.email ?? '';
     this.newRole = m.role_id ?? '';
+    this.newUserId = m.user_id ?? '';
     this.formError = '';
     this.dataTable()?.open('create');
   }
@@ -161,7 +182,7 @@ export class ErpStaffMembers extends LitElement {
       sort: 'id',
       dir: 'asc',
     });
-    await Promise.all([this.ctrl.load(), this.loadRoles()]);
+    await Promise.all([this.ctrl.load(), this.loadRoles(), this.loadHubUsers()]);
     try {
       const off1 = erplora().on('staff.member.created', () => this.ctrl.load());
       const off2 = erplora().on('staff.member.updated', () => this.ctrl.load());
@@ -190,6 +211,16 @@ export class ErpStaffMembers extends LitElement {
     } catch { /* roles opcionales para el alta */ }
   }
 
+  /** Usuarios del Hub para el selector. Solo los ACTIVOS: a un usuario de baja no se le asignan
+   *  fichas nuevas. Si el core no responde, el selector queda vacío y la ficha se crea sin vínculo
+   *  (el vínculo es opcional, no puede bloquear el alta). */
+  private async loadHubUsers() {
+    try {
+      const users = (await erplora().query<HubUser[]>('hub.users.list')) ?? [];
+      this.hubUsers = users.filter((u) => u.is_active);
+    } catch { /* sin core (preview) → alta sin vínculo */ }
+  }
+
   /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). */
   private async createMember(ev: Event) {
     ev.preventDefault();
@@ -204,6 +235,8 @@ export class ErpStaffMembers extends LitElement {
           last_name: this.newLast.trim(),
           email: this.newEmail.trim(),
           role_id: this.newRole || null,
+          // '' DESvincula; null significaría «no lo toques» (COALESCE del command).
+          user_id: this.newUserId,
         });
       } else {
         await erplora().command('staff.members.create', {
@@ -211,6 +244,7 @@ export class ErpStaffMembers extends LitElement {
           last_name: this.newLast.trim(),
           email: this.newEmail.trim(),
           role_id: this.newRole || null,
+          user_id: this.newUserId || null,
           is_bookable: 1,
           status: 'active',
         });
@@ -220,6 +254,7 @@ export class ErpStaffMembers extends LitElement {
       this.newLast = '';
       this.newEmail = '';
       this.newRole = '';
+      this.newUserId = '';
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e) {
@@ -242,6 +277,7 @@ export class ErpStaffMembers extends LitElement {
             <ion-input fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.newLast} @ionInput=${(e: any) => (this.newLast = e.target.value)}></ion-input>
             <ion-input fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.newEmail} @ionInput=${(e: any) => (this.newEmail = e.target.value)}></ion-input>
             <ion-select fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.newRole} @ionChange=${(e: any) => (this.newRole = e.target.value)}>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
+            <ion-select fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.newUserId} @ionChange=${(e: any) => (this.newUserId = e.target.value)}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>

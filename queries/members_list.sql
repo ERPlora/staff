@@ -4,7 +4,7 @@
 -- match por nombre/apellido. Por defecto excluye terminados salvo que se pida explícito.
 SELECT m.id, m.first_name, m.last_name,
        (m.first_name || ' ' || m.last_name) AS full_name,
-       m.email, m.phone, m.role_id, r.name AS role_name,
+       m.email, m.phone, m.role_id, m.user_id, r.name AS role_name,
        m.status, m.is_bookable, m.hire_date,
        m.hourly_rate, m.commission_rate, m.color, m."order"
 FROM staff_member m
