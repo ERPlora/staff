@@ -96,6 +96,8 @@
     "ariaStart": "Start",
     "ariaEnd": "End",
     "ariaBreakStart": "Break start",
-    "ariaBreakEnd": "Break end"
+    "ariaBreakEnd": "Break end",
+    "hubUser": "Hub user",
+    "hubUserNone": "No Hub access"
   }
 }

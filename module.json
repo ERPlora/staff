@@ -1,7 +1,7 @@
 {
   "id": "staff",
   "name": "Staff",
-  "version": "2.1.9",
+  "version": "2.2.0",
   "description": "Employees, roles, schedules and time-off requests.",
   "agent": {
     "description": "Manages staff members, roles, schedules and time-off requests: list, create, update and deactivate employees, manage work schedules, and approve or reject time-off.",
@@ -107,7 +107,8 @@
           "hire_date",
           "hourly_rate",
           "commission_rate",
-          "color"
+          "color",
+          "user_id"
         ],
         "default_sort": "id",
         "default_dir": "asc",
@@ -149,6 +150,9 @@
             "op": "range"
           },
           "color": {
+            "op": "eq"
+          },
+          "user_id": {
             "op": "eq"
           }
         },

@@ -7,6 +7,14 @@ SET first_name      = COALESCE(:first_name, first_name),
     email           = COALESCE(:email, email),
     phone           = COALESCE(:phone, phone),
     role_id         = COALESCE(:role_id, role_id),
+    -- Vínculo con el usuario del Hub (ADR-0192). NULL = «no lo toques» (parcial); '' = DESVINCULAR.
+    -- Hacen falta dos centinelas porque COALESCE ya usa NULL para «sin cambio».
+    -- El COALESCE contra un literal de texto NO es adorno: le da a Postgres el tipo del bind. Con
+    -- `:user_id IS NULL` a secas, PG no lo infiere y un NULL revienta con 42P08 («could not
+    -- determine data type of parameter») — el mismo 42P08 que ya nos mordió en las migraciones.
+    user_id         = CASE WHEN COALESCE(:user_id, '__keep__') = '__keep__' THEN user_id
+                           WHEN :user_id = ''                               THEN NULL
+                           ELSE :user_id END,
     status          = COALESCE(:status, status),
     hire_date       = COALESCE(:hire_date, hire_date),
     hourly_rate     = COALESCE(:hourly_rate, hourly_rate),
