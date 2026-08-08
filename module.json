@@ -18,10 +18,12 @@
   "depends_on": [],
   "permissions": [
     "staff.view_staff_member",
+    "staff.view_compensation",
     "staff.add_staff_member",
     "staff.change_staff_member",
     "staff.delete_staff_member",
     "staff.view_time_off",
+    "staff.view_time_off_detail",
     "staff.manage_time_off",
     "staff.manage_settings"
   ],
@@ -35,7 +37,9 @@
       "staff.change_staff_member",
       "staff.view_time_off",
       "staff.manage_time_off",
-      "staff.manage_settings"
+      "staff.manage_settings",
+      "staff.view_compensation",
+      "staff.view_time_off_detail"
     ],
     "employee": [
       "staff.view_staff_member",
@@ -105,8 +109,6 @@
           "status",
           "is_bookable",
           "hire_date",
-          "hourly_rate",
-          "commission_rate",
           "color",
           "user_id"
         ],
@@ -143,12 +145,6 @@
           "hire_date": {
             "op": "range"
           },
-          "hourly_rate": {
-            "op": "range"
-          },
-          "commission_rate": {
-            "op": "range"
-          },
           "color": {
             "op": "eq"
           },
@@ -170,6 +166,10 @@
         "description": "Returns the details of a single staff member by their identifier."
       },
       "expose_api": true
+    },
+    "staff.members.compensation": {
+      "permission": "staff.view_compensation",
+      "sql": "queries/members_compensation.sql"
     },
     "staff.roles.list": {
       "permission": "staff.view_staff_member",
@@ -232,9 +232,7 @@
           "end_time",
           "status",
           "approved_by",
-          "approved_at",
-          "reason",
-          "notes"
+          "approved_at"
         ],
         "default_sort": "id",
         "default_dir": "asc",
@@ -271,12 +269,6 @@
           },
           "approved_at": {
             "op": "range"
-          },
-          "reason": {
-            "op": "like"
-          },
-          "notes": {
-            "op": "like"
           }
         },
         "page_size": 50
@@ -284,6 +276,10 @@
       "ai": {
         "description": "Lists time-off requests for staff members, optionally filtered by status or member."
       }
+    },
+    "staff.time_off.detail": {
+      "permission": "staff.view_time_off_detail",
+      "sql": "queries/time_off_detail.sql"
     },
     "staff.time_off.today": {
       "permission": "staff.view_time_off",
@@ -300,7 +296,7 @@
       }
     },
     "staff.commissions.summary": {
-      "permission": "staff.view_staff_member",
+      "permission": "staff.view_compensation",
       "expose_api": true,
       "sql": "queries/commissions_summary.sql",
       "ai": {

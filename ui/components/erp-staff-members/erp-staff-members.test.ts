@@ -148,13 +148,24 @@ describe('el alta sigue funcionando desde el panel', () => {
 });
 
 
+// La tarifa ya NO viaja en la fila del directorio: `staff.members.list` la abre
+// `staff.view_staff_member`, que todo `employee` tiene, así que servía la nómina entera a la
+// plantilla entera (staff#10). Ahora sale de `staff.members.compensation`, detrás de
+// `staff.view_compensation`, y la columna solo existe para quien puede leerla. Lo que este test
+// protegía —céntimos/hora por `formatMoney`, nada de ×100— sigue vigente palabra por palabra.
 describe('la tarifa por hora habla céntimos → formatMoney (bug ×100)', () => {
   it('1500 céntimos/hora se pintan «15.00 €», no «1500.00»', async () => {
+    const sdk = (globalThis as Record<string, unknown>).erplora as Record<string, unknown>;
+    sdk.hasPermission = (perm: string) => perm === 'staff.view_compensation';
+    const queryBase = sdk.query as (name: string) => Promise<unknown>;
+    sdk.query = async (name: string) =>
+      name === 'staff.members.compensation' ? [{ id: 'm1', hourly_rate: 1500 }] : queryBase(name);
+
     const el = await montar();
     const cols = (el as unknown as { columns: { key: string; format?: (r: unknown) => string }[] }).columns;
     const rate = cols.find((c) => c.key === 'hourly_rate');
     expect(rate?.format, 'la columna hourly_rate no tiene formato de dinero').toBeTruthy();
-    expect(rate!.format!({ hourly_rate: 1500 })).toBe('15.00 €');
+    expect(rate!.format!({ id: 'm1' })).toBe('15.00 €');
   });
 });
 

@@ -20,6 +20,8 @@ interface ErploraClientLike extends ListClient {
   /** Dinero (ADR-0123): `formatMoney` recibe CÉNTIMOS y divide según la moneda. */
   currency: string;
   formatMoney(cents: number, opts?: { currency?: string; locale?: string }): string;
+  /** Show/hide ONLY — the runtime is what enforces a permission (module-sdk). */
+  hasPermission(permission: string): boolean;
 }
 
 interface StaffMember {
@@ -102,6 +104,15 @@ export class ErpStaffMembers extends LitElement {
 
   @state() saving = false;
 
+  /** Compensation by member id, loaded ONLY when the session can read it (staff#10). The directory
+   *  (`staff.members.list`) no longer carries it: it is open to `staff.view_staff_member`, which
+   *  every `employee` has, so it handed the whole payroll to the whole team. */
+  @state() private rates: Record<string, number> = {};
+
+  private get canSeeCompensation(): boolean {
+    return erplora().hasPermission?.('staff.view_compensation') === true;
+  }
+
   private ctrl!: ListController<StaffMember>;
 
   private unsub?: () => void;
@@ -134,16 +145,20 @@ export class ErpStaffMembers extends LitElement {
         { value: 'inactive', label: t('ui.statusInactive') },
       ],
     },
-    {
-      key: 'hourly_rate',
-      header: t('ui.colHourlyRate'),
-      align: 'right',
-      sortable: true,
-      filterable: true,
-      filterType: 'range',
-      // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
-      format: (r) => erplora().formatMoney(Number(r.hourly_rate || 0)),
-    },
+    // The rate column only exists for a session that may read it. Leaving it in place would print
+    // «0,00 €» next to every colleague — «nobody earns anything» reads worse than no column.
+    ...(this.canSeeCompensation
+      ? [{
+        key: 'hourly_rate',
+        header: t('ui.colHourlyRate'),
+        align: 'right' as const,
+        sortable: true,
+        // Not server-filterable any more: the value no longer travels in the directory query.
+        filterable: false,
+        // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
+        format: (r) => erplora().formatMoney(Number(this.rates[String(r.id)] ?? 0)),
+      }]
+      : []),
   ];
   }
 
@@ -169,6 +184,21 @@ export class ErpStaffMembers extends LitElement {
     this.dataTable()?.open('create');
   }
 
+  /** Compensation, only for a session that may read it. A denied query is NOT an error to show:
+   *  the column simply does not exist for that session, and the directory keeps working. */
+  private async loadRates(): Promise<void> {
+    if (!this.canSeeCompensation) return;
+    try {
+      const rows = await erplora().query<{ id: string; hourly_rate: number }[]>(
+        'staff.members.compensation',
+        { staff_id: '' },
+      );
+      this.rates = Object.fromEntries((rows ?? []).map((r) => [String(r.id), Number(r.hourly_rate || 0)]));
+    } catch {
+      this.rates = {};
+    }
+  }
+
   private readonly onLocaleChange = (): void => this.requestUpdate();
 
   // TODO-LIT: componentWillLoad → connectedCallback. Recuerda: connectedCallback se dispara
@@ -182,7 +212,7 @@ export class ErpStaffMembers extends LitElement {
       sort: 'id',
       dir: 'asc',
     });
-    await Promise.all([this.ctrl.load(), this.loadRoles(), this.loadHubUsers()]);
+    await Promise.all([this.ctrl.load(), this.loadRoles(), this.loadHubUsers(), this.loadRates()]);
     try {
       const off1 = erplora().on('staff.member.created', () => this.ctrl.load());
       const off2 = erplora().on('staff.member.updated', () => this.ctrl.load());
