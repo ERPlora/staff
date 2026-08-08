@@ -28,7 +28,9 @@ interface TimeOff {
   end_date: string;
   is_full_day: number;
   status: string;
-  reason: string;
+  // No `reason`/`notes`: this list is the operational view — who is off and when. The motive of an
+  // absence (a sick leave is one) travels in `staff.time_off.detail`, behind
+  // `staff.view_time_off_detail`, which an `employee` does not have (staff#10).
 }
 
 function erplora(): ErploraClientLike {

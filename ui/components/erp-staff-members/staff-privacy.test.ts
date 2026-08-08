@@ -1,0 +1,195 @@
+// Who gets to read what about a colleague (staff#10).
+//
+// `employee` is granted `staff.view_staff_member` and `staff.view_time_off` by default, and both
+// of those opened the GENERAL queries — the ones that carry the whole payroll. Measured end to end
+// with exactly those permissions:
+//
+//   staff.members.list  -> hourly_rate=12345, commission_rate=42  of somebody else's record
+//   staff.time_off.list -> reason='medical private reason', notes='private note'
+//
+// The module's half of this is not the runtime check (the hub already gates a query by its
+// `permission`); it is WHICH COLUMNS each query returns and WHICH permission guards it. So that is
+// what this file pins: a directory anyone can read, and compensation and leave detail behind their
+// own permissions, which `employee` does not have.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const ROOT = join(__dirname, '../../..');
+const manifest = JSON.parse(readFileSync(join(ROOT, 'module.json'), 'utf8')) as {
+  permissions: string[];
+  role_permissions: Record<string, string[]>;
+  queries: Record<string, { permission: string; sql: string }>;
+};
+
+/** The SQL a query runs, WITHOUT its `--` comments: a column named in a comment is not returned,
+ *  and the comments here explain precisely which columns were taken out. */
+const sqlOf = (query: string) =>
+  readFileSync(join(ROOT, manifest.queries[query].sql), 'utf8')
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n');
+
+/** Does this query hand the caller that column? */
+const selectsColumn = (query: string, column: string) =>
+  new RegExp(`\\b${column}\\b`, 'i').test(sqlOf(query));
+
+/** Every query a role can reach, resolving `*`. */
+const queriesFor = (role: string) => {
+  const granted = manifest.role_permissions[role] ?? [];
+  const all = granted.includes('*');
+  return Object.entries(manifest.queries).filter(([, q]) => all || granted.includes(q.permission));
+};
+
+const COMPENSATION = ['hourly_rate', 'commission_rate'];
+const LEAVE_DETAIL = ['reason', 'notes'];
+
+describe('an employee cannot read the payroll of the person next to them', () => {
+  it.each(COMPENSATION)('no query an employee can reach returns %s', (column) => {
+    const leaking = queriesFor('employee')
+      .filter(([name]) => selectsColumn(name, column))
+      .map(([name]) => name);
+    expect(leaking, `an employee reaches ${column} through: ${leaking.join(', ')}`).toEqual([]);
+  });
+
+  it.each(LEAVE_DETAIL)('no query an employee can reach returns somebody else\'s %s', (column) => {
+    const leaking = queriesFor('employee')
+      .filter(([name]) => name.startsWith('staff.time_off.') && selectsColumn(name, column))
+      .map(([name]) => name);
+    expect(leaking, `an employee reaches ${column} through: ${leaking.join(', ')}`).toEqual([]);
+  });
+});
+
+// Taking the column out of the SELECT is not enough. The list engine composes `ORDER BY` and
+// `WHERE` from the `list` whitelist of the manifest (ARQUITECTURA.md §4, §8.2), so a column left in
+// `sort`/`filters` stays reachable through the query string. A range filter on a value you cannot
+// see is an oracle: `hourly_rate` between 0 and X, halve, repeat — and a colleague's salary is out
+// in a dozen requests, without a single row ever showing it.
+describe('what you cannot read, you cannot sort or filter by either', () => {
+  const listSpec = (query: string) =>
+    (manifest.queries[query] as unknown as {
+      list?: { search?: string[]; sort?: string[]; filters?: Record<string, unknown> };
+    }).list;
+
+  it.each([
+    ['staff.members.list', COMPENSATION],
+    ['staff.time_off.list', LEAVE_DETAIL],
+  ] as const)('%s exposes none of its private columns in sort/filter/search', (query, columns) => {
+    const spec = listSpec(query);
+    const reachable = [
+      ...(spec?.sort ?? []),
+      ...Object.keys(spec?.filters ?? {}),
+      ...(spec?.search ?? []),
+    ];
+    const leaking = columns.filter((c) => reachable.includes(c));
+    expect(leaking, `${query} can still be ordered/filtered by: ${leaking.join(', ')}`).toEqual([]);
+  });
+
+  it('every column the whitelist names is one the query actually returns', () => {
+    for (const [name] of Object.entries(manifest.queries)) {
+      const spec = listSpec(name);
+      if (!spec) continue;
+      const declared = [...(spec.sort ?? []), ...Object.keys(spec.filters ?? {}), ...(spec.search ?? [])];
+      const phantom = [...new Set(declared)].filter((c) => !selectsColumn(name, c));
+      expect(phantom, `${name} whitelists columns it does not select: ${phantom.join(', ')}`).toEqual([]);
+    }
+  });
+});
+
+describe('the directory stays readable — hiding it all would break the day', () => {
+  it('an employee still sees who the team is, and who is off today', () => {
+    const reachable = queriesFor('employee').map(([name]) => name);
+    expect(reachable).toContain('staff.members.list');
+    expect(reachable).toContain('staff.time_off.list');
+  });
+
+  it('the directory still carries what the operation needs', () => {
+    for (const column of ['full_name', 'role_name', 'is_bookable', 'color', 'status']) {
+      expect(selectsColumn('staff.members.list', column), `the directory lost ${column}`).toBe(true);
+    }
+  });
+});
+
+describe('compensation and leave detail live behind their own permission', () => {
+  it('both permissions are declared by the module', () => {
+    expect(manifest.permissions).toContain('staff.view_compensation');
+    expect(manifest.permissions).toContain('staff.view_time_off_detail');
+  });
+
+  it('a manager gets them; an employee does not', () => {
+    for (const perm of ['staff.view_compensation', 'staff.view_time_off_detail']) {
+      expect(manifest.role_permissions.manager).toContain(perm);
+      expect(manifest.role_permissions.employee ?? []).not.toContain(perm);
+    }
+  });
+
+  it('every query that returns compensation is guarded by staff.view_compensation', () => {
+    const badlyGuarded = Object.entries(manifest.queries)
+      .filter(([name]) => COMPENSATION.some((c) => selectsColumn(name, c)))
+      .filter(([, q]) => q.permission !== 'staff.view_compensation')
+      .map(([name]) => name);
+    expect(badlyGuarded, `these return money but are not guarded by it: ${badlyGuarded.join(', ')}`).toEqual([]);
+  });
+
+  it('leave detail is guarded by staff.view_time_off_detail', () => {
+    const badlyGuarded = Object.entries(manifest.queries)
+      .filter(([name]) => name.startsWith('staff.time_off.'))
+      .filter(([name]) => LEAVE_DETAIL.some((c) => selectsColumn(name, c)))
+      .filter(([, q]) => q.permission !== 'staff.view_time_off_detail')
+      .map(([name]) => name);
+    expect(badlyGuarded).toEqual([]);
+  });
+});
+
+// The UI half. The runtime is what enforces this — the module-sdk says as much: `hasPermission` is
+// for show/hide, never for security. But a column that the caller is not allowed to read now comes
+// back empty, and «0,00 €» next to every colleague reads as «nobody earns anything», which is worse
+// than not showing the column at all.
+describe('the rate column follows the permission, not the layout', () => {
+  const mount = async (permissions: string[]) => {
+    (globalThis as Record<string, unknown>).erplora = {
+      query: async () => [],
+      queryPage: async () => ({ rows: [], total: 0 }),
+      command: async () => ({}),
+      on: () => () => {},
+      locale: 'es',
+      t: (_c: unknown, key: string) => key,
+      currency: 'EUR',
+      formatMoney: (cents: number) => `${(cents / 100).toFixed(2)} €`,
+      hasPermission: (perm: string) => permissions.includes(perm),
+    };
+    await import('./erp-staff-members');
+    const el = document.createElement('erp-staff-members');
+    document.body.appendChild(el);
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    await new Promise((r) => setTimeout(r, 0));
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    return el as unknown as { columns: { key: string }[] };
+  };
+
+  it('an employee does not get a rate column at all', async () => {
+    const el = await mount(['staff.view_staff_member']);
+    expect(el.columns.map((c) => c.key)).not.toContain('hourly_rate');
+  });
+
+  it('a manager does', async () => {
+    const el = await mount(['staff.view_staff_member', 'staff.view_compensation']);
+    expect(el.columns.map((c) => c.key)).toContain('hourly_rate');
+  });
+});
+
+describe('the manifest does not promise a permission it never declares', () => {
+  it('every permission used by a query is declared', () => {
+    const used = new Set(Object.values(manifest.queries).map((q) => q.permission));
+    for (const perm of used) expect(manifest.permissions).toContain(perm);
+  });
+
+  it('every permission handed to a role is declared', () => {
+    for (const [role, perms] of Object.entries(manifest.role_permissions)) {
+      for (const perm of perms) {
+        if (perm === '*') continue;
+        expect(manifest.permissions, `role «${role}» is handed an undeclared ${perm}`).toContain(perm);
+      }
+    }
+  });
+});

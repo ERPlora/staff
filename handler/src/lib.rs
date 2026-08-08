@@ -178,9 +178,14 @@ pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
     let mut p = Map::new();
     p.insert("staff_id".into(), json!(staff_id));
     p.insert("today".into(), json!(today_from_now(&now)));
+    // `..Default::default()` so the literal compiles against BOTH shapes of `Output`: the one
+    // before hub#139 and the one that gained `error` (structured domain rejection). Without it the
+    // handler stops compiling as soon as the hub checkout moves on, and then nobody can rebuild
+    // `dist/handler.wasm` (pm#81).
     Ok(Output {
         operations: vec![Operation::sql("staff._deactivate_member", p)],
         events: vec![],
+        ..Default::default()
     })
 }
 
@@ -239,7 +244,7 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
         p.insert("notes".into(), json!(""));
         ops.push(Operation::sql("staff.members.create", p));
     }
-    Ok(Output { operations: ops, events: vec![] })
+    Ok(Output { operations: ops, events: vec![], ..Default::default() })
 }
 
 // ── §3 create_schedule ─────────────────────────────────────────────────────
@@ -348,7 +353,7 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
     for p in wh_params {
         ops.push(Operation::sql("staff._insert_working_hours", p));
     }
-    Ok(Output { operations: ops, events: vec![] })
+    Ok(Output { operations: ops, events: vec![], ..Default::default() })
 }
 
 // ── §4 create_time_off ─────────────────────────────────────────────────────
@@ -410,6 +415,7 @@ pub fn create_time_off_pure(input: Value) -> Result<Output, String> {
     Ok(Output {
         operations: vec![Operation::sql("staff._insert_time_off", p)],
         events: vec![],
+        ..Default::default()
     })
 }
 

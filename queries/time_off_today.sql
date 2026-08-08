@@ -2,6 +2,7 @@
 -- Runtime inyecta :hub_id y :now. Alimenta el widget timeline "Ausencias de hoy".
 -- erp_date normaliza el texto ISO a la parte fecha de forma portable (SQLite/Postgres, ADR-0007 §4a).
 -- Sin mocks: sale de staff_time_off (status='approved') unido a staff_member.
+-- Sin `reason`: el widget dice QUIÉN no está, nunca por qué (staff#10).
 SELECT t.id,
        (m.first_name || ' ' || m.last_name) AS staff_name,
        t.leave_type,
@@ -10,8 +11,7 @@ SELECT t.id,
        t.is_full_day,
        t.start_time,
        t.end_time,
-       t.status,
-       t.reason
+       t.status
 FROM staff_time_off t
 JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0
 WHERE t.hub_id = :hub_id AND t.is_deleted = 0
