@@ -455,8 +455,15 @@
       "permission": "staff.manage_settings",
       "transaction": true,
       "sql": [
+        "commands/_settings_ensure.sql",
         "commands/settings_update.sql"
       ],
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.settings_not_saved",
+        "message": "The staff settings could not be saved for this business."
+      },
       "schema": "schemas/settings_update.json",
       "emit": [
         "staff.settings.updated"
