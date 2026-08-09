@@ -504,7 +504,18 @@
     }
   },
   "events": {
-    "listen": {}
+    "listen": {},
+    "emits": [
+      "staff.member.created",
+      "staff.member.deactivated",
+      "staff.member.terminated",
+      "staff.member.updated",
+      "staff.role.created",
+      "staff.schedule.created",
+      "staff.settings.updated",
+      "staff.time_off.created",
+      "staff.time_off.status_changed"
+    ]
   },
   "widgets": {
     "staff.headcount": {
