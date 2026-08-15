@@ -9,5 +9,5 @@ SELECT m.id, m.first_name, m.last_name,
        m.bio, m.specialties, m.is_bookable, m.color, m.booking_buffer,
        m."order"
 FROM staff_member m
-LEFT JOIN staff_role r ON r.id = m.role_id AND r.is_deleted = 0
+LEFT JOIN staff_role r ON r.id = m.role_id AND r.is_deleted = 0 AND r.hub_id = :hub_id
 WHERE m.hub_id = :hub_id AND m.is_deleted = 0 AND m.id = :staff_id;

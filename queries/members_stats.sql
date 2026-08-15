@@ -11,7 +11,7 @@ SELECT
     COALESCE(SUM(CASE WHEN m.status = 'on_leave'    THEN 1 ELSE 0 END), 0) AS on_leave_members,
     (SELECT COUNT(DISTINCT t.staff_id)
        FROM staff_time_off t
-       JOIN staff_member tm ON tm.id = t.staff_id AND tm.is_deleted = 0
+       JOIN staff_member tm ON tm.id = t.staff_id AND tm.is_deleted = 0 AND tm.hub_id = :hub_id
       WHERE t.hub_id = :hub_id AND t.is_deleted = 0 AND t.status = 'approved'
         AND erp_date(t.start_date) <= erp_date(:now)
         AND erp_date(t.end_date)   >= erp_date(:now)) AS on_leave_today,

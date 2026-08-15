@@ -10,5 +10,5 @@ SELECT t.id, t.staff_id,
        t.leave_type, t.start_date, t.end_date, t.is_full_day,
        t.start_time, t.end_time, t.status, t.approved_by, t.approved_at
 FROM staff_time_off t
-JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0
+JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0 AND m.hub_id = :hub_id
 WHERE t.hub_id = :hub_id AND t.is_deleted = 0
