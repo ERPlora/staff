@@ -13,7 +13,7 @@ SELECT t.id,
        t.end_time,
        t.status
 FROM staff_time_off t
-JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0
+JOIN staff_member m ON m.id = t.staff_id AND m.is_deleted = 0 AND m.hub_id = :hub_id
 WHERE t.hub_id = :hub_id AND t.is_deleted = 0
   AND t.status = 'approved'
   AND erp_date(t.start_date) <= erp_date(:now)

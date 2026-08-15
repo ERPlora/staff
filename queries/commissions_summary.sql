@@ -14,7 +14,7 @@ SELECT
     r.name                                     AS role_name,
     m.commission_rate                          AS commission_rate
 FROM staff_member m
-LEFT JOIN staff_role r ON r.id = m.role_id AND r.is_deleted = 0
+LEFT JOIN staff_role r ON r.id = m.role_id AND r.is_deleted = 0 AND r.hub_id = :hub_id
 WHERE m.hub_id = :hub_id
   AND m.is_deleted = 0
   AND m.status NOT IN ('terminated', 'inactive')
