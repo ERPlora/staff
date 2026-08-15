@@ -1,7 +1,7 @@
 {
   "id": "staff",
   "name": "Staff",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Employees, roles, schedules and time-off requests.",
   "agent": {
     "description": "Manages staff members, roles, schedules and time-off requests: list, create, update and deactivate employees, manage work schedules, and approve or reject time-off.",
