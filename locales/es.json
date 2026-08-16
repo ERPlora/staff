@@ -1,5 +1,6 @@
 {
   "name": "Personal",
+  "description": "Empleados, puestos, horarios y solicitudes de vacaciones.",
   "navigation": {
     "staff": {
       "label": "Personal"
