@@ -99,5 +99,15 @@
     "ariaBreakEnd": "Break end",
     "hubUser": "Hub user",
     "hubUserNone": "No Hub access"
+  },
+  "errors": {
+    "staff.member_not_found": "That staff member does not exist in this business.",
+    "staff.already_inactive": "That staff member is already inactive.",
+    "staff.active_time_off": "That staff member has pending or approved time off that has not ended yet. Resolve it first.",
+    "staff.overlapping_time_off": "That staff member already has pending or approved time off in those dates.",
+    "staff.time_off_not_found": "That time-off request does not exist in this business.",
+    "staff.invalid_transition": "That time-off request cannot change to that status from its current one.",
+    "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
+    "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
   }
 }

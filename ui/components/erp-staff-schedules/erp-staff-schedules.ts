@@ -5,6 +5,7 @@ import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn } from '@erplora/outfitkit';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+import { domainMessage } from '../../lib/domain-error';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -252,7 +253,7 @@ export class ErpStaffSchedules extends LitElement {
       this.dataTable()?.close();
       await this.loadSchedules();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errCreateSchedule');
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errCreateSchedule'));
     } finally {
       this.saving = false;
     }

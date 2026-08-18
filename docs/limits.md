@@ -5,17 +5,24 @@
 - **No clock-in / clock-out.** There is no time-tracking data of any kind.
 - **No payroll.** The module stores rates; it computes no pay.
 - **Commission amounts are not computed here.** Only the rate is published.
-- **Some writes fail silently as no-ops.** Deactivation and time-off creation are guarded in SQL: if
-  the guard does not hold, the operation touches zero rows rather than returning an explicit error.
-  Always re-read the record to confirm.
+- **Guarded writes refuse with an explicit error, never a silent no-op.** Deactivation, time-off
+  creation, schedule creation and time-off status changes check the current state first and answer
+  with a code (`staff.member_not_found`, `staff.already_inactive`, `staff.active_time_off`,
+  `staff.overlapping_time_off`, `staff.time_off_not_found`, `staff.invalid_transition`,
+  `staff.role_not_found`). Nothing is written and no event is emitted on a refusal.
 
 ## Refusals you will actually see
 
 | Situation | What happens | What to do |
 |---|---|---|
-| Deactivating someone with pending or approved absences not yet ended | No-op — nothing changes | Resolve or cancel the absences first |
-| Filing an absence overlapping a pending or approved one | No-op — nothing is created | Check the person's calendar |
-| Filing an absence for a member that does not exist | No-op | Check the member id |
+| Deactivating someone with pending or approved absences not yet ended | Refused: `staff.active_time_off` | Resolve or cancel the absences first |
+| Deactivating someone already inactive or terminated | Refused: `staff.already_inactive` | Nothing — it is already done |
+| Filing an absence overlapping a pending or approved one | Refused: `staff.overlapping_time_off` | Check the person's calendar |
+| Filing an absence, a schedule or a deactivation for a member that does not exist | Refused: `staff.member_not_found` | Check the member id |
+| Approving an absence when another APPROVED one of the same person overlaps | Refused: `staff.overlapping_time_off` | Cancel one of them first |
+| Approving or rejecting an absence that is already rejected/cancelled, approving twice, or moving anything back to pending | Refused: `staff.invalid_transition` | Only `pending → approved/rejected/cancelled` and `approved → cancelled` exist |
+| Creating or editing a member with a role that is not this business's, or is deleted/retired | Refused: `staff.role_not_found` / `staff.member_update_rejected` | Pick a role from Roles |
+| A bulk import row without a name, with a bad hire date or a foreign role | That row is skipped and listed in the answer (`result.skipped[]` with its reason) | Fix the row and import it again |
 | A schedule with a repeated weekday, `start >= end`, or a break outside the interval | Rejected | Fix the hours |
 | A schedule with only one end of the break set | Rejected | Give both ends or neither |
 | Saving settings on a hub that never had a settings row | Now creates it | Nothing — this used to silently show defaults as if saved |
@@ -86,11 +93,12 @@ They are deliberately absent from the directory.
 **"I cannot see why someone is off."** You need `staff.view_time_off_detail`. The operational list
 never shows the reason.
 
-**"Deactivating did nothing."** The person has a pending or approved absence that has not ended.
-Resolve it first.
+**"Deactivating was refused."** `staff.active_time_off`: the person has a pending or approved
+absence that has not ended — resolve it first. `staff.already_inactive`: it was already done.
 
-**"My time-off request did not appear."** It overlapped an existing pending or approved absence for
-the same person, or the member id was wrong. Both are silent no-ops today.
+**"My time-off request was refused."** `staff.overlapping_time_off`: it overlapped an existing
+pending or approved absence for the same person. `staff.member_not_found`: the member id was wrong.
+The request is not created and no event goes out.
 
 **"Someone is not offered in the appointment booking."** Check that they are **bookable** and
 `active`. Being an employee is not enough.
