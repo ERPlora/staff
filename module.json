@@ -326,6 +326,12 @@
         "commands/member_create.sql"
       ],
       "schema": "schemas/member_create.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.role_not_found",
+        "message": "That role is not available: it does not exist in this business, or it has been deleted or retired."
+      },
       "emit": [
         "staff.member.created"
       ],
@@ -341,6 +347,12 @@
         "commands/member_update.sql"
       ],
       "schema": "schemas/member_update.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.member_update_rejected",
+        "message": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
+      },
       "emit": [
         "staff.member.updated"
       ],

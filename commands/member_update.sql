@@ -1,12 +1,21 @@
 -- Edición de miembro del staff. Runtime inyecta :hub_id, :current_user_id, :now.
 -- Portado de StaffService.update_staff_member. Patrón COALESCE: un bind NULL deja el valor
 -- actual sin tocar (parcial), salvo los campos siempre presentes que el SDK normaliza.
+--
+-- El rol, si viene, tiene que ser de ESTE hub (staff#12): mismo criterio que el alta — vivo,
+-- activo y del `:hub_id` inyectado. NULL = «no lo toques» (parcial); '' se trata igual que NULL
+-- (un <select> vacío no es una orden de asignar el rol '' — la FK lo rechazaría de todas formas).
+--
+-- Si el miembro no es de este hub, o el rol no resuelve, la sentencia no afecta ninguna fila y el
+-- `expect_rows` del command revierte —ni fila ni evento— con `staff.member_update_rejected`
+-- (hub#139). El código nombra las DOS causas a propósito: uno que solo hablara del rol mentiría
+-- cuando lo que falla es el miembro.
 UPDATE staff_member
 SET first_name      = COALESCE(:first_name, first_name),
     last_name       = COALESCE(:last_name, last_name),
     email           = COALESCE(:email, email),
     phone           = COALESCE(:phone, phone),
-    role_id         = COALESCE(:role_id, role_id),
+    role_id         = COALESCE(NULLIF(:role_id, ''), role_id),
     -- Vínculo con el usuario del Hub (ADR-0192). NULL = «no lo toques» (parcial); '' = DESVINCULAR.
     -- Hacen falta dos centinelas porque COALESCE ya usa NULL para «sin cambio».
     -- El COALESCE contra un literal de texto NO es adorno: le da a Postgres el tipo del bind. Con
@@ -25,4 +34,9 @@ SET first_name      = COALESCE(:first_name, first_name),
     notes           = COALESCE(:notes, notes),
     updated_by      = :current_user_id,
     updated_at      = :now
-WHERE id = :staff_id AND hub_id = :hub_id AND is_deleted = 0;
+WHERE id = :staff_id AND hub_id = :hub_id AND is_deleted = 0
+  AND (COALESCE(:role_id, '') = ''
+       OR EXISTS (
+            SELECT 1 FROM staff_role r
+            WHERE r.id = :role_id AND r.hub_id = :hub_id AND r.is_deleted = 0 AND r.is_active = 1
+          ));
