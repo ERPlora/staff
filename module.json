@@ -288,6 +288,18 @@
         "description": "Lists approved time-off entries whose date range covers today (who is unavailable today)."
       }
     },
+    "staff.time_off.overlapping": {
+      "permission": "staff.view_time_off",
+      "sql": "queries/time_off_overlapping.sql"
+    },
+    "staff.time_off.active_for_member": {
+      "permission": "staff.view_time_off",
+      "sql": "queries/time_off_active_for_member.sql"
+    },
+    "staff.time_off.conflicts_for": {
+      "permission": "staff.view_time_off",
+      "sql": "queries/time_off_conflicts_for.sql"
+    },
     "staff.members.stats": {
       "permission": "staff.view_staff_member",
       "sql": "queries/members_stats.sql",
@@ -369,6 +381,22 @@
         "function": "deactivate_staff_member"
       },
       "schema": "schemas/member_deactivate.json",
+      "reads": [
+        {
+          "query": "staff.members.get",
+          "params": {
+            "staff_id": "payload.staff_id"
+          },
+          "required": true
+        },
+        {
+          "query": "staff.time_off.active_for_member",
+          "params": {
+            "staff_id": "payload.staff_id"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.member.deactivated"
       ],
@@ -398,6 +426,9 @@
         "function": "bulk_create_staff_members"
       },
       "schema": "schemas/member_bulk_create.json",
+      "reads": [
+        "staff.roles.list"
+      ],
       "emit": [
         "staff.member.created"
       ],
@@ -427,6 +458,24 @@
         "function": "create_time_off"
       },
       "schema": "schemas/time_off_create.json",
+      "reads": [
+        {
+          "query": "staff.members.get",
+          "params": {
+            "staff_id": "payload.staff_id"
+          },
+          "required": true
+        },
+        {
+          "query": "staff.time_off.overlapping",
+          "params": {
+            "staff_id": "payload.staff_id",
+            "start_date": "payload.start_date",
+            "end_date": "payload.end_date"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.time_off.created"
       ],
@@ -436,11 +485,28 @@
     },
     "staff.time_off.set_status": {
       "permission": "staff.manage_time_off",
-      "transaction": true,
-      "sql": [
-        "commands/time_off_set_status.sql"
-      ],
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "set_time_off_status"
+      },
       "schema": "schemas/time_off_set_status.json",
+      "reads": [
+        {
+          "query": "staff.time_off.detail",
+          "params": {
+            "time_off_id": "payload.time_off_id"
+          },
+          "required": true
+        },
+        {
+          "query": "staff.time_off.conflicts_for",
+          "params": {
+            "time_off_id": "payload.time_off_id"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.time_off.status_changed"
       ],
@@ -456,6 +522,15 @@
         "function": "create_schedule"
       },
       "schema": "schemas/schedule_create.json",
+      "reads": [
+        {
+          "query": "staff.members.get",
+          "params": {
+            "staff_id": "payload.staff_id"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.schedule.created"
       ],
@@ -512,6 +587,12 @@
       "permission": "staff.manage_time_off",
       "sql": [
         "commands/_insert_time_off.sql"
+      ]
+    },
+    "staff._set_time_off_status": {
+      "permission": "staff.manage_time_off",
+      "sql": [
+        "commands/_set_time_off_status.sql"
       ]
     }
   },

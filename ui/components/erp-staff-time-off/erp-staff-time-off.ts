@@ -6,6 +6,7 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
+import { domainMessage } from '../../lib/domain-error';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -133,7 +134,7 @@ export class ErpStaffTimeOff extends LitElement {
       await erplora().command('staff.time_off.set_status', { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errSetStatus');
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errSetStatus'));
     } finally {
       this.busyId = '';
     }

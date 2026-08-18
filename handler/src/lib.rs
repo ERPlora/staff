@@ -5,21 +5,31 @@
 //! módulo) que el host valida y ejecuta en UNA transacción. Los eventos declarados
 //! (`emit` del manifest) los persiste el host; el guest no los duplica.
 //!
-//! Restricciones del runtime actual (sin lecturas pre-cargadas — patrón
-//! `payment_gateways`/`kitchen`): los invariantes que dependen del estado de la BD
-//! van EN EL SQL condicional de la intención (no-op de 0 filas si no se cumplen):
-//! * `deactivate_staff_member` → `_deactivate_member` guarda estado (`active`/`on_leave`)
-//!   y bloquea si hay ausencias `pending|approved` con `end_date >= hoy` (NOT EXISTS).
-//! * `create_time_off` → `_insert_time_off` solo inserta si NO hay solapamiento con
-//!   otra ausencia `pending|approved` del miembro (regla legacy `conflicts_with`).
-//! * `create_schedule` → `_insert_schedule`/`_insert_working_hours` condicionados a
-//!   que el miembro/horario exista; `_unset_default_schedules` desmarca otros default.
+//! The guards that depend on DB state are AUTHORITATIVE here (staff#1): the runtime pre-loads
+//! the module's own queries into `context.reads` (ADR-0069, `reads` of each command, all
+//! `required`), the handler decides, and a failed guard is a structured domain error
+//! (`Output.error`, hub#139) — the runtime persists nothing and emits nothing. Before staff#1 the
+//! same guards lived only in conditional SQL: 0 rows, `{ok:true}`, and the event still went out.
+//! That SQL stays as defence in depth (a race between the read and the write), never as the
+//! answer.
+//! * `deactivate_staff_member` → `staff.member_not_found` / `staff.already_inactive` /
+//!   `staff.active_time_off`; then `_deactivate_member`.
+//! * `create_time_off` → `staff.member_not_found` / `staff.overlapping_time_off` (any
+//!   `pending|approved` leave of the member overlapping the range); then `_insert_time_off`.
+//! * `create_schedule` → `staff.member_not_found`; then `_unset_default_schedules` +
+//!   `_insert_schedule` + N × `_insert_working_hours`.
+//! * `set_time_off_status` → state machine `pending → approved|rejected|cancelled`,
+//!   `approved → cancelled`, terminal states stay put (`staff.invalid_transition`); approving
+//!   re-checks conflicts against APPROVED leave (`staff.overlapping_time_off`); missing row →
+//!   `staff.time_off_not_found`; then `_set_time_off_status`.
+//! * `bulk_create_staff_members` → rows are skipped, never silently: a role that is not this
+//!   hub's, or a row without a name, is listed in `result.skipped` with its reason.
 //!
 //! Ids: el host pasa `context.new_ids` (autoridad de ids); el guest solo los reparte.
 //! La fecha de hoy se deriva de `context.now` (RFC3339 del host, no falsificable).
 
 use erplora_guest_sdk::money;
-use erplora_guest_sdk::{Operation, Output};
+use erplora_guest_sdk::{DomainError, Operation, Output};
 use serde_json::{json, Map, Value};
 
 #[cfg(feature = "guest")]
@@ -49,6 +59,12 @@ pub fn create_schedule(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<O
 #[plugin_fn]
 pub fn create_time_off(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
     to_fn_result(create_time_off_pure(input.into_inner().into_value()))
+}
+
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn set_time_off_status(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(set_time_off_status_pure(input.into_inner().into_value()))
 }
 
 #[cfg(feature = "guest")]
@@ -122,6 +138,33 @@ fn payload_context(input: &Value) -> (Value, Vec<Value>, String) {
     (payload, new_ids, now)
 }
 
+/// Rows of a pre-loaded read (`context.reads["<query>"]`, ADR-0069). `None` when the runtime did
+/// not deliver that read at all (older runtime, or a graceful read that failed) — callers decide
+/// what the absence means; an empty array is a real answer («no rows»).
+fn read_rows<'a>(input: &'a Value, query: &str) -> Option<&'a Vec<Value>> {
+    input
+        .get("context")
+        .and_then(|c| c.get("reads"))
+        .and_then(|r| r.get(query))
+        .and_then(|v| v.as_array())
+}
+
+/// The member row the runtime pre-loaded via `staff.members.get` (filtered by `payload.staff_id`).
+/// `None` = the member does not exist in this hub (or the read is missing, which the manifest
+/// forbids with `required: true` — the runtime aborts before the handler runs).
+fn member_row(input: &Value) -> Option<Value> {
+    read_rows(input, "staff.members.get").and_then(|rows| rows.first().cloned())
+}
+
+/// A structured business rejection (hub#139): the host discards operations/events and answers
+/// with the code — the module's public ABI the UI translates against (`locales/*.json` → `errors`).
+fn refuse(code: &str, message: &str) -> Output {
+    Output::new().with_error(DomainError::new(code, message))
+}
+
+const MEMBER_NOT_FOUND: (&str, &str) =
+    ("staff.member_not_found", "That staff member does not exist in this business.");
+
 /// `2026-06-10T22:00:00+00:00` → `2026-06-10` (la fecha de hoy es capacidad del host).
 fn today_from_now(now: &str) -> String {
     now.split('T').next().unwrap_or("").to_string()
@@ -165,15 +208,31 @@ fn norm_time(s: &str) -> Option<String> {
 
 // ── §1 deactivate_staff_member ─────────────────────────────────────────────
 
-/// Desactiva (≠ terminar) un miembro. Guardas de estado e invariante de ausencias
-/// activas resueltos en el SQL condicional de `staff._deactivate_member` (el guest
-/// no puede leer la BD): si el miembro no existe, ya está inactive/terminated o
-/// tiene ausencias `pending|approved` vigentes, la operación es un no-op.
+/// Desactiva (≠ terminar) un miembro. The guards are decided HERE over the reads the runtime
+/// pre-loaded (`staff.members.get`, `staff.time_off.active_for_member`) and a failed guard is a
+/// domain error (staff#1) — `_deactivate_member` keeps the same conditions in SQL only as defence
+/// in depth against a race between the read and the write.
 pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
     let (payload, _ids, now) = payload_context(&input);
     let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
     if staff_id.is_empty() {
         return Err("staff_id requerido".into());
+    }
+    let Some(member) = member_row(&input) else {
+        return Ok(refuse(MEMBER_NOT_FOUND.0, MEMBER_NOT_FOUND.1));
+    };
+    let status = as_str(member.get("status").unwrap_or(&Value::Null));
+    if status == "inactive" || status == "terminated" {
+        return Ok(refuse(
+            "staff.already_inactive",
+            "That staff member is already inactive.",
+        ));
+    }
+    if read_rows(&input, "staff.time_off.active_for_member").is_some_and(|rows| !rows.is_empty()) {
+        return Ok(refuse(
+            "staff.active_time_off",
+            "That staff member has pending or approved time off that has not ended yet. Resolve it first.",
+        ));
     }
     let mut p = Map::new();
     p.insert("staff_id".into(), json!(staff_id));
@@ -192,18 +251,32 @@ pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
 // ── §2 bulk_create_staff_members ───────────────────────────────────────────
 
 /// Alta en lote tolerante a fallos por fila: las filas inválidas (sin first_name/
-/// last_name o con hire_date mal formada) se saltan, el resto se inserta reusando
-/// el command SQL público `staff.members.create` (el host inyecta `:new_id` por op).
+/// last_name, con hire_date mal formada, o con un `role_id` que no es de este hub) se saltan y
+/// el resto se inserta reusando el command SQL público `staff.members.create` (el host inyecta
+/// `:new_id` por op). Skipping is never silent (staff#1): the batch answers
+/// `result: {created, skipped: [{index, reason}]}`.
+///
+/// The role check reads `context.reads["staff.roles.list"]` (this hub's roles). The WASM path of
+/// the runtime does not apply the `expect_rows` gate of `staff.members.create` (staff#12), so a
+/// foreign role would otherwise become a 0-row INSERT that the batch reported as done.
 pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
     let (payload, _ids, _now) = payload_context(&input);
     let empty: Vec<Value> = Vec::new();
     let members = payload.get("members").and_then(|v| v.as_array()).unwrap_or(&empty);
+    let known_roles: Option<Vec<String>> = read_rows(&input, "staff.roles.list").map(|rows| {
+        rows.iter()
+            .filter(|r| r.get("is_active").map(|v| as_i01(v, 1)).unwrap_or(1) == 1)
+            .map(|r| as_str(r.get("id").unwrap_or(&Value::Null)))
+            .collect()
+    });
 
     let mut ops: Vec<Operation> = Vec::new();
-    for item in members.iter().take(MAX_BULK) {
+    let mut skipped: Vec<Value> = Vec::new();
+    for (index, item) in members.iter().enumerate().take(MAX_BULK) {
         let first_name = as_str(item.get("first_name").unwrap_or(&Value::Null));
         let last_name = as_str(item.get("last_name").unwrap_or(&Value::Null));
         if first_name.trim().is_empty() || last_name.trim().is_empty() {
+            skipped.push(json!({ "index": index, "reason": "name_required" }));
             continue; // fila inválida: se omite, el lote sigue (tolerante por fila)
         }
         // hire_date: ISO YYYY-MM-DD o vacío → NULL; mal formada → fila omitida.
@@ -216,10 +289,18 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
                 } else if is_iso_date(&s) {
                     Value::String(s)
                 } else {
+                    skipped.push(json!({ "index": index, "reason": "invalid_hire_date" }));
                     continue;
                 }
             }
         };
+        let role_id = opt_str(item, "role_id");
+        if let (Value::String(role), Some(known)) = (&role_id, &known_roles) {
+            if !known.contains(role) {
+                skipped.push(json!({ "index": index, "reason": "role_not_found" }));
+                continue;
+            }
+        }
         // hourly_rate es DINERO (céntimos/hora, ADR-0123): entero i64 vía SDK, nunca f64.
         let hourly_rate = item.get("hourly_rate").map(|v| money::from_json(v, 0)).unwrap_or(0);
 
@@ -229,7 +310,7 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
         p.insert("email".into(), json!(str_or(item, "email", "")));
         p.insert("phone".into(), json!(str_or(item, "phone", "")));
         p.insert("employee_id".into(), json!(""));
-        p.insert("role_id".into(), opt_str(item, "role_id"));
+        p.insert("role_id".into(), role_id);
         p.insert("hire_date".into(), hire_date);
         p.insert("status".into(), json!("active"));
         p.insert("bio".into(), json!(str_or(item, "bio", "")));
@@ -244,7 +325,9 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
         p.insert("notes".into(), json!(""));
         ops.push(Operation::sql("staff.members.create", p));
     }
-    Ok(Output { operations: ops, events: vec![], ..Default::default() })
+    let created = ops.len();
+    Ok(Output { operations: ops, events: vec![], ..Default::default() }
+        .with_result(json!({ "created": created, "skipped": skipped })))
 }
 
 // ── §3 create_schedule ─────────────────────────────────────────────────────
@@ -261,6 +344,11 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
     let schedule_id = new_ids.first().map(as_str).unwrap_or_default();
     if schedule_id.is_empty() {
         return Err("context.new_ids vacío (el host es la autoridad de ids)".into());
+    }
+    // staff#1: a schedule for a member this hub does not have is refused, not silently dropped by
+    // the INSERT … SELECT of `_insert_schedule` (which stays as defence in depth).
+    if member_row(&input).is_none() {
+        return Ok(refuse(MEMBER_NOT_FOUND.0, MEMBER_NOT_FOUND.1));
     }
     let is_default = payload.get("is_default").map(|v| as_i01(v, 1)).unwrap_or(1);
 
@@ -360,9 +448,10 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
 
 /// Crea una ausencia `pending`. Valida en el guest: fechas ISO con
 /// `start_date <= end_date`, `leave_type` del enum y coherencia de horas si no es
-/// full-day. El invariante de solapamiento con ausencias `pending|approved` va en
-/// el SQL condicional de `staff._insert_time_off` (NOT EXISTS, regla legacy
-/// `conflicts_with`): si solapa, la operación es un no-op.
+/// full-day. The member must exist in this hub (`staff.members.get`) and the range must not
+/// overlap another `pending|approved` leave of the member (`staff.time_off.overlapping`, the
+/// legacy `conflicts_with` rule) — both decided here over the pre-loaded reads, both domain
+/// errors (staff#1). `_insert_time_off` keeps the same NOT EXISTS as defence in depth.
 pub fn create_time_off_pure(input: Value) -> Result<Output, String> {
     let (payload, new_ids, _now) = payload_context(&input);
     let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
@@ -385,6 +474,16 @@ pub fn create_time_off_pure(input: Value) -> Result<Output, String> {
     let leave_type = str_or(&payload, "leave_type", "vacation");
     if !matches!(leave_type.as_str(), "vacation" | "sick" | "personal" | "training" | "other") {
         return Err(format!("leave_type inválido: {leave_type}"));
+    }
+
+    if member_row(&input).is_none() {
+        return Ok(refuse(MEMBER_NOT_FOUND.0, MEMBER_NOT_FOUND.1));
+    }
+    if read_rows(&input, "staff.time_off.overlapping").is_some_and(|rows| !rows.is_empty()) {
+        return Ok(refuse(
+            "staff.overlapping_time_off",
+            "That staff member already has pending or approved time off in those dates.",
+        ));
     }
 
     let is_full_day = payload.get("is_full_day").map(|v| as_i01(v, 1)).unwrap_or(1);
@@ -419,6 +518,72 @@ pub fn create_time_off_pure(input: Value) -> Result<Output, String> {
     })
 }
 
+// ── §5 set_time_off_status ─────────────────────────────────────────────────
+
+/// Allowed transitions of a time-off request (staff#1). Market standard (Factorial, Personio,
+/// BambooHR, Deputy): a manager approves or rejects a PENDING request; a pending or approved
+/// request can be CANCELLED (by the requester or the manager); rejected and cancelled are
+/// terminal; nothing ever goes back to `pending`. Repeating a terminal operation is refused
+/// explicitly — never a false success.
+fn transition_allowed(from: &str, to: &str) -> bool {
+    matches!(
+        (from, to),
+        ("pending", "approved") | ("pending", "rejected") | ("pending", "cancelled") | ("approved", "cancelled")
+    )
+}
+
+/// Cambia el estado de una ausencia — a state machine over the pre-loaded row
+/// (`staff.time_off.detail`, filtered by `payload.time_off_id`), not a blind UPDATE (staff#1):
+/// missing row → `staff.time_off_not_found`; disallowed move → `staff.invalid_transition`;
+/// approving re-validates conflicts against the APPROVED leave of the same member
+/// (`staff.time_off.conflicts_for`) → `staff.overlapping_time_off`. Then `_set_time_off_status`.
+pub fn set_time_off_status_pure(input: Value) -> Result<Output, String> {
+    let (payload, _ids, _now) = payload_context(&input);
+    let time_off_id = as_str(payload.get("time_off_id").unwrap_or(&Value::Null));
+    if time_off_id.is_empty() {
+        return Err("time_off_id requerido".into());
+    }
+    let to = as_str(payload.get("status").unwrap_or(&Value::Null));
+    if !matches!(to.as_str(), "pending" | "approved" | "rejected" | "cancelled") {
+        return Err(format!("status inválido: {to}"));
+    }
+    let Some(row) = read_rows(&input, "staff.time_off.detail").and_then(|rows| rows.first().cloned()) else {
+        return Ok(refuse(
+            "staff.time_off_not_found",
+            "That time-off request does not exist in this business.",
+        ));
+    };
+    let from = as_str(row.get("status").unwrap_or(&Value::Null));
+    if !transition_allowed(&from, &to) {
+        return Ok(refuse(
+            "staff.invalid_transition",
+            &format!("A time-off request cannot go from `{from}` to `{to}`."),
+        ));
+    }
+    if to == "approved" {
+        let approved_conflict = read_rows(&input, "staff.time_off.conflicts_for").is_some_and(|rows| {
+            rows.iter().any(|r| {
+                as_str(r.get("status").unwrap_or(&Value::Null)) == "approved"
+                    && as_str(r.get("id").unwrap_or(&Value::Null)) != time_off_id
+            })
+        });
+        if approved_conflict {
+            return Ok(refuse(
+                "staff.overlapping_time_off",
+                "That staff member already has approved time off in those dates.",
+            ));
+        }
+    }
+    let mut p = Map::new();
+    p.insert("time_off_id".into(), json!(time_off_id));
+    p.insert("status".into(), json!(to));
+    Ok(Output {
+        operations: vec![Operation::sql("staff._set_time_off_status", p)],
+        events: vec![],
+        ..Default::default()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -438,5 +603,198 @@ mod tests {
         let out = bulk_create_staff_members_pure(input).expect("bulk válido");
         assert_eq!(out.operations[0].params["hourly_rate"], serde_json::json!(1500), "entero, no 1500.0");
         assert_eq!(out.operations[1].params["hourly_rate"], serde_json::json!(0), "default entero");
+    }
+
+    // ── staff#1: the guards are AUTHORITATIVE — a failed guard is a domain error, never a
+    // silent 0-row no-op that still emits the command's event. The state the guard needs comes
+    // from `context.reads` (ADR-0069), pre-loaded by the runtime from the module's own queries.
+
+    fn input(payload: Value, reads: Value) -> Value {
+        json!({
+            "payload": payload,
+            "context": {
+                "hub_id": "hub-a", "current_user_id": "u1", "now": "2026-08-18T10:00:00Z",
+                "new_ids": ["id-0", "id-1", "id-2", "id-3"],
+                "reads": reads
+            }
+        })
+    }
+
+    fn member(status: &str) -> Value {
+        json!([{ "id": "m1", "first_name": "Ana", "last_name": "Ruiz", "status": status }])
+    }
+
+    fn code(out: &Output) -> String {
+        out.error.as_ref().map(|e| e.code.clone()).unwrap_or_default()
+    }
+
+    fn time_off_payload() -> Value {
+        json!({ "staff_id": "m1", "leave_type": "vacation", "start_date": "2026-09-01",
+                "end_date": "2026-09-05", "is_full_day": 1 })
+    }
+
+    #[test]
+    fn time_off_for_a_member_that_does_not_exist_is_refused_not_ignored() {
+        let out = create_time_off_pure(input(time_off_payload(), json!({
+            "staff.members.get": [], "staff.time_off.overlapping": []
+        }))).unwrap();
+        assert_eq!(code(&out), "staff.member_not_found");
+        assert!(out.operations.is_empty(), "a refusal writes nothing");
+    }
+
+    #[test]
+    fn overlapping_time_off_is_refused_with_its_own_code() {
+        let out = create_time_off_pure(input(time_off_payload(), json!({
+            "staff.members.get": member("active"),
+            "staff.time_off.overlapping": [{ "id": "t9", "status": "pending",
+                                            "start_date": "2026-09-03", "end_date": "2026-09-10" }]
+        }))).unwrap();
+        assert_eq!(code(&out), "staff.overlapping_time_off");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn a_clean_time_off_request_is_inserted() {
+        let out = create_time_off_pure(input(time_off_payload(), json!({
+            "staff.members.get": member("active"), "staff.time_off.overlapping": []
+        }))).unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert_eq!(out.operations.len(), 1);
+        assert_eq!(out.operations[0].command, "staff._insert_time_off");
+    }
+
+    #[test]
+    fn deactivating_a_missing_member_is_refused() {
+        let out = deactivate_staff_member_pure(input(json!({ "staff_id": "m1" }), json!({
+            "staff.members.get": [], "staff.time_off.active_for_member": []
+        }))).unwrap();
+        assert_eq!(code(&out), "staff.member_not_found");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn deactivating_twice_is_refused_as_already_inactive() {
+        for status in ["inactive", "terminated"] {
+            let out = deactivate_staff_member_pure(input(json!({ "staff_id": "m1" }), json!({
+                "staff.members.get": member(status), "staff.time_off.active_for_member": []
+            }))).unwrap();
+            assert_eq!(code(&out), "staff.already_inactive", "status {status}");
+            assert!(out.operations.is_empty());
+        }
+    }
+
+    #[test]
+    fn deactivating_with_live_time_off_is_refused() {
+        let out = deactivate_staff_member_pure(input(json!({ "staff_id": "m1" }), json!({
+            "staff.members.get": member("active"),
+            "staff.time_off.active_for_member": [{ "id": "t1", "status": "approved",
+                                                   "start_date": "2026-08-20", "end_date": "2026-08-25" }]
+        }))).unwrap();
+        assert_eq!(code(&out), "staff.active_time_off");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn deactivating_an_active_member_without_leave_goes_through() {
+        let out = deactivate_staff_member_pure(input(json!({ "staff_id": "m1" }), json!({
+            "staff.members.get": member("on_leave"), "staff.time_off.active_for_member": []
+        }))).unwrap();
+        assert!(out.error.is_none());
+        assert_eq!(out.operations[0].command, "staff._deactivate_member");
+    }
+
+    #[test]
+    fn a_schedule_for_a_missing_member_is_refused() {
+        let payload = json!({ "staff_id": "m1", "name": "Turno", "working_hours": [
+            { "day_of_week": 1, "start_time": "09:00", "end_time": "17:00" }] });
+        let out = create_schedule_pure(input(payload.clone(), json!({ "staff.members.get": [] }))).unwrap();
+        assert_eq!(code(&out), "staff.member_not_found");
+        assert!(out.operations.is_empty());
+        let ok = create_schedule_pure(input(payload, json!({ "staff.members.get": member("active") }))).unwrap();
+        assert!(ok.error.is_none());
+        assert_eq!(ok.operations.len(), 3, "unset default + schedule + 1 working_hours");
+    }
+
+    // ── time_off.set_status: a state machine, not a blind UPDATE ────────────────────────────
+
+    fn time_off_row(status: &str) -> Value {
+        json!([{ "id": "t1", "staff_id": "m1", "status": status,
+                 "start_date": "2026-09-01", "end_date": "2026-09-05" }])
+    }
+
+    fn set_status(from: Option<&str>, to: &str, conflicts: Value) -> Output {
+        let detail = match from { Some(s) => time_off_row(s), None => json!([]) };
+        set_time_off_status_pure(input(json!({ "time_off_id": "t1", "status": to }), json!({
+            "staff.time_off.detail": detail, "staff.time_off.conflicts_for": conflicts
+        }))).unwrap()
+    }
+
+    #[test]
+    fn set_status_on_a_missing_request_is_refused() {
+        let out = set_status(None, "approved", json!([]));
+        assert_eq!(code(&out), "staff.time_off_not_found");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn allowed_transitions_go_through_and_carry_the_target_status() {
+        for (from, to) in [("pending", "approved"), ("pending", "rejected"), ("pending", "cancelled"), ("approved", "cancelled")] {
+            let out = set_status(Some(from), to, json!([]));
+            assert!(out.error.is_none(), "{from} → {to}: {:?}", out.error);
+            assert_eq!(out.operations.len(), 1);
+            assert_eq!(out.operations[0].command, "staff._set_time_off_status");
+            assert_eq!(out.operations[0].params["status"], json!(to));
+            assert_eq!(out.operations[0].params["time_off_id"], json!("t1"));
+        }
+    }
+
+    #[test]
+    fn terminal_states_and_repeats_are_refused_explicitly() {
+        for (from, to) in [
+            ("rejected", "approved"), ("rejected", "cancelled"), ("cancelled", "approved"),
+            ("approved", "approved"), ("approved", "rejected"), ("approved", "pending"),
+            ("pending", "pending"), ("rejected", "rejected"),
+        ] {
+            let out = set_status(Some(from), to, json!([]));
+            assert_eq!(code(&out), "staff.invalid_transition", "{from} → {to}");
+            assert!(out.operations.is_empty(), "{from} → {to}");
+        }
+    }
+
+    #[test]
+    fn approving_revalidates_conflicts_against_approved_leave_only() {
+        let approved_conflict = json!([{ "id": "t2", "status": "approved", "start_date": "2026-09-04", "end_date": "2026-09-08" }]);
+        let out = set_status(Some("pending"), "approved", approved_conflict.clone());
+        assert_eq!(code(&out), "staff.overlapping_time_off");
+        assert!(out.operations.is_empty());
+        // Another PENDING request in the same window does not block the approval (the other one
+        // will be rejected by the manager); and conflicts never block a rejection/cancellation.
+        let pending_conflict = json!([{ "id": "t2", "status": "pending", "start_date": "2026-09-04", "end_date": "2026-09-08" }]);
+        assert!(set_status(Some("pending"), "approved", pending_conflict).error.is_none());
+        assert!(set_status(Some("pending"), "rejected", approved_conflict.clone()).error.is_none());
+        assert!(set_status(Some("approved"), "cancelled", approved_conflict).error.is_none());
+    }
+
+    // ── bulk_create: a role that is not this hub's does not silently vanish ─────────────────
+
+    #[test]
+    fn bulk_create_reports_the_rows_it_skipped_and_refuses_a_foreign_role() {
+        let inp = input(json!({ "members": [
+            { "first_name": "Ana", "last_name": "Ruiz", "role_id": "r-own" },
+            { "first_name": "Eve", "last_name": "Cross", "role_id": "r-neighbour" },
+            { "first_name": "", "last_name": "Nobody" },
+            { "first_name": "Luz", "last_name": "Vega" }
+        ] }), json!({ "staff.roles.list": [{ "id": "r-own", "name": "Stylist", "is_active": 1 }] }));
+        let out = bulk_create_staff_members_pure(inp).unwrap();
+        assert!(out.error.is_none());
+        assert_eq!(out.operations.len(), 2, "Ana and Luz");
+        let result = out.result.expect("the batch reports what it did");
+        assert_eq!(result["created"], json!(2));
+        let skipped = result["skipped"].as_array().expect("skipped rows are listed");
+        assert_eq!(skipped.len(), 2);
+        assert_eq!(skipped[0]["index"], json!(1));
+        assert_eq!(skipped[0]["reason"], json!("role_not_found"));
+        assert_eq!(skipped[1]["index"], json!(2));
+        assert_eq!(skipped[1]["reason"], json!("name_required"));
     }
 }

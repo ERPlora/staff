@@ -22,7 +22,7 @@ versión instalada y cita la de TU versión, no la de la última publicada. En i
 | [`docs/overview.md`](docs/overview.md) | Qué hace y qué NO hace; **staff ≠ usuarios del hub**; por qué la privacidad está en las queries |
 | [`docs/screens.md`](docs/screens.md) | Staff / Roles / Time Off / Horarios y el cierre del día por profesional |
 | [`docs/concepts.md`](docs/concepts.md) | El rol de staff **no concede nada**, desactivar vs terminar, `null` vs `''` al desvincular, no hay fichajes |
-| [`docs/limits.md`](docs/limits.md) | Guardas que fallan como **no-op mudo**, caps, permisos por acción y diagnóstico |
+| [`docs/limits.md`](docs/limits.md) | Guardas que **rechazan con código** (staff#1), caps, permisos por acción y diagnóstico |
 
 ## Privacidad por query (staff#10)
 
@@ -72,7 +72,9 @@ docs/                         # documentación de usuario + corpus del asistente
 
 El estado vive en las **Issues de este repo**, no aquí. Limitaciones documentadas en
 `docs/limits.md`: **no hay control horario/fichajes** (por eso no hay widget de fichajes — cero
-mocks), no hay nómina, y las guardas de `deactivate`/`time_off.create` fallan como **no-op de 0
-filas**, no con un error explícito.
+mocks) y no hay nómina. Las guardas de `deactivate`/`time_off.create`/`schedules.create`/
+`time_off.set_status` son **autoritativas** (staff#1): el handler decide sobre `context.reads` y un
+rechazo es un error de dominio (`staff.*`) — ni fila ni evento; el SQL condicional queda solo como
+defensa en profundidad.
 
 Doc de arquitectura: `architecture/modules/staff.md` (cargarlo antes de tocar el módulo).

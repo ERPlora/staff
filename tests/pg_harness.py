@@ -9,6 +9,7 @@ What is reproduced of the dispatcher, and only that:
   * `:name` placeholders bound as literals in ONE pass (a value carrying a colon — an ISO
     timestamp — is never rescanned);
   * params absent from the payload bind as NULL (`DynNull`, crates/db/src/lib.rs);
+  * the portable helper `erp_date(x)` is rewritten to its Postgres form, like `crates/db` does;
   * a command's `sql[]` runs inside one BEGIN/COMMIT with the system params (`hub_id`,
     `current_user_id`, `now`, one `new_id` per statement) injected.
 JSON Schema validation is NOT reproduced here.
@@ -55,8 +56,18 @@ def literal(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
+ERP_DATE = re.compile(r"\berp_date\(([^()]*)\)")
+
+
+def rewrite_portable_helpers(sql: str) -> str:
+    """The Postgres form of the portable date helper the runtime rewrites (`crates/db/src/lib.rs`,
+    ADR-0007 §4a): `erp_date(x)` → `((x)::date)`. Only the helper this module uses; add the others
+    (`erp_dt`, `erp_dateadd`, …) here the day a query needs them, mirroring `crates/db`."""
+    return ERP_DATE.sub(lambda m: f"(({m.group(1)})::date)", sql)
+
+
 def bind(sql: str, params: dict) -> str:
-    return PARAM.sub(lambda m: literal(params.get(m.group(1))), sql)
+    return rewrite_portable_helpers(PARAM.sub(lambda m: literal(params.get(m.group(1))), sql))
 
 
 class DomainError(Exception):
