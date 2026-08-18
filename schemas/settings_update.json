@@ -1,19 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "staff.settings.update",
+  "description": "Configuración de personal (singleton por hub). La UI envía el snapshot completo (upsert). Tipos PLANOS a propósito (staff#24): el renderer genérico del shell no lee arrays de tipos — un flag es `integer` + `enum: [0, 1]` (columna INTEGER, paridad SQLite/Postgres) y el shell lo pinta como interruptor.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "default_work_start": { "type": ["string", "null"], "default": "09:00", "title": "Inicio de jornada (HH:MM)" },
-    "default_work_end": { "type": ["string", "null"], "default": "18:00", "title": "Fin de jornada (HH:MM)" },
-    "default_break_duration": { "type": ["integer", "null"], "minimum": 0, "maximum": 480, "default": 60, "title": "Duración del descanso (minutos)" },
-    "min_advance_booking": { "type": ["integer", "null"], "minimum": 0, "maximum": 168, "default": 1, "title": "Antelación mínima de reserva (horas)" },
-    "max_daily_hours": { "type": ["integer", "null"], "minimum": 1, "maximum": 24, "default": 12, "title": "Horas máximas por día" },
-    "overtime_threshold": { "type": ["integer", "null"], "minimum": 1, "maximum": 168, "default": 40, "title": "Umbral de horas extra (horas/semana)" },
-    "show_staff_photos": { "type": ["integer", "null"], "enum": [0, 1, null], "default": 1, "title": "Mostrar fotos del personal" },
-    "show_staff_bio": { "type": ["integer", "null"], "enum": [0, 1, null], "default": 1, "title": "Mostrar biografía del personal" },
-    "allow_staff_selection": { "type": ["integer", "null"], "enum": [0, 1, null], "default": 1, "title": "Permitir elegir profesional" },
-    "notify_new_appointment": { "type": ["integer", "null"], "enum": [0, 1, null], "default": 1, "title": "Avisar de nueva cita" },
-    "notify_cancellation": { "type": ["integer", "null"], "enum": [0, 1, null], "default": 1, "title": "Avisar de cancelación" }
+    "default_work_start": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$", "default": "09:00", "title": "Inicio de jornada (HH:MM)", "description": "Hora de inicio de la jornada por defecto. La jornada nocturna (fin antes del inicio) es válida." },
+    "default_work_end": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$", "default": "18:00", "title": "Fin de jornada (HH:MM)", "description": "Hora de fin de la jornada por defecto. Si es anterior al inicio, se entiende que el turno cruza la medianoche." },
+    "default_break_duration": { "type": "integer", "minimum": 0, "maximum": 480, "default": 60, "title": "Duración del descanso (minutos)", "description": "Entre 0 y 480 minutos." },
+    "min_advance_booking": { "type": "integer", "minimum": 0, "maximum": 168, "default": 1, "title": "Antelación mínima de reserva (horas)", "description": "Entre 0 y 168 horas (una semana)." },
+    "max_daily_hours": { "type": "integer", "minimum": 1, "maximum": 24, "default": 12, "title": "Horas máximas por día", "description": "Entre 1 y 24 horas." },
+    "overtime_threshold": { "type": "integer", "minimum": 1, "maximum": 168, "default": 40, "title": "Umbral de horas extra (horas/semana)", "description": "Entre 1 y 168 horas semanales." },
+    "show_staff_photos": { "type": "integer", "enum": [0, 1], "default": 1, "title": "Mostrar fotos del personal" },
+    "show_staff_bio": { "type": "integer", "enum": [0, 1], "default": 1, "title": "Mostrar biografía del personal" },
+    "allow_staff_selection": { "type": "integer", "enum": [0, 1], "default": 1, "title": "Permitir elegir profesional" },
+    "notify_new_appointment": { "type": "integer", "enum": [0, 1], "default": 1, "title": "Avisar de nueva cita" },
+    "notify_cancellation": { "type": "integer", "enum": [0, 1], "default": 1, "title": "Avisar de cancelación" }
   }
 }
