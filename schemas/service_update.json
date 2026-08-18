@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "staff.services.update",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "custom_duration": { "type": ["integer", "null"], "minimum": 1, "default": null, "description": "Minutes; null CLEARS the override (full snapshot)." },
+    "custom_price": { "type": ["integer", "null"], "minimum": 0, "default": null, "description": "Cents; null CLEARS the override (full snapshot)." },
+    "is_primary": { "type": ["integer", "null"], "enum": [0, 1, null], "default": null },
+    "is_active": { "type": ["integer", "null"], "enum": [0, 1, null], "default": null }
+  }
+}

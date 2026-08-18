@@ -328,6 +328,22 @@
       "ai": {
         "description": "Lists the work schedules assigned to a specific staff member."
       }
+    },
+    "staff.services.list_for_member": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/services_list_for_member.sql",
+      "ai": {
+        "description": "Lists the services (competencies) a staff member performs, with per-professional duration/price overrides and the primary flag."
+      },
+      "expose_api": true
+    },
+    "staff.services.eligible_for_service": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/services_eligible_for_service.sql",
+      "ai": {
+        "description": "Lists the active, bookable staff members eligible to perform a given service (by service_id), with their duration/price overrides. The authoritative filter for booking."
+      },
+      "expose_api": true
     }
   },
   "commands": {
@@ -594,6 +610,69 @@
       "sql": [
         "commands/_set_time_off_status.sql"
       ]
+    },
+    "staff.services.assign": {
+      "permission": "staff.change_staff_member",
+      "transaction": true,
+      "sql": [
+        "commands/_unset_primary_service.sql",
+        "commands/service_assign.sql"
+      ],
+      "schema": "schemas/service_assign.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.service_assign_rejected",
+        "message": "The service could not be assigned: that staff member does not exist in this business."
+      },
+      "emit": [
+        "staff.service.assigned"
+      ],
+      "ai": {
+        "description": "Assigns a service (competency) to a staff member, optionally with a custom duration/price and as their primary service. Repeating the assignment updates it."
+      },
+      "expose_api": true
+    },
+    "staff.services.update": {
+      "permission": "staff.change_staff_member",
+      "transaction": true,
+      "sql": [
+        "commands/_unset_primary_service.sql",
+        "commands/service_update.sql"
+      ],
+      "schema": "schemas/service_update.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.service_not_found",
+        "message": "That service assignment does not exist in this business."
+      },
+      "emit": [
+        "staff.service.updated"
+      ],
+      "ai": {
+        "description": "Edits a staff member's service assignment: custom duration/price, primary and active flags."
+      }
+    },
+    "staff.services.remove": {
+      "permission": "staff.change_staff_member",
+      "transaction": true,
+      "sql": [
+        "commands/service_remove.sql"
+      ],
+      "schema": "schemas/service_remove.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.service_not_found",
+        "message": "That service assignment does not exist in this business."
+      },
+      "emit": [
+        "staff.service.removed"
+      ],
+      "ai": {
+        "description": "Removes a service from a staff member (they no longer perform it)."
+      }
     }
   },
   "events": {
@@ -605,6 +684,9 @@
       "staff.member.updated",
       "staff.role.created",
       "staff.schedule.created",
+      "staff.service.assigned",
+      "staff.service.removed",
+      "staff.service.updated",
       "staff.settings.updated",
       "staff.time_off.created",
       "staff.time_off.status_changed"

@@ -8,14 +8,20 @@
       "staff.members.list",
       "staff.roles.list",
       "staff.schedules.list_for_member",
+      "staff.services.list_for_member",
       "staff.time_off.list"
     ],
-    "optional_queries": [],
+    "optional_queries": [
+      "services.services.list"
+    ],
     "commands": [
       "staff.members.create",
       "staff.members.update",
       "staff.roles.create",
       "staff.schedules.create",
+      "staff.services.assign",
+      "staff.services.remove",
+      "staff.services.update",
       "staff.time_off.set_status"
     ],
     "events": [

@@ -3416,7 +3416,17 @@ var es_default = {
     ariaBreakStart: "Inicio descanso",
     ariaBreakEnd: "Fin descanso",
     hubUser: "Usuario del Hub",
-    hubUserNone: "Sin acceso al Hub"
+    hubUserNone: "Sin acceso al Hub",
+    servicesTitle: "Servicios que realiza",
+    servicesEmpty: "Sin servicios asignados todav\xEDa.",
+    servicesNoCatalog: "Instala el m\xF3dulo Servicios para asignar servicios a este profesional.",
+    serviceAdd: "A\xF1adir servicio\u2026",
+    serviceDuration: "Minutos (opcional)",
+    servicePrice: "Precio (opcional)",
+    serviceAssign: "Asignar",
+    servicePrimary: "Servicio principal",
+    serviceRemove: "Quitar servicio",
+    errAssignService: "No se pudieron actualizar los servicios"
   },
   widgets: {
     "staff.headcount": {
@@ -3446,7 +3456,9 @@ var es_default = {
     "staff.time_off_not_found": "Esa solicitud de ausencia no existe en este negocio.",
     "staff.invalid_transition": "Esa solicitud de ausencia no puede pasar a ese estado desde el actual.",
     "staff.role_not_found": "Ese rol no est\xE1 disponible: no existe en este negocio, o se ha eliminado o retirado.",
-    "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe."
+    "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.",
+    "staff.service_assign_rejected": "No se pudo asignar el servicio: ese profesional no existe en este negocio.",
+    "staff.service_not_found": "Esa asignaci\xF3n de servicio no existe en este negocio."
   }
 };
 
@@ -3551,7 +3563,17 @@ var en_default = {
     ariaBreakStart: "Break start",
     ariaBreakEnd: "Break end",
     hubUser: "Hub user",
-    hubUserNone: "No Hub access"
+    hubUserNone: "No Hub access",
+    servicesTitle: "Services performed",
+    servicesEmpty: "No services assigned yet.",
+    servicesNoCatalog: "Install the Services module to assign services to this professional.",
+    serviceAdd: "Add service\u2026",
+    serviceDuration: "Minutes (optional)",
+    servicePrice: "Price (optional)",
+    serviceAssign: "Assign",
+    servicePrimary: "Primary service",
+    serviceRemove: "Remove service",
+    errAssignService: "Could not update the services"
   },
   errors: {
     "staff.member_not_found": "That staff member does not exist in this business.",
@@ -3561,7 +3583,9 @@ var en_default = {
     "staff.time_off_not_found": "That time-off request does not exist in this business.",
     "staff.invalid_transition": "That time-off request cannot change to that status from its current one.",
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
-    "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
+    "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
+    "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
+    "staff.service_not_found": "That service assignment does not exist in this business."
   }
 };
 
@@ -3600,6 +3624,13 @@ var ErpStaffMembers = class extends i3 {
     this.newUserId = "";
     this.editingId = "";
     this.saving = false;
+    this.memberServices = [];
+    this.catalog = [];
+    this.catalogUnavailable = false;
+    this.newServiceId = "";
+    this.newServiceDuration = "";
+    this.newServicePrice = "";
+    this.servicesError = "";
     this.rates = {};
     this.onLocaleChange = () => this.requestUpdate();
   }
@@ -3613,6 +3644,17 @@ var ErpStaffMembers = class extends i3 {
     .form { display:flex; flex-direction:column; gap:.7rem; }
     .form ion-button { align-self:flex-end; }
     .err { color:#d9480f; font-weight:600; }
+    /* Services performed (staff#9): a compact list inside the same panel, 44px rows for touch. */
+    .services { display:flex; flex-direction:column; gap:.4rem; border-top:1px solid var(--ion-border-color, #e5e3dd); padding-top:.6rem; }
+    .services h4 { margin:0; font-size:.85rem; font-weight:600; opacity:.8; }
+    .services ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.25rem; }
+    .services li { display:flex; align-items:center; gap:.4rem; min-height:44px; }
+    .services li .name { flex:1 1 auto; }
+    .services li .meta { font-size:.75rem; opacity:.7; }
+    .services .assign { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+    .services .assign ion-select { flex:1 1 100%; }
+    .services .assign ion-input { flex:1 1 40%; }
+    .hint { font-size:.8rem; opacity:.75; }
   `;
   }
   get canSeeCompensation() {
@@ -3678,6 +3720,110 @@ var ErpStaffMembers = class extends i3 {
     this.newUserId = m4.user_id ?? "";
     this.formError = "";
     this.dataTable()?.open("create");
+    void this.loadMemberServices();
+  }
+  /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
+   *  query of `services`; a failure there (module not installed, no permission) is NOT an error
+   *  of this screen: the section degrades to a hint and the record stays editable. */
+  async loadMemberServices() {
+    if (!this.editingId) return;
+    this.servicesError = "";
+    const staffId = this.editingId;
+    let own = [];
+    let cat = [];
+    try {
+      [own, cat] = await Promise.all([
+        erplora().query("staff.services.list_for_member", { staff_id: staffId }),
+        erplora().queryOptional("services.services.list", { limit: 500 })
+      ]);
+    } catch (e5) {
+      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+    }
+    if (this.editingId !== staffId) return;
+    this.memberServices = own ?? [];
+    this.catalog = cat ?? [];
+    this.catalogUnavailable = cat === void 0;
+  }
+  /** Catalogue entries not yet assigned to this member (what the picker offers). */
+  get assignableServices() {
+    const have = new Set(this.memberServices.map((s5) => s5.service_id));
+    return this.catalog.filter((c5) => !have.has(c5.id));
+  }
+  /** Assign: opaque `service_id` + name snapshot; overrides only when typed (null = catalogue). */
+  async assignService(ev) {
+    ev.preventDefault();
+    const svc = this.catalog.find((c5) => c5.id === this.newServiceId);
+    if (!this.editingId || !svc) return;
+    const minutes = parseInt(this.newServiceDuration, 10);
+    const euros = parseFloat(String(this.newServicePrice).replace(",", "."));
+    this.servicesError = "";
+    try {
+      await erplora().command("staff.services.assign", {
+        staff_id: this.editingId,
+        service_id: svc.id,
+        service_name: svc.name,
+        custom_duration: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
+        custom_price: Number.isFinite(euros) && euros >= 0 && this.newServicePrice !== "" ? Math.round(euros * 100) : null,
+        is_primary: 0
+      });
+      this.newServiceId = "";
+      this.newServiceDuration = "";
+      this.newServicePrice = "";
+      await this.loadMemberServices();
+    } catch (e5) {
+      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+    }
+  }
+  async removeService(id) {
+    this.servicesError = "";
+    try {
+      await erplora().command("staff.services.remove", { id });
+      await this.loadMemberServices();
+    } catch (e5) {
+      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+    }
+  }
+  /** Mark as the member's primary service (the command demotes the previous one). */
+  async setPrimaryService(row) {
+    const current = this.memberServices.find((s5) => s5.id === row.id);
+    this.servicesError = "";
+    try {
+      await erplora().command("staff.services.update", {
+        id: row.id,
+        custom_duration: current?.custom_duration ?? null,
+        custom_price: current?.custom_price ?? null,
+        is_primary: 1,
+        is_active: current?.is_active ?? 1
+      });
+      await this.loadMemberServices();
+    } catch (e5) {
+      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+    }
+  }
+  renderServices() {
+    const t5 = (k2) => erplora().t(CATALOG, k2);
+    if (!this.editingId) return A;
+    return b2`<section class="services" data-section="services">
+      <h4>${t5("ui.servicesTitle")}</h4>
+      ${this.servicesError ? b2`<div class="err">${this.servicesError}</div>` : A}
+      ${this.memberServices.length === 0 ? b2`<div class="hint">${t5("ui.servicesEmpty")}</div>` : A}
+      <ul>
+        ${this.memberServices.map((s5) => b2`<li>
+          <ion-icon name=${s5.is_primary ? "star" : "star-outline"} title=${t5("ui.servicePrimary")} aria-label=${t5("ui.servicePrimary")} role="button" tabindex="0" @click=${() => s5.is_primary ? void 0 : this.setPrimaryService(s5)}></ion-icon>
+          <span class="name">${s5.service_name}</span>
+          <span class="meta">${s5.custom_duration ? `${s5.custom_duration} min` : ""}${s5.custom_duration && s5.custom_price != null ? " \xB7 " : ""}${s5.custom_price != null ? erplora().formatMoney(Number(s5.custom_price)) : ""}</span>
+          <ion-button fill="clear" size="small" color="medium" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+        </li>`)}
+      </ul>
+      ${this.catalogUnavailable ? b2`<div class="hint" data-hint="no-catalog">${t5("ui.servicesNoCatalog")}</div>` : b2`<div class="assign">
+            <ion-select fill="outline" label-placement="floating" label=${t5("ui.serviceAdd")} .value=${this.newServiceId} @ionChange=${(e5) => this.newServiceId = e5.target.value}>
+              ${this.assignableServices.map((c5) => b2`<ion-select-option .value=${c5.id}>${c5.name}</ion-select-option>`)}
+            </ion-select>
+            <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
+            <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
+            <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e5) => this.assignService(e5)}>${t5("ui.serviceAssign")}</ion-button>
+          </div>`}
+    </section>`;
   }
   /** Compensation, only for a session that may read it. A denied query is NOT an error to show:
    *  the column simply does not exist for that session, and the directory keeps working. */
@@ -3774,6 +3920,7 @@ var ErpStaffMembers = class extends i3 {
       this.newEmail = "";
       this.newRole = "";
       this.newUserId = "";
+      this.memberServices = [];
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e5) {
@@ -3796,6 +3943,7 @@ var ErpStaffMembers = class extends i3 {
             <ion-input fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.newEmail} @ionInput=${(e5) => this.newEmail = e5.target.value}></ion-input>
             <ion-select fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.newRole} @ionChange=${(e5) => this.newRole = e5.target.value}>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
             <ion-select fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.newUserId} @ionChange=${(e5) => this.newUserId = e5.target.value}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
+            ${this.renderServices()}
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
@@ -3832,6 +3980,27 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "saving", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "memberServices", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "catalog", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "catalogUnavailable", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "newServiceId", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "newServiceDuration", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "newServicePrice", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "servicesError", 2);
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "rates", 2);

@@ -98,7 +98,17 @@
     "ariaBreakStart": "Break start",
     "ariaBreakEnd": "Break end",
     "hubUser": "Hub user",
-    "hubUserNone": "No Hub access"
+    "hubUserNone": "No Hub access",
+    "servicesTitle": "Services performed",
+    "servicesEmpty": "No services assigned yet.",
+    "servicesNoCatalog": "Install the Services module to assign services to this professional.",
+    "serviceAdd": "Add service…",
+    "serviceDuration": "Minutes (optional)",
+    "servicePrice": "Price (optional)",
+    "serviceAssign": "Assign",
+    "servicePrimary": "Primary service",
+    "serviceRemove": "Remove service",
+    "errAssignService": "Could not update the services"
   },
   "errors": {
     "staff.member_not_found": "That staff member does not exist in this business.",
@@ -108,6 +118,8 @@
     "staff.time_off_not_found": "That time-off request does not exist in this business.",
     "staff.invalid_transition": "That time-off request cannot change to that status from its current one.",
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
-    "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
+    "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
+    "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
+    "staff.service_not_found": "That service assignment does not exist in this business."
   }
 }
