@@ -13,6 +13,8 @@ const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
 
 interface ErploraClientLike extends ListClient {
   query<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T>;
+  /** Optional integration (ADR-0127): `undefined` ONLY when the owner module is not installed. */
+  queryOptional<T = unknown>(name: string, params?: Record<string, unknown>): Promise<T | undefined>;
   queryPage<R = unknown>(name: string, params: ListParams): Promise<ListPage<R>>;
   command<T = unknown>(name: string, payload?: Record<string, unknown>): Promise<T>;
   on(event: string, cb: (payload: unknown) => void): () => void;
@@ -44,6 +46,26 @@ interface StaffMember {
 interface StaffRole {
   id: string;
   name: string;
+}
+
+/** A service the professional performs (`staff.services.list_for_member`, staff#9). */
+interface MemberService {
+  id: string;
+  service_id: string;
+  service_name: string;
+  custom_duration: number | null;
+  custom_price: number | null;
+  is_primary: number;
+  is_active: number;
+}
+
+/** A catalogue entry of the `services` module (its PUBLIC `services.services.list`). */
+interface CatalogService {
+  id: string;
+  name: string;
+  duration_minutes?: number;
+  price?: number;
+  is_bookable?: number;
 }
 
 /**
@@ -80,6 +102,17 @@ export class ErpStaffMembers extends LitElement {
     .form { display:flex; flex-direction:column; gap:.7rem; }
     .form ion-button { align-self:flex-end; }
     .err { color:#d9480f; font-weight:600; }
+    /* Services performed (staff#9): a compact list inside the same panel, 44px rows for touch. */
+    .services { display:flex; flex-direction:column; gap:.4rem; border-top:1px solid var(--ion-border-color, #e5e3dd); padding-top:.6rem; }
+    .services h4 { margin:0; font-size:.85rem; font-weight:600; opacity:.8; }
+    .services ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.25rem; }
+    .services li { display:flex; align-items:center; gap:.4rem; min-height:44px; }
+    .services li .name { flex:1 1 auto; }
+    .services li .meta { font-size:.75rem; opacity:.7; }
+    .services .assign { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+    .services .assign ion-select { flex:1 1 100%; }
+    .services .assign ion-input { flex:1 1 40%; }
+    .hint { font-size:.8rem; opacity:.75; }
   `;
 
   @state() roles: StaffRole[] = [];
@@ -104,6 +137,25 @@ export class ErpStaffMembers extends LitElement {
   @state() editingId = '';
 
   @state() saving = false;
+
+  // ── Services performed (staff#9) ───────────────────────────────────────────
+  /** Competencies of the member being edited (`staff.services.list_for_member`). */
+  @state() memberServices: MemberService[] = [];
+
+  /** The services catalogue (`services.services.list`); empty when unavailable. */
+  @state() catalog: CatalogService[] = [];
+
+  /** `services` is not installed (or not readable): the section shows a hint, nothing else breaks. */
+  @state() catalogUnavailable = false;
+
+  @state() newServiceId = '';
+
+  /** Optional overrides typed by the user: minutes and PRICE IN EUROS (converted to cents on send). */
+  @state() newServiceDuration = '';
+
+  @state() newServicePrice = '';
+
+  @state() servicesError = '';
 
   /** Compensation by member id, loaded ONLY when the session can read it (staff#10). The directory
    *  (`staff.members.list`) no longer carries it: it is open to `staff.view_staff_member`, which
@@ -183,6 +235,120 @@ export class ErpStaffMembers extends LitElement {
     this.newUserId = m.user_id ?? '';
     this.formError = '';
     this.dataTable()?.open('create');
+    void this.loadMemberServices();
+  }
+
+  /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
+   *  query of `services`; a failure there (module not installed, no permission) is NOT an error
+   *  of this screen: the section degrades to a hint and the record stays editable. */
+  private async loadMemberServices(): Promise<void> {
+    if (!this.editingId) return;
+    this.servicesError = '';
+    const staffId = this.editingId;
+    let own: MemberService[] = [];
+    let cat: CatalogService[] | undefined = [];
+    try {
+      // `queryOptional` (ADR-0127): `services` may NOT be installed in this hub — that is an absence
+      // (hint), not an error. Anything else (permission, broken contract) IS an error and is shown.
+      [own, cat] = await Promise.all([
+        erplora().query<MemberService[]>('staff.services.list_for_member', { staff_id: staffId }),
+        erplora().queryOptional<CatalogService[]>('services.services.list', { limit: 500 }),
+      ]);
+    } catch (e) {
+      this.servicesError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+    }
+    if (this.editingId !== staffId) return; // the panel moved on while we were loading
+    this.memberServices = own ?? [];
+    this.catalog = cat ?? [];
+    this.catalogUnavailable = cat === undefined;
+  }
+
+  /** Catalogue entries not yet assigned to this member (what the picker offers). */
+  private get assignableServices(): CatalogService[] {
+    const have = new Set(this.memberServices.map((s) => s.service_id));
+    return this.catalog.filter((c) => !have.has(c.id));
+  }
+
+  /** Assign: opaque `service_id` + name snapshot; overrides only when typed (null = catalogue). */
+  async assignService(ev: Event): Promise<void> {
+    ev.preventDefault();
+    const svc = this.catalog.find((c) => c.id === this.newServiceId);
+    if (!this.editingId || !svc) return;
+    const minutes = parseInt(this.newServiceDuration, 10);
+    const euros = parseFloat(String(this.newServicePrice).replace(',', '.'));
+    this.servicesError = '';
+    try {
+      await erplora().command('staff.services.assign', {
+        staff_id: this.editingId,
+        service_id: svc.id,
+        service_name: svc.name,
+        custom_duration: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
+        custom_price: Number.isFinite(euros) && euros >= 0 && this.newServicePrice !== '' ? Math.round(euros * 100) : null,
+        is_primary: 0,
+      });
+      this.newServiceId = '';
+      this.newServiceDuration = '';
+      this.newServicePrice = '';
+      await this.loadMemberServices();
+    } catch (e) {
+      this.servicesError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+    }
+  }
+
+  async removeService(id: string): Promise<void> {
+    this.servicesError = '';
+    try {
+      await erplora().command('staff.services.remove', { id });
+      await this.loadMemberServices();
+    } catch (e) {
+      this.servicesError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+    }
+  }
+
+  /** Mark as the member's primary service (the command demotes the previous one). */
+  async setPrimaryService(row: { id: string }): Promise<void> {
+    const current = this.memberServices.find((s) => s.id === row.id);
+    this.servicesError = '';
+    try {
+      await erplora().command('staff.services.update', {
+        id: row.id,
+        custom_duration: current?.custom_duration ?? null,
+        custom_price: current?.custom_price ?? null,
+        is_primary: 1,
+        is_active: current?.is_active ?? 1,
+      });
+      await this.loadMemberServices();
+    } catch (e) {
+      this.servicesError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+    }
+  }
+
+  private renderServices() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    if (!this.editingId) return nothing;
+    return html`<section class="services" data-section="services">
+      <h4>${t('ui.servicesTitle')}</h4>
+      ${this.servicesError ? html`<div class="err">${this.servicesError}</div>` : nothing}
+      ${this.memberServices.length === 0 ? html`<div class="hint">${t('ui.servicesEmpty')}</div>` : nothing}
+      <ul>
+        ${this.memberServices.map((s) => html`<li>
+          <ion-icon name=${s.is_primary ? 'star' : 'star-outline'} title=${t('ui.servicePrimary')} aria-label=${t('ui.servicePrimary')} role="button" tabindex="0" @click=${() => (s.is_primary ? undefined : this.setPrimaryService(s))}></ion-icon>
+          <span class="name">${s.service_name}</span>
+          <span class="meta">${s.custom_duration ? `${s.custom_duration} min` : ''}${s.custom_duration && s.custom_price != null ? ' · ' : ''}${s.custom_price != null ? erplora().formatMoney(Number(s.custom_price)) : ''}</span>
+          <ion-button fill="clear" size="small" color="medium" aria-label=${t('ui.serviceRemove')} @click=${() => this.removeService(s.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+        </li>`)}
+      </ul>
+      ${this.catalogUnavailable
+        ? html`<div class="hint" data-hint="no-catalog">${t('ui.servicesNoCatalog')}</div>`
+        : html`<div class="assign">
+            <ion-select fill="outline" label-placement="floating" label=${t('ui.serviceAdd')} .value=${this.newServiceId} @ionChange=${(e: any) => (this.newServiceId = e.target.value)}>
+              ${this.assignableServices.map((c) => html`<ion-select-option .value=${c.id}>${c.name}</ion-select-option>`)}
+            </ion-select>
+            <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
+            <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
+            <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
+          </div>`}
+    </section>`;
   }
 
   /** Compensation, only for a session that may read it. A denied query is NOT an error to show:
@@ -286,6 +452,7 @@ export class ErpStaffMembers extends LitElement {
       this.newEmail = '';
       this.newRole = '';
       this.newUserId = '';
+      this.memberServices = [];
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e) {
@@ -309,6 +476,7 @@ export class ErpStaffMembers extends LitElement {
             <ion-input fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.newEmail} @ionInput=${(e: any) => (this.newEmail = e.target.value)}></ion-input>
             <ion-select fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.newRole} @ionChange=${(e: any) => (this.newRole = e.target.value)}>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
             <ion-select fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.newUserId} @ionChange=${(e: any) => (this.newUserId = e.target.value)}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+            ${this.renderServices()}
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>

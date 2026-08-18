@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "staff.services.assign",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["staff_id", "service_id", "service_name"],
+  "properties": {
+    "staff_id": { "type": "string", "minLength": 1 },
+    "service_id": { "type": "string", "minLength": 1, "description": "Opaque id of a `services` catalogue entry (no cross-module FK)." },
+    "service_name": { "type": "string", "minLength": 1, "maxLength": 200, "description": "Snapshot of the service name at assignment time." },
+    "custom_duration": { "type": ["integer", "null"], "minimum": 1, "default": null, "description": "Minutes; overrides the catalogue duration for this professional." },
+    "custom_price": { "type": ["integer", "null"], "minimum": 0, "default": null, "description": "Cents (ADR-0007); overrides the catalogue price for this professional." },
+    "is_primary": { "type": "integer", "enum": [0, 1], "default": 0 }
+  }
+}

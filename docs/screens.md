@@ -37,6 +37,15 @@ hub-user link:
 
 Requires `staff.change_staff_member`.
 
+### Services a professional performs
+
+Open a member's record (Edit) and use the **Services performed** section: pick a service from the
+Services catalogue and assign it, optionally with a custom duration (minutes) or price for that
+professional; a star marks their **primary** service (only one per member); the cross removes it.
+Booking screens only offer the professionals who perform the chosen service
+(`staff.services.eligible_for_service`). If the Services module is not installed the section shows a
+hint and the rest of the record works as usual. Requires `staff.change_staff_member`.
+
 ### Deactivate versus terminate
 
 - **Deactivate** takes someone off the floor without deleting anything. It is **refused while they
