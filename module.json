@@ -81,7 +81,8 @@
   },
   "migrations": {
     "postgres": [
-      "migrations/postgres/001_init.sql"
+      "migrations/postgres/001_init.sql",
+      "migrations/postgres/002_termination_reason.sql"
     ]
   },
   "queries": {
@@ -467,7 +468,13 @@
         "staff.member.terminated"
       ],
       "ai": {
-        "description": "Terminates a staff member by soft-deleting their record (destructive)."
+        "description": "Terminates a staff member (the only road to status `terminated`): stamps the termination date (today by default) and reason, un-books them and soft-deletes the record."
+      },
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.member_not_found",
+        "message": "That staff member does not exist in this business."
       }
     },
     "staff.members.bulk_create": {

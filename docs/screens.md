@@ -27,15 +27,22 @@ filter on a value you cannot see would be an oracle for guessing it.
 
 Requires `staff.add_staff_member`.
 
-### Edit an employee
+### Edit an employee — the record
 
-Editing is **partial**: fields you do not send are left alone. Two sentinels matter when clearing the
-hub-user link:
+Open a row (Edit; a record is linkable with `?member=<id>`). The panel shows the whole record in
+groups: identity (name, email, phone, employee ID), links (staff role, hub user), operation
+(**status** — active / inactive / on leave —, **bookable**, buffer between appointments, hire date,
+colour, specialties, bio), **compensation** (hourly rate in euros, commission %) only for a session
+with `staff.view_compensation`, and the services performed. Saving sends the whole record.
+
+Through the API editing is **partial**: fields you do not send are left alone. Two sentinels matter
+when clearing a link (`role_id`, `user_id`):
 
 - **null** means "do not touch it";
-- **empty string** means "unlink".
+- **empty string** means "clear / unlink".
 
-Requires `staff.change_staff_member`.
+`terminated` is not a status you can set: it is only reached through Terminate. Requires
+`staff.change_staff_member`.
 
 ### Services a professional performs
 
@@ -51,10 +58,12 @@ hint and the rest of the record works as usual. Requires `staff.change_staff_mem
 - **Deactivate** takes someone off the floor without deleting anything. It is **refused while they
   have pending or approved absences that have not ended** — you cannot make somebody disappear while
   their holiday is still on the calendar.
-- **Terminate** is destructive: a soft delete that sets the status to `terminated` and stamps the
-  date. Confirmation required.
+- **Terminate** is destructive: a soft delete that sets the status to `terminated`, stamps the last
+  day (today if you leave it empty) and keeps the reason. Confirmation required. A terminated member
+  disappears from the directory; terminating twice, or someone of another business, is refused.
 
-Both need `staff.delete_staff_member` — **admin only**.
+Both are row actions in the Staff screen (they ask first) and both need
+`staff.delete_staff_member` — **admin only**.
 
 ### Create employees in bulk
 

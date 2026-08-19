@@ -5,6 +5,7 @@
     "queries": [
       "hub.users.list",
       "staff.members.compensation",
+      "staff.members.get",
       "staff.members.list",
       "staff.roles.list",
       "staff.schedules.hours_for_member",
@@ -17,6 +18,8 @@
     ],
     "commands": [
       "staff.members.create",
+      "staff.members.deactivate",
+      "staff.members.delete",
       "staff.members.update",
       "staff.roles.create",
       "staff.schedules.create",

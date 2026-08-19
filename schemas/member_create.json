@@ -61,10 +61,10 @@
       "enum": [
         "active",
         "inactive",
-        "on_leave",
-        "terminated"
+        "on_leave"
       ],
-      "default": "active"
+      "default": "active",
+      "description": "`terminated` is NOT reachable here: only `staff.members.delete` terminates (date, reason, soft-delete, event)."
     },
     "bio": {
       "type": "string",
