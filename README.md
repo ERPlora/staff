@@ -36,15 +36,20 @@ motivo de una ausencia se sacaron de las listas** y viven detrás de sus propios
 
 No están tampoco en `sort`/`filters`: un filtro de rango sobre un valor invisible es un oráculo.
 
+**Self-service (staff#19):** el empleado sí ve LO SUYO — `staff.members.mine` (su ficha con su
+tarifa y comisión) y `staff.time_off.mine` (sus ausencias con motivo y notas) — con los permisos de
+siempre: el alcance lo cierra `WHERE user_id = :current_user_id` (inyectado por el runtime, ADR-0192),
+no un permiso más ancho.
+
 ## Qué expone hoy
 
 | Tipo | Nombre | Permiso |
 | ---- | ------ | ------- |
-| query | `staff.members.list` / `.get` / `.stats` · `staff.roles.list` · `staff.schedules.list_for_member` · `staff.settings.get` | `view_staff_member` |
+| query | `staff.members.list` / `.get` / `.stats` / **`.mine`** (self-service) · `staff.roles.list` · `staff.schedules.list_for_member` · `staff.settings.get` | `view_staff_member` |
 | query | `staff.services.list_for_member` · `staff.services.eligible_for_service` (la que consume la agenda por `reads`) | `view_staff_member` |
 | query | `staff.schedules.hours_for_member` · `staff.schedules.get` · **`staff.availability.for_member`** (horario vigente − ausencias aprobadas; la autoridad de «cuándo puede trabajar», staff#2) | `view_staff_member` |
 | query | `staff.members.compensation` · `staff.commissions.summary` | `view_compensation` |
-| query | `staff.time_off.list` / `.today` | `view_time_off` |
+| query | `staff.time_off.list` / `.today` / **`.mine`** (self-service) | `view_time_off` |
 | query | `staff.time_off.detail` | `view_time_off_detail` |
 | command | `staff.members.create` / `.bulk_create` (WASM, cap 100) | `add_staff_member` |
 | command | `staff.members.update` · `staff.services.assign` / `.update` / `.remove` (competencias por servicio, staff#9) | `change_staff_member` |

@@ -61,6 +61,13 @@ Both need `staff.delete_staff_member` — **admin only**.
 Bulk creation is tolerant per row: rows without a first or last name, or with a malformed hire date,
 are skipped and the rest go through. Up to **100 rows**. Requires `staff.add_staff_member`.
 
+### See your own record and absences (self-service)
+
+An employee cannot read the payroll or the reasons of others, but they can read **their own**:
+`staff.members.mine` returns the record hanging from the session user (rate and commission included)
+and `staff.time_off.mine` their absences with reason and notes. Both work with the everyday
+permissions — the scope is the session, not a wider permission.
+
 ### See compensation
 
 `staff.members.compensation` gives the hourly rate and commission percentage for one member or for
