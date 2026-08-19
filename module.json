@@ -364,6 +364,22 @@
         "description": "Effective availability of a staff member for a date range (date_from/date_to, ISO dates): the intervals of their governing schedule minus approved time off. The authoritative answer to when a professional can work."
       },
       "expose_api": true
+    },
+    "staff.members.mine": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/member_mine.sql",
+      "ai": {
+        "description": "Returns the staff record of the CURRENT user (the one hanging from their hub user), including their own hourly rate and commission. Empty when the user has no staff record."
+      },
+      "expose_api": true
+    },
+    "staff.time_off.mine": {
+      "permission": "staff.view_time_off",
+      "sql": "queries/time_off_mine.sql",
+      "ai": {
+        "description": "Lists the time-off requests of the CURRENT user (their own record), with reason and notes."
+      },
+      "expose_api": true
     }
   },
   "commands": {

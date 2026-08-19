@@ -34,6 +34,15 @@ const sqlOf = (query: string) =>
 const selectsColumn = (query: string, column: string) =>
   new RegExp(`\\b${column}\\b`, 'i').test(sqlOf(query));
 
+/** SELF-SERVICE (staff#19): a query whose rows are scoped to the CALLER — `user_id =
+ *  :current_user_id`, injected by the runtime and non-spoofable (ARQUITECTURA §2.5, ADR-0192) —
+ *  may return the caller's own compensation / leave detail under the everyday permission: the
+ *  only row that can come out is theirs. The exemption is exactly that WHERE, pinned below; a
+ *  «mine» query that loses it goes red here. */
+const SELF_SCOPED = /\buser_id\s*=\s*:current_user_id\b/i;
+const isSelfScoped = (query: string) => SELF_SCOPED.test(sqlOf(query));
+const SELF_SERVICE_QUERIES = ['staff.members.mine', 'staff.time_off.mine'];
+
 /** Every query a role can reach, resolving `*`. */
 const queriesFor = (role: string) => {
   const granted = manifest.role_permissions[role] ?? [];
@@ -47,14 +56,14 @@ const LEAVE_DETAIL = ['reason', 'notes'];
 describe('an employee cannot read the payroll of the person next to them', () => {
   it.each(COMPENSATION)('no query an employee can reach returns %s', (column) => {
     const leaking = queriesFor('employee')
-      .filter(([name]) => selectsColumn(name, column))
+      .filter(([name]) => !isSelfScoped(name) && selectsColumn(name, column))
       .map(([name]) => name);
     expect(leaking, `an employee reaches ${column} through: ${leaking.join(', ')}`).toEqual([]);
   });
 
   it.each(LEAVE_DETAIL)('no query an employee can reach returns somebody else\'s %s', (column) => {
     const leaking = queriesFor('employee')
-      .filter(([name]) => name.startsWith('staff.time_off.') && selectsColumn(name, column))
+      .filter(([name]) => name.startsWith('staff.time_off.') && !isSelfScoped(name) && selectsColumn(name, column))
       .map(([name]) => name);
     expect(leaking, `an employee reaches ${column} through: ${leaking.join(', ')}`).toEqual([]);
   });
@@ -125,6 +134,7 @@ describe('compensation and leave detail live behind their own permission', () =>
 
   it('every query that returns compensation is guarded by staff.view_compensation', () => {
     const badlyGuarded = Object.entries(manifest.queries)
+      .filter(([name]) => !isSelfScoped(name))
       .filter(([name]) => COMPENSATION.some((c) => selectsColumn(name, c)))
       .filter(([, q]) => q.permission !== 'staff.view_compensation')
       .map(([name]) => name);
@@ -133,11 +143,32 @@ describe('compensation and leave detail live behind their own permission', () =>
 
   it('leave detail is guarded by staff.view_time_off_detail', () => {
     const badlyGuarded = Object.entries(manifest.queries)
-      .filter(([name]) => name.startsWith('staff.time_off.'))
+      .filter(([name]) => name.startsWith('staff.time_off.') && !isSelfScoped(name))
       .filter(([name]) => LEAVE_DETAIL.some((c) => selectsColumn(name, c)))
       .filter(([, q]) => q.permission !== 'staff.view_time_off_detail')
       .map(([name]) => name);
     expect(badlyGuarded).toEqual([]);
+  });
+});
+
+// staff#19 — the employee's own door. Not a wider permission: a WHERE on the session user.
+describe('self-service: an employee reads their OWN record and absences, nobody else\'s', () => {
+  it.each(SELF_SERVICE_QUERIES)('%s is scoped to :current_user_id and reachable by an employee', (query) => {
+    expect(manifest.queries[query], `${query} is missing from the manifest`).toBeTruthy();
+    expect(isSelfScoped(query), `${query} does not carry user_id = :current_user_id`).toBe(true);
+    expect(queriesFor('employee').map(([n]) => n)).toContain(query);
+  });
+
+  it('the exemption is only ever the self-scoped WHERE — every other query stays under the rule', () => {
+    const exempt = Object.keys(manifest.queries).filter(isSelfScoped);
+    expect(exempt.sort()).toEqual([...SELF_SERVICE_QUERIES].sort());
+  });
+
+  it('my own record carries my compensation; my own absences carry reason and notes', () => {
+    for (const c of COMPENSATION) expect(selectsColumn('staff.members.mine', c)).toBe(true);
+    for (const c of LEAVE_DETAIL) expect(selectsColumn('staff.time_off.mine', c)).toBe(true);
+    // HR notes are the employer side of the record, not self-service.
+    expect(selectsColumn('staff.members.mine', 'notes')).toBe(false);
   });
 });
 
