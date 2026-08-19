@@ -928,7 +928,6 @@
       "map": {
         "id": "id",
         "title": "staff_name",
-        "description": "reason",
         "status": "leave_type"
       },
       "options": {
