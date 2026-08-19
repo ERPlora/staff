@@ -109,7 +109,15 @@
     "serviceAssign": "Asignar",
     "servicePrimary": "Servicio principal",
     "serviceRemove": "Quitar servicio",
-    "errAssignService": "No se pudieron actualizar los servicios"
+    "errAssignService": "No se pudieron actualizar los servicios",
+    "colHours": "Horas",
+    "actionToggleActive": "Activar / desactivar",
+    "actionDelete": "Eliminar",
+    "cancel": "Cancelar",
+    "deleteScheduleTitle": "Eliminar horario",
+    "deleteScheduleMessage": "¿Eliminar el horario «{name}»? Sus horas dejan de contar para la disponibilidad.",
+    "valRangeOrder": "«Vigente desde» tiene que ser anterior o igual a «Vigente hasta».",
+    "errUpdateSchedule": "No se pudo actualizar el horario"
   },
   "widgets": {
     "staff.headcount": {
@@ -141,6 +149,9 @@
     "staff.role_not_found": "Ese rol no está disponible: no existe en este negocio, o se ha eliminado o retirado.",
     "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.",
     "staff.service_assign_rejected": "No se pudo asignar el servicio: ese profesional no existe en este negocio.",
-    "staff.service_not_found": "Esa asignación de servicio no existe en este negocio."
+    "staff.service_not_found": "Esa asignación de servicio no existe en este negocio.",
+    "staff.schedule_not_found": "Ese horario no existe en este negocio.",
+    "staff.schedule_no_hours": "Un horario necesita al menos un día de trabajo con horas.",
+    "staff.schedule_invalid_range": "La vigencia del horario termina antes de empezar."
   }
 }

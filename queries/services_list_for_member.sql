@@ -1,5 +1,5 @@
 -- Competencies (services performed) of ONE staff member (staff#9). Runtime injects :hub_id.
--- Live rows only; the member is resolved in THIS hub (a neighbour's member id returns nothing).
+-- Live rows only; the member is resolved in THIS hub (the member id of a neighbour returns nothing).
 SELECT s.id, s.staff_id, s.service_id, s.service_name, s.custom_duration, s.custom_price,
        s.is_primary, s.is_active
 FROM staff_service s

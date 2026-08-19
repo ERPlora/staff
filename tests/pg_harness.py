@@ -57,13 +57,18 @@ def literal(value) -> str:
 
 
 ERP_DATE = re.compile(r"\berp_date\(([^()]*)\)")
+ERP_DOW_MON0 = re.compile(r"\berp_dow_mon0\(([^()]*)\)")
 
 
 def rewrite_portable_helpers(sql: str) -> str:
-    """The Postgres form of the portable date helper the runtime rewrites (`crates/db/src/lib.rs`,
-    ADR-0007 §4a): `erp_date(x)` → `((x)::date)`. Only the helper this module uses; add the others
-    (`erp_dt`, `erp_dateadd`, …) here the day a query needs them, mirroring `crates/db`."""
-    return ERP_DATE.sub(lambda m: f"(({m.group(1)})::date)", sql)
+    """The Postgres form of the portable date helpers the runtime rewrites (`crates/db/src/lib.rs`,
+    ADR-0007 §4a): `erp_date(x)` → `((x)::date)`; `erp_dow_mon0(x)` → ISODOW - 1 (0 = Monday).
+    Only the helpers this module uses; add the others (`erp_dt`, `erp_dateadd`, …) here the day a
+    query needs them, mirroring `crates/db`."""
+    sql = ERP_DATE.sub(lambda m: f"(({m.group(1)})::date)", sql)
+    return ERP_DOW_MON0.sub(
+        lambda m: f"((EXTRACT(ISODOW FROM ({m.group(1)})::timestamptz)::int) - 1)", sql
+    )
 
 
 def bind(sql: str, params: dict) -> str:

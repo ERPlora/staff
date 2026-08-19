@@ -344,6 +344,26 @@
         "description": "Lists the active, bookable staff members eligible to perform a given service (by service_id), with their duration/price overrides. The authoritative filter for booking."
       },
       "expose_api": true
+    },
+    "staff.schedules.hours_for_member": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/schedules_hours_for_member.sql",
+      "ai": {
+        "description": "Lists the weekly working-hour intervals (per weekday, with breaks) of every schedule template of a staff member."
+      },
+      "expose_api": true
+    },
+    "staff.schedules.get": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/schedule_get.sql"
+    },
+    "staff.availability.for_member": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/availability_for_member.sql",
+      "ai": {
+        "description": "Effective availability of a staff member for a date range (date_from/date_to, ISO dates): the intervals of their governing schedule minus approved time off. The authoritative answer to when a professional can work."
+      },
+      "expose_api": true
     }
   },
   "commands": {
@@ -673,6 +693,83 @@
       "ai": {
         "description": "Removes a service from a staff member (they no longer perform it)."
       }
+    },
+    "staff.schedules.update": {
+      "permission": "staff.manage_settings",
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "update_schedule"
+      },
+      "schema": "schemas/schedule_update.json",
+      "reads": [
+        {
+          "query": "staff.schedules.get",
+          "params": {
+            "schedule_id": "payload.schedule_id"
+          },
+          "required": true
+        }
+      ],
+      "emit": [
+        "staff.schedule.updated"
+      ],
+      "ai": {
+        "description": "Edits a schedule template (name, validity, default flag) and REPLACES its weekly working hours."
+      }
+    },
+    "staff.schedules.set_active": {
+      "permission": "staff.manage_settings",
+      "transaction": true,
+      "sql": [
+        "commands/schedule_set_active.sql"
+      ],
+      "schema": "schemas/schedule_set_active.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.schedule_not_found",
+        "message": "That schedule does not exist in this business."
+      },
+      "emit": [
+        "staff.schedule.updated"
+      ],
+      "ai": {
+        "description": "Activates or deactivates a schedule template; an inactive template never governs availability."
+      }
+    },
+    "staff.schedules.delete": {
+      "permission": "staff.manage_settings",
+      "transaction": true,
+      "sql": [
+        "commands/_retire_working_hours.sql",
+        "commands/schedule_delete.sql"
+      ],
+      "schema": "schemas/schedule_delete.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.schedule_not_found",
+        "message": "That schedule does not exist in this business."
+      },
+      "emit": [
+        "staff.schedule.deleted"
+      ],
+      "ai": {
+        "description": "Retires a schedule template and its working hours (soft-delete)."
+      }
+    },
+    "staff._retire_working_hours": {
+      "permission": "staff.manage_settings",
+      "sql": [
+        "commands/_retire_working_hours.sql"
+      ]
+    },
+    "staff._update_schedule": {
+      "permission": "staff.manage_settings",
+      "sql": [
+        "commands/_update_schedule.sql"
+      ]
     }
   },
   "events": {
@@ -684,6 +781,8 @@
       "staff.member.updated",
       "staff.role.created",
       "staff.schedule.created",
+      "staff.schedule.deleted",
+      "staff.schedule.updated",
       "staff.service.assigned",
       "staff.service.removed",
       "staff.service.updated",

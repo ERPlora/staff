@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "staff.schedules.update",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schedule_id", "working_hours"],
+  "properties": {
+    "schedule_id": { "type": "string", "minLength": 1 },
+    "name": { "type": ["string", "null"], "maxLength": 100, "default": null },
+    "is_default": { "type": ["integer", "null"], "enum": [0, 1, null], "default": null },
+    "effective_from": { "type": ["string", "null"], "format": "date", "default": null },
+    "effective_until": { "type": ["string", "null"], "format": "date", "default": null },
+    "working_hours": {
+      "type": "array",
+      "description": "REPLACES the whole week: days not listed stop being working days.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["day_of_week", "start_time", "end_time"],
+        "properties": {
+          "day_of_week": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "start_time": { "type": "string" },
+          "end_time": { "type": "string" },
+          "break_start": { "type": ["string", "null"], "default": null },
+          "break_end": { "type": ["string", "null"], "default": null },
+          "is_working": { "type": "integer", "enum": [0, 1], "default": 1 }
+        }
+      }
+    }
+  }
+}

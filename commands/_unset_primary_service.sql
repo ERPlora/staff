@@ -1,6 +1,6 @@
 -- Only ONE primary service per member (staff#9). Runs before `service_assign` /
 -- `service_update` in the same transaction: when the incoming row is primary, demote the
--- member's other primaries. Runtime injects :hub_id, :current_user_id, :now.
+-- other primaries of the member. Runtime injects :hub_id, :current_user_id, :now.
 --
 -- The demotion is gated on the SAME condition the write needs (the member exists in this hub, or
 -- the row exists in this hub): otherwise this statement could affect a row while the write affects

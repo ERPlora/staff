@@ -116,9 +116,22 @@ Weekly schedule templates per member.
 3. Mark it default if it is the usual one — **only one default per member**; creating a new default
    unsets the previous.
 
+4. Each row shows its **hours** at a glance (`staff.schedules.hours_for_member`). Row actions:
+   **Edit** (opens the template with its week in the panel; saving replaces the whole week),
+   **Activate / deactivate** (an inactive template never counts for availability) and **Delete**
+   (asks first).
+
 The rules are checked in the screen and again in the server: start before end, the break inside the
-interval, no duplicated weekday. Requires `staff.manage_settings` to create,
-`staff.view_staff_member` to view.
+interval, no duplicated weekday, at least one working day, and «effective from» not after
+«effective until». Requires `staff.manage_settings` to create/edit, `staff.view_staff_member` to view.
+
+### When can this person work — effective availability
+
+`staff.availability.for_member` (`staff_id`, `date_from`, `date_to`) answers, day by day, the
+intervals a professional can actually work: the intervals of the schedule that governs that day
+(a template with a validity range beats the default one), split around the break, **minus approved
+absences** (a full-day absence removes the day; a partial one cuts the interval). Pending absences
+do not count. Booking screens read this to refuse an appointment outside the day or during leave.
 
 ## Personal — settings
 
