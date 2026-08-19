@@ -42,6 +42,7 @@ No están tampoco en `sort`/`filters`: un filtro de rango sobre un valor invisib
 | ---- | ------ | ------- |
 | query | `staff.members.list` / `.get` / `.stats` · `staff.roles.list` · `staff.schedules.list_for_member` · `staff.settings.get` | `view_staff_member` |
 | query | `staff.services.list_for_member` · `staff.services.eligible_for_service` (la que consume la agenda por `reads`) | `view_staff_member` |
+| query | `staff.schedules.hours_for_member` · `staff.schedules.get` · **`staff.availability.for_member`** (horario vigente − ausencias aprobadas; la autoridad de «cuándo puede trabajar», staff#2) | `view_staff_member` |
 | query | `staff.members.compensation` · `staff.commissions.summary` | `view_compensation` |
 | query | `staff.time_off.list` / `.today` | `view_time_off` |
 | query | `staff.time_off.detail` | `view_time_off_detail` |
@@ -49,8 +50,8 @@ No están tampoco en `sort`/`filters`: un filtro de rango sobre un valor invisib
 | command | `staff.members.update` · `staff.services.assign` / `.update` / `.remove` (competencias por servicio, staff#9) | `change_staff_member` |
 | command | `staff.members.deactivate` (WASM, guarda por ausencias vivas) / `.delete` | `delete_staff_member` |
 | command | `staff.time_off.create` (WASM, invariante de solape) / `.set_status` | `manage_time_off` |
-| command | `staff.roles.create` · `staff.schedules.create` (WASM) · `staff.settings.update` | `manage_settings` |
-| emite | `staff.member.*`, `staff.role.created`, `staff.time_off.*`, `staff.schedule.created`, `staff.service.*`, `staff.settings.updated` | — |
+| command | `staff.roles.create` · `staff.schedules.create` / `.update` (WASM, sustituye la semana) · `.set_active` / `.delete` · `staff.settings.update` | `manage_settings` |
+| emite | `staff.member.*`, `staff.role.created`, `staff.time_off.*`, `staff.schedule.*`, `staff.service.*`, `staff.settings.updated` | — |
 | escucha | — (bloque declarado pero **vacío**) | — |
 
 Navegación: `erp-staff-members`, `erp-staff-roles`, `erp-staff-time-off`, `erp-staff-schedules`;

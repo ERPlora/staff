@@ -16,8 +16,12 @@
 //!   `staff.active_time_off`; then `_deactivate_member`.
 //! * `create_time_off` → `staff.member_not_found` / `staff.overlapping_time_off` (any
 //!   `pending|approved` leave of the member overlapping the range); then `_insert_time_off`.
-//! * `create_schedule` → `staff.member_not_found`; then `_unset_default_schedules` +
-//!   `_insert_schedule` + N × `_insert_working_hours`.
+//! * `create_schedule` → `staff.member_not_found` / `staff.schedule_invalid_range` /
+//!   `staff.schedule_no_hours`; then `_unset_default_schedules` + `_insert_schedule` +
+//!   N × `_insert_working_hours`.
+//! * `update_schedule` (staff#2) → `staff.schedule_not_found` (read `staff.schedules.get`) + the
+//!   same validation; then `_unset_default_schedules`? + `_update_schedule` +
+//!   `_retire_working_hours` + N × `_insert_working_hours` (upsert = the week is REPLACED).
 //! * `set_time_off_status` → state machine `pending → approved|rejected|cancelled`,
 //!   `approved → cancelled`, terminal states stay put (`staff.invalid_transition`); approving
 //!   re-checks conflicts against APPROVED leave (`staff.overlapping_time_off`); missing row →
@@ -53,6 +57,12 @@ pub fn bulk_create_staff_members(input: Json<erplora_guest_sdk::Input>) -> FnRes
 #[plugin_fn]
 pub fn create_schedule(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
     to_fn_result(create_schedule_pure(input.into_inner().into_value()))
+}
+
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn update_schedule(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(update_schedule_pure(input.into_inner().into_value()))
 }
 
 #[cfg(feature = "guest")]
@@ -330,36 +340,48 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
         .with_result(json!({ "created": created, "skipped": skipped })))
 }
 
-// ── §3 create_schedule ─────────────────────────────────────────────────────
+// ── §3 create_schedule / update_schedule ───────────────────────────────────
 
-/// Crea horario + N working_hours (multi-tabla atómica, todo-o-nada en la tx del
-/// host). Si el nuevo es default, desmarca los demás del miembro. Valida en el
-/// guest: day_of_week 0..6 sin duplicados, start < end y break dentro del intervalo.
-pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
-    let (payload, new_ids, _now) = payload_context(&input);
-    let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
-    if staff_id.is_empty() {
-        return Err("staff_id requerido".into());
-    }
-    let schedule_id = new_ids.first().map(as_str).unwrap_or_default();
-    if schedule_id.is_empty() {
-        return Err("context.new_ids vacío (el host es la autoridad de ids)".into());
-    }
-    // staff#1: a schedule for a member this hub does not have is refused, not silently dropped by
-    // the INSERT … SELECT of `_insert_schedule` (which stays as defence in depth).
-    if member_row(&input).is_none() {
-        return Ok(refuse(MEMBER_NOT_FOUND.0, MEMBER_NOT_FOUND.1));
-    }
-    let is_default = payload.get("is_default").map(|v| as_i01(v, 1)).unwrap_or(1);
+/// Outcome of validating a schedule payload: either the working-hour params ready to become
+/// `_insert_working_hours` intentions, or a host error (malformed input) / a domain refusal.
+enum WeekCheck {
+    Ok(Vec<Map<String, Value>>),
+    Refuse(Output),
+}
 
+/// Validity range of a template: both ISO dates when present, and `from <= until` (staff#2:
+/// the API used to accept an inverted range the UI rejected — API and browser diverged).
+fn check_validity_range(payload: &Value) -> Result<Option<Output>, String> {
     for k in ["effective_from", "effective_until"] {
         if let Some(Value::String(s)) = payload.get(k) {
             if !s.is_empty() && !is_iso_date(s) {
-                return Err(format!("{k} debe ser fecha ISO YYYY-MM-DD"));
+                return Err(format!("{k} must be an ISO date YYYY-MM-DD"));
             }
         }
     }
+    if let (Value::String(from), Value::String(until)) =
+        (opt_str(payload, "effective_from"), opt_str(payload, "effective_until"))
+    {
+        if from > until {
+            return Ok(Some(refuse(
+                "staff.schedule_invalid_range",
+                "The schedule's validity ends before it starts.",
+            )));
+        }
+    }
+    Ok(None)
+}
 
+/// Validates `working_hours` (day_of_week 0..6 without repeats, start < end, break inside the
+/// interval with both ends or none) and normalises times. At least ONE working interval is
+/// required (staff#2): a template with no hours is not a schedule, it is a hole the availability
+/// query would read as «never works». Ids come from `new_ids[first_id..]`.
+fn check_week(
+    payload: &Value,
+    schedule_id: &str,
+    new_ids: &[Value],
+    first_id: usize,
+) -> Result<WeekCheck, String> {
     let empty: Vec<Value> = Vec::new();
     let hours = payload.get("working_hours").and_then(|v| v.as_array()).unwrap_or(&empty);
     let mut seen_days: Vec<i64> = Vec::new();
@@ -371,45 +393,45 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
             _ => -1,
         };
         if !(0..=6).contains(&day) {
-            return Err(format!("working_hours[{i}]: day_of_week debe estar en 0..6"));
+            return Err(format!("working_hours[{i}]: day_of_week must be in 0..6"));
         }
         if seen_days.contains(&day) {
-            return Err(format!("working_hours[{i}]: day_of_week {day} duplicado"));
+            return Err(format!("working_hours[{i}]: day_of_week {day} repeated"));
         }
         seen_days.push(day);
 
         let start = norm_time(&str_or(wh, "start_time", "09:00:00"))
-            .ok_or(format!("working_hours[{i}]: start_time inválida"))?;
+            .ok_or(format!("working_hours[{i}]: invalid start_time"))?;
         let end = norm_time(&str_or(wh, "end_time", "18:00:00"))
-            .ok_or(format!("working_hours[{i}]: end_time inválida"))?;
+            .ok_or(format!("working_hours[{i}]: invalid end_time"))?;
         if start >= end {
-            return Err(format!("working_hours[{i}]: start_time debe ser < end_time"));
+            return Err(format!("working_hours[{i}]: start_time must be < end_time"));
         }
-        // Break: ambos extremos o ninguno; si hay, dentro del intervalo de trabajo.
+        // Break: both ends or none; when present, inside the working interval.
         let b_start = opt_str(wh, "break_start");
         let b_end = opt_str(wh, "break_end");
         let (b_start, b_end) = match (&b_start, &b_end) {
             (Value::Null, Value::Null) => (Value::Null, Value::Null),
             (Value::String(bs), Value::String(be)) => {
-                let bs = norm_time(bs).ok_or(format!("working_hours[{i}]: break_start inválida"))?;
-                let be = norm_time(be).ok_or(format!("working_hours[{i}]: break_end inválida"))?;
+                let bs = norm_time(bs).ok_or(format!("working_hours[{i}]: invalid break_start"))?;
+                let be = norm_time(be).ok_or(format!("working_hours[{i}]: invalid break_end"))?;
                 if !(start <= bs && bs < be && be <= end) {
                     return Err(format!(
-                        "working_hours[{i}]: el break debe caer dentro del intervalo de trabajo"
+                        "working_hours[{i}]: the break must fall inside the working interval"
                     ));
                 }
                 (json!(bs), json!(be))
             }
             _ => {
                 return Err(format!(
-                    "working_hours[{i}]: break_start y break_end van juntos (ambos o ninguno)"
+                    "working_hours[{i}]: break_start and break_end go together (both or none)"
                 ))
             }
         };
 
-        let wh_id = new_ids.get(i + 1).map(as_str).unwrap_or_default();
+        let wh_id = new_ids.get(first_id + i).map(as_str).unwrap_or_default();
         if wh_id.is_empty() {
-            return Err("context.new_ids insuficiente para las working_hours".into());
+            return Err("context.new_ids too short for the working_hours".into());
         }
         let mut p = Map::new();
         p.insert("wh_id".into(), json!(wh_id));
@@ -422,6 +444,41 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
         p.insert("is_working".into(), json!(wh.get("is_working").map(|v| as_i01(v, 1)).unwrap_or(1)));
         wh_params.push(p);
     }
+    if !wh_params.iter().any(|p| p["is_working"] == json!(1)) {
+        return Ok(WeekCheck::Refuse(refuse(
+            "staff.schedule_no_hours",
+            "A schedule needs at least one working day with hours.",
+        )));
+    }
+    Ok(WeekCheck::Ok(wh_params))
+}
+
+/// Crea horario + N working_hours (multi-tabla atómica, todo-o-nada en la tx del host). Si el
+/// nuevo es default, desmarca los demás del miembro. Validation shared with `update_schedule`
+/// (`check_validity_range` + `check_week`, staff#2).
+pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
+    let (payload, new_ids, _now) = payload_context(&input);
+    let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
+    if staff_id.is_empty() {
+        return Err("staff_id required".into());
+    }
+    let schedule_id = new_ids.first().map(as_str).unwrap_or_default();
+    if schedule_id.is_empty() {
+        return Err("context.new_ids empty (the host is the id authority)".into());
+    }
+    // staff#1: a schedule for a member this hub does not have is refused, not silently dropped by
+    // the INSERT … SELECT of `_insert_schedule` (which stays as defence in depth).
+    if member_row(&input).is_none() {
+        return Ok(refuse(MEMBER_NOT_FOUND.0, MEMBER_NOT_FOUND.1));
+    }
+    let is_default = payload.get("is_default").map(|v| as_i01(v, 1)).unwrap_or(1);
+    if let Some(refusal) = check_validity_range(&payload)? {
+        return Ok(refusal);
+    }
+    let wh_params = match check_week(&payload, &schedule_id, &new_ids, 1)? {
+        WeekCheck::Ok(p) => p,
+        WeekCheck::Refuse(out) => return Ok(out),
+    };
 
     let mut ops: Vec<Operation> = Vec::new();
     if is_default == 1 {
@@ -438,6 +495,62 @@ pub fn create_schedule_pure(input: Value) -> Result<Output, String> {
     sp.insert("effective_from".into(), opt_str(&payload, "effective_from"));
     sp.insert("effective_until".into(), opt_str(&payload, "effective_until"));
     ops.push(Operation::sql("staff._insert_schedule", sp));
+    for p in wh_params {
+        ops.push(Operation::sql("staff._insert_working_hours", p));
+    }
+    Ok(Output { operations: ops, events: vec![], ..Default::default() })
+}
+
+/// Edits a template and REPLACES its week (staff#2). The row comes from the pre-loaded read
+/// `staff.schedules.get` (required, hub-scoped): no row → `staff.schedule_not_found`. Fields not
+/// sent (`name`, `is_default`, validity) keep the row's values; `working_hours` is the whole new
+/// week: `_retire_working_hours` soft-deletes every day, then one `_insert_working_hours` (upsert)
+/// per day sent revives it with the new times. Becoming default demotes the member's others.
+pub fn update_schedule_pure(input: Value) -> Result<Output, String> {
+    let (payload, new_ids, _now) = payload_context(&input);
+    let schedule_id = as_str(payload.get("schedule_id").unwrap_or(&Value::Null));
+    if schedule_id.is_empty() {
+        return Err("schedule_id required".into());
+    }
+    let Some(row) = read_rows(&input, "staff.schedules.get").and_then(|r| r.first().cloned()) else {
+        return Ok(refuse("staff.schedule_not_found", "That schedule does not exist in this business."));
+    };
+    let staff_id = as_str(row.get("staff_id").unwrap_or(&Value::Null));
+    // Merge: payload over row, so validity is checked on what will be stored.
+    let mut merged = Map::new();
+    for k in ["name", "is_default", "effective_from", "effective_until"] {
+        let v = match payload.get(k) {
+            Some(Value::Null) | None => row.get(k).cloned().unwrap_or(Value::Null),
+            Some(v) => v.clone(),
+        };
+        merged.insert(k.into(), v);
+    }
+    let merged = Value::Object(merged);
+    if let Some(refusal) = check_validity_range(&merged)? {
+        return Ok(refusal);
+    }
+    let wh_params = match check_week(&payload, &schedule_id, &new_ids, 0)? {
+        WeekCheck::Ok(p) => p,
+        WeekCheck::Refuse(out) => return Ok(out),
+    };
+    let is_default = merged.get("is_default").map(|v| as_i01(v, 1)).unwrap_or(1);
+
+    let mut ops: Vec<Operation> = Vec::new();
+    if is_default == 1 {
+        let mut p = Map::new();
+        p.insert("staff_id".into(), json!(staff_id));
+        ops.push(Operation::sql("staff._unset_default_schedules", p));
+    }
+    let mut up = Map::new();
+    up.insert("schedule_id".into(), json!(schedule_id));
+    up.insert("name".into(), json!(str_or(&merged, "name", "Default Schedule")));
+    up.insert("is_default".into(), json!(is_default));
+    up.insert("effective_from".into(), opt_str(&merged, "effective_from"));
+    up.insert("effective_until".into(), opt_str(&merged, "effective_until"));
+    ops.push(Operation::sql("staff._update_schedule", up));
+    let mut rp = Map::new();
+    rp.insert("schedule_id".into(), json!(schedule_id));
+    ops.push(Operation::sql("staff._retire_working_hours", rp));
     for p in wh_params {
         ops.push(Operation::sql("staff._insert_working_hours", p));
     }
@@ -796,5 +909,90 @@ mod tests {
         assert_eq!(skipped[0]["reason"], json!("role_not_found"));
         assert_eq!(skipped[1]["index"], json!(2));
         assert_eq!(skipped[1]["reason"], json!("name_required"));
+    }
+
+    // ── staff#2: schedules are OPERABLE — update replaces the week, server-side validation ──
+
+    fn schedule_row() -> Value {
+        json!([{ "id": "s1", "staff_id": "m1", "name": "Regular", "is_default": 1,
+                 "effective_from": null, "effective_until": null, "is_active": 1 }])
+    }
+
+    #[test]
+    fn a_schedule_without_a_single_working_interval_is_refused_on_create_and_update() {
+        let create = create_schedule_pure(input(
+            json!({ "staff_id": "m1", "working_hours": [] }),
+            json!({ "staff.members.get": member("active") }),
+        )).unwrap();
+        assert_eq!(code(&create), "staff.schedule_no_hours");
+        assert!(create.operations.is_empty());
+        let update = update_schedule_pure(input(
+            json!({ "schedule_id": "s1", "working_hours": [
+                { "day_of_week": 0, "start_time": "09:00", "end_time": "17:00", "is_working": 0 }] }),
+            json!({ "staff.schedules.get": schedule_row() }),
+        )).unwrap();
+        assert_eq!(code(&update), "staff.schedule_no_hours");
+    }
+
+    #[test]
+    fn a_validity_range_that_ends_before_it_starts_is_refused() {
+        let out = create_schedule_pure(input(
+            json!({ "staff_id": "m1", "effective_from": "2026-09-10", "effective_until": "2026-09-01",
+                    "working_hours": [{ "day_of_week": 0, "start_time": "09:00", "end_time": "17:00" }] }),
+            json!({ "staff.members.get": member("active") }),
+        )).unwrap();
+        assert_eq!(code(&out), "staff.schedule_invalid_range");
+    }
+
+    #[test]
+    fn updating_a_missing_schedule_is_refused() {
+        let out = update_schedule_pure(input(
+            json!({ "schedule_id": "nope", "working_hours": [
+                { "day_of_week": 0, "start_time": "09:00", "end_time": "17:00" }] }),
+            json!({ "staff.schedules.get": [] }),
+        )).unwrap();
+        assert_eq!(code(&out), "staff.schedule_not_found");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn update_replaces_the_week_and_keeps_unsent_fields_from_the_row() {
+        let out = update_schedule_pure(input(
+            json!({ "schedule_id": "s1", "name": "Summer", "working_hours": [
+                { "day_of_week": 0, "start_time": "10:00", "end_time": "16:00" },
+                { "day_of_week": 2, "start_time": "10:00", "end_time": "16:00", "break_start": "13:00", "break_end": "13:30" }
+            ] }),
+            json!({ "staff.schedules.get": schedule_row() }),
+        )).unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        let cmds: Vec<&str> = out.operations.iter().map(|o| o.command.as_str()).collect();
+        // is_default stays 1 (from the row) → the other defaults are demoted first
+        assert_eq!(cmds, vec![
+            "staff._unset_default_schedules", "staff._update_schedule",
+            "staff._retire_working_hours", "staff._insert_working_hours", "staff._insert_working_hours",
+        ]);
+        assert_eq!(out.operations[0].params["staff_id"], json!("m1"));
+        let upd = &out.operations[1].params;
+        assert_eq!(upd["schedule_id"], json!("s1"));
+        assert_eq!(upd["name"], json!("Summer"));
+        assert_eq!(upd["is_default"], json!(1));
+        assert_eq!(out.operations[2].params["schedule_id"], json!("s1"));
+        let wh = &out.operations[4].params;
+        assert_eq!(wh["schedule_id"], json!("s1"));
+        assert_eq!(wh["day_of_week"], json!(2));
+        assert_eq!(wh["start_time"], json!("10:00:00"));
+        assert_eq!(wh["break_end"], json!("13:30:00"));
+        assert_eq!(wh["wh_id"], json!("id-1"), "ids come from context.new_ids");
+    }
+
+    #[test]
+    fn update_that_drops_the_default_flag_does_not_demote_the_others() {
+        let out = update_schedule_pure(input(
+            json!({ "schedule_id": "s1", "is_default": 0, "working_hours": [
+                { "day_of_week": 0, "start_time": "10:00", "end_time": "16:00" }] }),
+            json!({ "staff.schedules.get": schedule_row() }),
+        )).unwrap();
+        assert_eq!(out.operations[0].command, "staff._update_schedule");
+        assert_eq!(out.operations[0].params["is_default"], json!(0));
     }
 }

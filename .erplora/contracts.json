@@ -7,6 +7,7 @@
       "staff.members.compensation",
       "staff.members.list",
       "staff.roles.list",
+      "staff.schedules.hours_for_member",
       "staff.schedules.list_for_member",
       "staff.services.list_for_member",
       "staff.time_off.list"
@@ -19,6 +20,9 @@
       "staff.members.update",
       "staff.roles.create",
       "staff.schedules.create",
+      "staff.schedules.delete",
+      "staff.schedules.set_active",
+      "staff.schedules.update",
       "staff.services.assign",
       "staff.services.remove",
       "staff.services.update",
@@ -31,6 +35,8 @@
       "staff.member.updated",
       "staff.role.created",
       "staff.schedule.created",
+      "staff.schedule.deleted",
+      "staff.schedule.updated",
       "staff.time_off.created",
       "staff.time_off.status_changed"
     ],

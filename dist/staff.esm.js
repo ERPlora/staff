@@ -3426,7 +3426,15 @@ var es_default = {
     serviceAssign: "Asignar",
     servicePrimary: "Servicio principal",
     serviceRemove: "Quitar servicio",
-    errAssignService: "No se pudieron actualizar los servicios"
+    errAssignService: "No se pudieron actualizar los servicios",
+    colHours: "Horas",
+    actionToggleActive: "Activar / desactivar",
+    actionDelete: "Eliminar",
+    cancel: "Cancelar",
+    deleteScheduleTitle: "Eliminar horario",
+    deleteScheduleMessage: "\xBFEliminar el horario \xAB{name}\xBB? Sus horas dejan de contar para la disponibilidad.",
+    valRangeOrder: "\xABVigente desde\xBB tiene que ser anterior o igual a \xABVigente hasta\xBB.",
+    errUpdateSchedule: "No se pudo actualizar el horario"
   },
   widgets: {
     "staff.headcount": {
@@ -3458,7 +3466,10 @@ var es_default = {
     "staff.role_not_found": "Ese rol no est\xE1 disponible: no existe en este negocio, o se ha eliminado o retirado.",
     "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.",
     "staff.service_assign_rejected": "No se pudo asignar el servicio: ese profesional no existe en este negocio.",
-    "staff.service_not_found": "Esa asignaci\xF3n de servicio no existe en este negocio."
+    "staff.service_not_found": "Esa asignaci\xF3n de servicio no existe en este negocio.",
+    "staff.schedule_not_found": "Ese horario no existe en este negocio.",
+    "staff.schedule_no_hours": "Un horario necesita al menos un d\xEDa de trabajo con horas.",
+    "staff.schedule_invalid_range": "La vigencia del horario termina antes de empezar."
   }
 };
 
@@ -3573,7 +3584,15 @@ var en_default = {
     serviceAssign: "Assign",
     servicePrimary: "Primary service",
     serviceRemove: "Remove service",
-    errAssignService: "Could not update the services"
+    errAssignService: "Could not update the services",
+    colHours: "Hours",
+    actionToggleActive: "Activate / deactivate",
+    actionDelete: "Delete",
+    cancel: "Cancel",
+    deleteScheduleTitle: "Delete schedule",
+    deleteScheduleMessage: 'Delete the schedule "{name}"? Its hours stop counting for availability.',
+    valRangeOrder: '"Effective from" must be on or before "Effective until".',
+    errUpdateSchedule: "Could not update the schedule"
   },
   errors: {
     "staff.member_not_found": "That staff member does not exist in this business.",
@@ -3585,7 +3604,10 @@ var en_default = {
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
     "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
     "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
-    "staff.service_not_found": "That service assignment does not exist in this business."
+    "staff.service_not_found": "That service assignment does not exist in this business.",
+    "staff.schedule_not_found": "That schedule does not exist in this business.",
+    "staff.schedule_no_hours": "A schedule needs at least one working day with hours.",
+    "staff.schedule_invalid_range": "The schedule's validity ends before it starts."
   }
 };
 
@@ -4129,6 +4151,7 @@ define("erp-staff-roles", ErpStaffRoles);
 
 // modules/staff/ui/components/erp-staff-schedules/erp-staff-schedules.ts
 var CATALOG3 = { es: es_default, en: en_default };
+var hhmm = (t5) => t5 ? String(t5).slice(0, 5) : "";
 var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
 function defaultWeek() {
   return DAY_KEYS.map((_key, day) => ({
@@ -4160,6 +4183,9 @@ var ErpStaffSchedules = class extends i3 {
     this.effectiveFrom = "";
     this.effectiveUntil = "";
     this.week = defaultWeek();
+    this.hours = [];
+    this.editingId = "";
+    this.pendingDelete = null;
     this.onLocaleChange = () => this.requestUpdate();
   }
   static {
@@ -4193,8 +4219,26 @@ var ErpStaffSchedules = class extends i3 {
       { key: "is_default", header: t5("ui.colDefault"), sortable: true, format: (r6) => Number(r6.is_default) ? t5("ui.valYes") : "\u2014" },
       { key: "effective_from", header: t5("ui.colFrom"), sortable: true, format: (r6) => r6.effective_from || "\u2014" },
       { key: "effective_until", header: t5("ui.colTo"), sortable: true, format: (r6) => r6.effective_until || "\u2014" },
-      { key: "is_active", header: t5("ui.colActive"), sortable: true, format: (r6) => Number(r6.is_active) ? t5("ui.valYes") : t5("ui.valNo") }
+      { key: "is_active", header: t5("ui.colActive"), sortable: true, format: (r6) => Number(r6.is_active) ? t5("ui.valYes") : t5("ui.valNo") },
+      // The week at a glance (staff#2): «Mon 09:00-18:00 (13:00-14:00) · Wed 10:00-16:00».
+      { key: "hours", header: t5("ui.colHours"), sortable: false, format: (r6) => this.hoursSummary(String(r6.id)) }
     ];
+  }
+  get actions() {
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    return [
+      { id: "edit", label: t5("ui.actionEdit"), icon: "create-outline" },
+      { id: "toggle", label: t5("ui.actionToggleActive"), icon: "power-outline" },
+      { id: "delete", label: t5("ui.actionDelete"), icon: "trash-outline", color: "danger" }
+    ];
+  }
+  hoursSummary(scheduleId) {
+    const rows = this.hours.filter((h4) => h4.schedule_id === scheduleId && Number(h4.is_working) === 1).sort((a3, b3) => a3.day_of_week - b3.day_of_week);
+    if (!rows.length) return "\u2014";
+    return rows.map((h4) => {
+      const brk = h4.break_start && h4.break_end ? ` (${hhmm(h4.break_start)}-${hhmm(h4.break_end)})` : "";
+      return `${this.dayLabel(h4.day_of_week)} ${hhmm(h4.start_time)}-${hhmm(h4.end_time)}${brk}`;
+    }).join(" \xB7 ");
   }
   /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
   dayLabel(day) {
@@ -4205,7 +4249,15 @@ var ErpStaffSchedules = class extends i3 {
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
     await this.loadMembers();
     try {
-      this.unsub = erplora3().on("staff.schedule.created", () => this.loadSchedules());
+      const reload = () => this.loadSchedules();
+      const off1 = erplora3().on("staff.schedule.created", reload);
+      const off2 = erplora3().on("staff.schedule.updated", reload);
+      const off3 = erplora3().on("staff.schedule.deleted", reload);
+      this.unsub = () => {
+        off1();
+        off2();
+        off3();
+      };
     } catch {
     }
   }
@@ -4232,7 +4284,12 @@ var ErpStaffSchedules = class extends i3 {
     }
     this.loading = true;
     try {
-      this.schedules = await erplora3().query("staff.schedules.list_for_member", { staff_id: this.staffId }) ?? [];
+      const [schedules, hours] = await Promise.all([
+        erplora3().query("staff.schedules.list_for_member", { staff_id: this.staffId }),
+        erplora3().query("staff.schedules.hours_for_member", { staff_id: this.staffId })
+      ]);
+      this.schedules = schedules ?? [];
+      this.hours = hours ?? [];
     } catch (e5) {
       this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errLoadSchedules");
     } finally {
@@ -4265,13 +4322,71 @@ var ErpStaffSchedules = class extends i3 {
     }
     return "";
   }
+  /** Row actions (staff#2): edit loads the template + ITS week into the panel; toggle flips
+   *  `is_active`; delete parks the row for the confirmation alert. */
+  async onRowAction(ev) {
+    const row = ev.detail.row;
+    this.formError = "";
+    if (ev.detail.actionId === "edit") {
+      this.editingId = row.id;
+      this.newName = row.name ?? "";
+      this.newDefault = Number(row.is_default) === 1;
+      this.effectiveFrom = row.effective_from ?? "";
+      this.effectiveUntil = row.effective_until ?? "";
+      const mine = this.hours.filter((h4) => h4.schedule_id === row.id);
+      this.week = DAY_KEYS.map((_k, day) => {
+        const h4 = mine.find((x2) => x2.day_of_week === day && Number(x2.is_working) === 1);
+        return h4 ? { day, working: true, start: hhmm(h4.start_time), end: hhmm(h4.end_time), breakStart: hhmm(h4.break_start), breakEnd: hhmm(h4.break_end) } : { day, working: false, start: "09:00", end: "18:00", breakStart: "", breakEnd: "" };
+      });
+      this.dataTable()?.open("create");
+      return;
+    }
+    if (ev.detail.actionId === "toggle") {
+      try {
+        await erplora3().command("staff.schedules.set_active", { schedule_id: row.id, is_active: Number(row.is_active) ? 0 : 1 });
+        await this.loadSchedules();
+      } catch (e5) {
+        this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, "ui.errUpdateSchedule"));
+      }
+      return;
+    }
+    if (ev.detail.actionId === "delete") {
+      this.pendingDelete = { id: row.id, label: row.name ?? "" };
+    }
+  }
+  async onDeleteDismiss(ev) {
+    const pending = this.pendingDelete;
+    this.pendingDelete = null;
+    if (ev.detail?.role !== "confirm" || !pending) return;
+    try {
+      await erplora3().command("staff.schedules.delete", { schedule_id: pending.id });
+      if (this.editingId === pending.id) this.resetForm();
+      await this.loadSchedules();
+    } catch (e5) {
+      this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, "ui.errUpdateSchedule"));
+    }
+  }
+  resetForm() {
+    this.editingId = "";
+    this.newName = "";
+    this.newDefault = true;
+    this.effectiveFrom = "";
+    this.effectiveUntil = "";
+    this.week = defaultWeek();
+  }
   /** Referencia al panel lateral de la tabla: guardar lo cierra. */
   dataTable() {
     return this.renderRoot.querySelector("ok-data-table");
   }
+  /** Create and edit share the panel: `editingId` decides the command (create ↔ update). The
+   *  update REPLACES the week — the client validates the same rules the handler enforces. */
   async createSchedule(ev) {
     ev.preventDefault();
     if (!this.staffId) return;
+    if (this.effectiveFrom && this.effectiveUntil && this.effectiveFrom > this.effectiveUntil) {
+      this.formError = erplora3().t(CATALOG3, "ui.valRangeOrder");
+      return;
+    }
     const err = this.validateWeek();
     if (err) {
       this.formError = err;
@@ -4279,31 +4394,31 @@ var ErpStaffSchedules = class extends i3 {
     }
     this.saving = true;
     this.formError = "";
+    const body = {
+      name: this.newName.trim() || erplora3().t(CATALOG3, "ui.defaultScheduleName"),
+      is_default: this.newDefault ? 1 : 0,
+      effective_from: this.effectiveFrom || null,
+      effective_until: this.effectiveUntil || null,
+      working_hours: this.week.filter((d3) => d3.working).map((d3) => ({
+        day_of_week: d3.day,
+        start_time: d3.start,
+        end_time: d3.end,
+        break_start: d3.breakStart || null,
+        break_end: d3.breakEnd || null,
+        is_working: 1
+      }))
+    };
     try {
-      await erplora3().command("staff.schedules.create", {
-        staff_id: this.staffId,
-        name: this.newName.trim() || erplora3().t(CATALOG3, "ui.defaultScheduleName"),
-        is_default: this.newDefault ? 1 : 0,
-        effective_from: this.effectiveFrom || null,
-        effective_until: this.effectiveUntil || null,
-        working_hours: this.week.filter((d3) => d3.working).map((d3) => ({
-          day_of_week: d3.day,
-          start_time: d3.start,
-          end_time: d3.end,
-          break_start: d3.breakStart || null,
-          break_end: d3.breakEnd || null,
-          is_working: 1
-        }))
-      });
-      this.newName = "";
-      this.newDefault = true;
-      this.effectiveFrom = "";
-      this.effectiveUntil = "";
-      this.week = defaultWeek();
+      if (this.editingId) {
+        await erplora3().command("staff.schedules.update", { schedule_id: this.editingId, ...body });
+      } else {
+        await erplora3().command("staff.schedules.create", { staff_id: this.staffId, ...body });
+      }
+      this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, "ui.errCreateSchedule"));
+      this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, this.editingId ? "ui.errUpdateSchedule" : "ui.errCreateSchedule"));
     } finally {
       this.saving = false;
     }
@@ -4318,7 +4433,7 @@ var ErpStaffSchedules = class extends i3 {
         </header>
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
-        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")}>
+        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
@@ -4341,9 +4456,19 @@ var ErpStaffSchedules = class extends i3 {
                 </div>`
     )}
             </div>
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionCreateSchedule")}</ion-button>
+            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionCreateSchedule")}</ion-button>
           </form>
         </ok-data-table>
+        <ion-alert
+          .isOpen=${this.pendingDelete !== null}
+          header=${t5("ui.deleteScheduleTitle")}
+          message=${erplora3().t(CATALOG3, "ui.deleteScheduleMessage", { name: this.pendingDelete?.label ?? "" })}
+          .buttons=${[
+      { text: t5("ui.cancel"), role: "cancel" },
+      { text: t5("ui.actionDelete"), role: "confirm", cssClass: "alert-button-danger" }
+    ]}
+          @ionAlertDidDismiss=${(e5) => this.onDeleteDismiss(e5)}
+        ></ion-alert>
       </div>`;
   }
 };
@@ -4380,6 +4505,15 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "week", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "hours", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "editingId", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "pendingDelete", 2);
 define("erp-staff-schedules", ErpStaffSchedules);
 
 // modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts

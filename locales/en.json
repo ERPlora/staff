@@ -108,7 +108,15 @@
     "serviceAssign": "Assign",
     "servicePrimary": "Primary service",
     "serviceRemove": "Remove service",
-    "errAssignService": "Could not update the services"
+    "errAssignService": "Could not update the services",
+    "colHours": "Hours",
+    "actionToggleActive": "Activate / deactivate",
+    "actionDelete": "Delete",
+    "cancel": "Cancel",
+    "deleteScheduleTitle": "Delete schedule",
+    "deleteScheduleMessage": "Delete the schedule \"{name}\"? Its hours stop counting for availability.",
+    "valRangeOrder": "\"Effective from\" must be on or before \"Effective until\".",
+    "errUpdateSchedule": "Could not update the schedule"
   },
   "errors": {
     "staff.member_not_found": "That staff member does not exist in this business.",
@@ -120,6 +128,9 @@
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
     "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
     "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
-    "staff.service_not_found": "That service assignment does not exist in this business."
+    "staff.service_not_found": "That service assignment does not exist in this business.",
+    "staff.schedule_not_found": "That schedule does not exist in this business.",
+    "staff.schedule_no_hours": "A schedule needs at least one working day with hours.",
+    "staff.schedule_invalid_range": "The schedule's validity ends before it starts."
   }
 }

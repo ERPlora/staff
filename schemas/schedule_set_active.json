@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "staff.schedules.set_active",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schedule_id", "is_active"],
+  "properties": {
+    "schedule_id": { "type": "string", "minLength": 1 },
+    "is_active": { "type": "integer", "enum": [0, 1] }
+  }
+}
