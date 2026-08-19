@@ -48,7 +48,8 @@
         "string",
         "null"
       ],
-      "default": null
+      "default": null,
+      "description": "Staff role of this hub. null = keep; '' = clear."
     },
     "user_id": {
       "type": [
@@ -67,10 +68,10 @@
         "active",
         "inactive",
         "on_leave",
-        "terminated",
         null
       ],
-      "default": null
+      "default": null,
+      "description": "`terminated` is NOT reachable here: only `staff.members.delete` terminates (date, reason, soft-delete, event)."
     },
     "hire_date": {
       "type": [
@@ -130,6 +131,31 @@
         "null"
       ],
       "default": null
+    },
+    "employee_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 50,
+      "default": null
+    },
+    "color": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 7,
+      "default": null
+    },
+    "booking_buffer": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "default": null,
+      "description": "Minutes between appointments."
     }
   }
 }

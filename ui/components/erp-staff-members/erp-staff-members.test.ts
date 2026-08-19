@@ -128,16 +128,10 @@ describe('el alta sigue funcionando desde el panel', () => {
   it('crear un miembro manda staff.members.create con los datos del panel', async () => {
     const el = await montar();
     const wc = el as unknown as {
-      newFirst: string;
-      newLast: string;
-      newEmail: string;
-      newRole: string;
+      form: Record<string, unknown>;
       createMember: (ev: Event) => Promise<void>;
     };
-    wc.newFirst = 'Ana';
-    wc.newLast = 'Ruiz';
-    wc.newEmail = 'ana@salon.es';
-    wc.newRole = 'r1';
+    wc.form = { ...wc.form, first_name: 'Ana', last_name: 'Ruiz', email: 'ana@salon.es', role_id: 'r1' };
     await wc.createMember(new Event('submit'));
 
     const alta = comandos.find((c) => c.name === 'staff.members.create');
@@ -186,12 +180,10 @@ describe('vínculo con el usuario del Hub', () => {
   it('el alta manda el user_id elegido', async () => {
     const el = await montar();
     const wc = el as unknown as {
-      newFirst: string; newLast: string; newUserId: string;
+      form: Record<string, unknown>;
       createMember: (ev: Event) => Promise<void>;
     };
-    wc.newFirst = 'Ana';
-    wc.newLast = 'Ruiz';
-    wc.newUserId = 'u1';
+    wc.form = { ...wc.form, first_name: 'Ana', last_name: 'Ruiz', user_id: 'u1' };
     await wc.createMember(new Event('submit'));
     expect(comandos.find((c) => c.name === 'staff.members.create')!.payload.user_id).toBe('u1');
   });
@@ -199,18 +191,18 @@ describe('vínculo con el usuario del Hub', () => {
   it('editar precarga el vínculo actual y permite DESvincular con cadena vacía', async () => {
     const el = await montar();
     const wc = el as unknown as {
-      newUserId: string; editingId: string;
-      onRowAction: (ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => void;
+      form: Record<string, unknown>; editingId: string;
+      onRowAction: (ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => Promise<void>;
       createMember: (ev: Event) => Promise<void>;
     };
-    wc.onRowAction(
+    await wc.onRowAction(
       new CustomEvent('rowAction', {
         detail: { actionId: 'edit', row: { id: 'm1', first_name: 'Ana', last_name: 'Ruiz', email: '', role_id: 'r1', user_id: 'u1' } },
       }),
     );
-    expect(wc.newUserId, 'el panel no muestra de quién es la ficha').toBe('u1');
+    expect(wc.form.user_id, 'el panel no muestra de quién es la ficha').toBe('u1');
 
-    wc.newUserId = '';
+    wc.form = { ...wc.form, user_id: '' };
     await wc.createMember(new Event('submit'));
     // '' (no null) es el centinela de DESVINCULAR del command: null significaría «no lo toques».
     expect(comandos.find((c) => c.name === 'staff.members.update')!.payload.user_id).toBe('');

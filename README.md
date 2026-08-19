@@ -53,7 +53,7 @@ no un permiso más ancho.
 | query | `staff.time_off.detail` | `view_time_off_detail` |
 | command | `staff.members.create` / `.bulk_create` (WASM, cap 100) | `add_staff_member` |
 | command | `staff.members.update` · `staff.services.assign` / `.update` / `.remove` (competencias por servicio, staff#9) | `change_staff_member` |
-| command | `staff.members.deactivate` (WASM, guarda por ausencias vivas) / `.delete` | `delete_staff_member` |
+| command | `staff.members.deactivate` (WASM, guarda por ausencias vivas) / `.delete` (baja: fecha + motivo, `expect_rows`; el ÚNICO camino a `terminated`, staff#4) | `delete_staff_member` |
 | command | `staff.time_off.create` (WASM, invariante de solape) / `.set_status` | `manage_time_off` |
 | command | `staff.roles.create` · `staff.schedules.create` / `.update` (WASM, sustituye la semana) · `.set_active` / `.delete` · `staff.settings.update` | `manage_settings` |
 | emite | `staff.member.*`, `staff.role.created`, `staff.time_off.*`, `staff.schedule.*`, `staff.service.*`, `staff.settings.updated` | — |

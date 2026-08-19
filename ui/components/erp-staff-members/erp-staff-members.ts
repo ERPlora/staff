@@ -48,6 +48,46 @@ interface StaffRole {
   name: string;
 }
 
+/** Full record (`staff.members.get`, staff#4). Compensation travels apart (`staff.members.compensation`). */
+interface StaffMemberDetail extends StaffMember {
+  employee_id: string;
+  hire_date: string | null;
+  color: string;
+  booking_buffer: number;
+  bio: string;
+  specialties: string;
+}
+
+/** The record form: create and edit share it (staff#4). Money is typed in EUROS here and sent in
+ *  CENTS (ADR-0007/0123); `role_id`/`user_id` '' = none (create) / clear (update). */
+interface MemberForm {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  employee_id: string;
+  role_id: string;
+  user_id: string;
+  status: string;
+  is_bookable: boolean;
+  booking_buffer: string;
+  color: string;
+  hire_date: string;
+  bio: string;
+  specialties: string;
+  hourly_rate: string;
+  commission_rate: string;
+}
+
+const EMPTY_FORM: MemberForm = {
+  first_name: '', last_name: '', email: '', phone: '', employee_id: '', role_id: '', user_id: '',
+  status: 'active', is_bookable: true, booking_buffer: '', color: '', hire_date: '', bio: '', specialties: '',
+  hourly_rate: '', commission_rate: '',
+};
+
+/** Statuses a person can SET. `terminated` is not one of them: only Terminate gets there. */
+const STATUS_OPTIONS = ['active', 'inactive', 'on_leave'] as const;
+
 /** A service the professional performs (`staff.services.list_for_member`, staff#9). */
 interface MemberService {
   id: string;
@@ -102,6 +142,9 @@ export class ErpStaffMembers extends LitElement {
     .form { display:flex; flex-direction:column; gap:.7rem; }
     .form ion-button { align-self:flex-end; }
     .err { color:#d9480f; font-weight:600; }
+    /* Two columns when the panel is wide enough (tablet/desktop), one on a phone. */
+    .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:.6rem; align-items:center; border-top:1px solid var(--ion-border-color, #e5e3dd); padding-top:.6rem; }
+    .grid2 ion-textarea { grid-column:1 / -1; }
     /* Services performed (staff#9): a compact list inside the same panel, 44px rows for touch. */
     .services { display:flex; flex-direction:column; gap:.4rem; border-top:1px solid var(--ion-border-color, #e5e3dd); padding-top:.6rem; }
     .services h4 { margin:0; font-size:.85rem; font-weight:600; opacity:.8; }
@@ -122,19 +165,14 @@ export class ErpStaffMembers extends LitElement {
 
   @state() formError = '';
 
-  @state() newFirst = '';
-
-  @state() newLast = '';
-
-  @state() newEmail = '';
-
-  @state() newRole = '';
-
-  /** Usuario del Hub vinculado. Vacío = ficha sin acceso (o desvincular, al editar). */
-  @state() newUserId = '';
+  /** The record being typed (create) or edited. */
+  @state() form: MemberForm = { ...EMPTY_FORM };
 
   /** Id del miembro en edición; vacío = el panel está dando de ALTA (mismo panel, dos modos). */
   @state() editingId = '';
+
+  /** Deactivate / terminate ask first (staff#4): the row is parked here and the ion-alert decides. */
+  @state() pendingAction: { kind: 'deactivate' | 'terminate'; id: string; label: string } | null = null;
 
   @state() saving = false;
 
@@ -186,7 +224,9 @@ export class ErpStaffMembers extends LitElement {
       format: (r) => (r.role_name as string) || '—',
     },
     { key: 'email', header: t('ui.colEmail'), sortable: true, filterable: true, filterType: 'text' },
-    { key: 'phone', header: t('ui.colPhone'), sortable: true, filterable: true, filterType: 'text' },
+    // Hidden by default so the table fits an 834 px tablet without a horizontal scroll; the user
+    // can turn it back on from the column picker (ok-data-table `hidden`).
+    { key: 'phone', header: t('ui.colPhone'), sortable: true, filterable: true, filterType: 'text', hidden: true },
     {
       key: 'status',
       header: t('ui.colStatus'),
@@ -215,8 +255,21 @@ export class ErpStaffMembers extends LitElement {
   ];
   }
 
+  private get canDelete(): boolean {
+    return erplora().hasPermission?.('staff.delete_staff_member') === true;
+  }
+
   private get actions(): DataTableAction[] {
-    return [{ id: 'edit', label: erplora().t(CATALOG, 'ui.actionEdit'), icon: 'create-outline' }];
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    const out: DataTableAction[] = [{ id: 'edit', label: t('ui.actionEdit'), icon: 'create-outline' }];
+    // Lifecycle (staff#4): shown only to a session that may delete — the runtime enforces, this is show/hide.
+    if (this.canDelete) {
+      out.push(
+        { id: 'deactivate', label: t('ui.actionDeactivate'), icon: 'pause-circle-outline', disabled: (r) => r.status !== 'active' && r.status !== 'on_leave' },
+        { id: 'terminate', label: t('ui.actionTerminate'), icon: 'person-remove-outline', color: 'danger' },
+      );
+    }
+    return out;
   }
 
   /** Referencia al panel lateral de la tabla: «editar» lo abre relleno, guardar lo cierra. */
@@ -224,18 +277,114 @@ export class ErpStaffMembers extends LitElement {
     return this.renderRoot.querySelector('ok-data-table') as DataTablePanel | null;
   }
 
-  private onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) {
-    if (ev.detail.actionId !== 'edit') return;
+  async onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>): Promise<void> {
     const m = ev.detail.row as unknown as StaffMember;
+    if (ev.detail.actionId === 'edit') {
+      await this.openRecord(m);
+      return;
+    }
+    if (ev.detail.actionId === 'deactivate' || ev.detail.actionId === 'terminate') {
+      this.pendingAction = { kind: ev.detail.actionId, id: m.id, label: m.full_name ?? `${m.first_name} ${m.last_name}` };
+    }
+  }
+
+  /** Open the record in the panel: what the row carries first (instant), then the FULL record
+   *  (`staff.members.get`) and, for a session that may read it, its compensation (staff#4). */
+  private async openRecord(m: Partial<StaffMember> & { id: string }): Promise<void> {
     this.editingId = m.id;
-    this.newFirst = m.first_name;
-    this.newLast = m.last_name;
-    this.newEmail = m.email ?? '';
-    this.newRole = m.role_id ?? '';
-    this.newUserId = m.user_id ?? '';
     this.formError = '';
+    this.form = {
+      ...EMPTY_FORM,
+      first_name: m.first_name ?? '', last_name: m.last_name ?? '', email: m.email ?? '', phone: m.phone ?? '',
+      role_id: m.role_id ?? '', user_id: m.user_id ?? '', status: m.status ?? 'active',
+      is_bookable: m.is_bookable === undefined ? true : Number(m.is_bookable) === 1,
+    };
     this.dataTable()?.open('create');
+    this.rememberLink(m.id);
     void this.loadMemberServices();
+    try {
+      const [detail, comp] = await Promise.all([
+        erplora().query<StaffMemberDetail[]>('staff.members.get', { staff_id: m.id }),
+        this.canSeeCompensation
+          ? erplora().query<{ id: string; hourly_rate: number; commission_rate: number }[]>('staff.members.compensation', { staff_id: m.id })
+          : Promise.resolve([]),
+      ]);
+      if (this.editingId !== m.id) return;
+      const d = detail?.[0];
+      const c = comp?.[0];
+      if (d) {
+        this.form = {
+          ...this.form,
+          first_name: d.first_name, last_name: d.last_name, email: d.email ?? '', phone: d.phone ?? '',
+          employee_id: d.employee_id ?? '', role_id: d.role_id ?? '', user_id: d.user_id ?? '',
+          status: d.status ?? 'active', is_bookable: Number(d.is_bookable) === 1,
+          booking_buffer: d.booking_buffer != null ? String(d.booking_buffer) : '',
+          color: d.color ?? '', hire_date: d.hire_date ?? '', bio: d.bio ?? '', specialties: d.specialties ?? '',
+        };
+      }
+      if (c) {
+        this.form = {
+          ...this.form,
+          hourly_rate: (Number(c.hourly_rate || 0) / 100).toFixed(2),
+          commission_rate: String(Number(c.commission_rate || 0)),
+        };
+      }
+    } catch (e) {
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errLoadMember'));
+    }
+  }
+
+  /** A record is linkable (staff#4): `?member=<id>` in the URL opens it, and opening one writes it. */
+  private rememberLink(id: string): void {
+    try {
+      const url = new URL(window.location.href);
+      if (id) url.searchParams.set('member', id);
+      else url.searchParams.delete('member');
+      window.history.replaceState(window.history.state, '', url.toString());
+    } catch { /* no history (preview) */ }
+  }
+
+  private linkedMemberId(): string {
+    try {
+      return new URLSearchParams(window.location.search).get('member') ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  private patch(p: Partial<MemberForm>): void {
+    this.form = { ...this.form, ...p };
+  }
+
+  /** The alert decided (staff#4). Terminate carries the values typed in the alert inputs. */
+  async onActionDismiss(ev: CustomEvent<{ role?: string; data?: { values?: Record<string, string> } }>): Promise<void> {
+    const pending = this.pendingAction;
+    this.pendingAction = null;
+    if (ev.detail?.role !== 'confirm' || !pending) return;
+    this.formError = '';
+    try {
+      if (pending.kind === 'deactivate') {
+        await erplora().command('staff.members.deactivate', { staff_id: pending.id });
+      } else {
+        const values = ev.detail?.data?.values ?? {};
+        await erplora().command('staff.members.delete', {
+          staff_id: pending.id,
+          termination_date: values.termination_date || null,
+          reason: values.reason || null,
+        });
+      }
+      if (this.editingId === pending.id) this.resetForm();
+      await this.ctrl.load();
+    } catch (e) {
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errLifecycle'));
+    }
+  }
+
+  private resetForm(): void {
+    this.editingId = '';
+    this.form = { ...EMPTY_FORM };
+    this.memberServices = [];
+    this.rememberLink('');
   }
 
   /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
@@ -380,6 +529,11 @@ export class ErpStaffMembers extends LitElement {
       dir: 'asc',
     });
     await Promise.all([this.ctrl.load(), this.loadRoles(), this.loadHubUsers(), this.loadRates()]);
+    const linked = this.linkedMemberId();
+    if (linked) {
+      const row = this.ctrl.rows.find((r) => r.id === linked);
+      void this.openRecord(row ?? { id: linked });
+    }
     try {
       const off1 = erplora().on('staff.member.created', () => this.ctrl.load());
       const off2 = erplora().on('staff.member.updated', () => this.ctrl.load());
@@ -418,43 +572,63 @@ export class ErpStaffMembers extends LitElement {
     } catch { /* sin core (preview) → alta sin vínculo */ }
   }
 
-  /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). */
-  private async createMember(ev: Event) {
+  /** Money typed in euros → integer cents; '' → null (not sent / keep). */
+  private static cents(euros: string): number | null {
+    if (euros === '' || euros == null) return null;
+    const n = parseFloat(String(euros).replace(',', '.'));
+    return Number.isFinite(n) ? Math.round(n * 100) : null;
+  }
+
+  /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). The update
+   *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in cents,
+   *  commission as %; compensation only travels when the session could read it (otherwise it would
+   *  overwrite what it never saw). */
+  async createMember(ev: Event) {
     ev.preventDefault();
-    if (!this.newFirst.trim() || !this.newLast.trim()) return;
+    const f = this.form;
+    if (!f.first_name.trim() || !f.last_name.trim()) return;
     this.saving = true;
     this.formError = '';
+    const buffer = parseInt(f.booking_buffer, 10);
+    const commission = parseFloat(String(f.commission_rate).replace(',', '.'));
+    const common: Record<string, unknown> = {
+      first_name: f.first_name.trim(),
+      last_name: f.last_name.trim(),
+      email: f.email.trim(),
+      phone: f.phone.trim(),
+      employee_id: f.employee_id.trim(),
+      status: f.status || 'active',
+      is_bookable: f.is_bookable ? 1 : 0,
+      color: f.color.trim(),
+      hire_date: f.hire_date || null,
+      bio: f.bio,
+      specialties: f.specialties,
+    };
+    if (this.canSeeCompensation) {
+      common.hourly_rate = ErpStaffMembers.cents(f.hourly_rate) ?? 0;
+      common.commission_rate = Number.isFinite(commission) ? commission : 0;
+    }
     try {
       if (this.editingId) {
         await erplora().command('staff.members.update', {
           staff_id: this.editingId,
-          first_name: this.newFirst.trim(),
-          last_name: this.newLast.trim(),
-          email: this.newEmail.trim(),
-          role_id: this.newRole || null,
-          // '' DESvincula; null significaría «no lo toques» (COALESCE del command).
-          user_id: this.newUserId,
+          ...common,
+          // '' CLEARS role and user; null would mean «keep» (COALESCE/CASE of the command).
+          role_id: f.role_id,
+          user_id: f.user_id,
+          booking_buffer: Number.isFinite(buffer) ? buffer : 0,
         });
       } else {
         await erplora().command('staff.members.create', {
-          first_name: this.newFirst.trim(),
-          last_name: this.newLast.trim(),
-          email: this.newEmail.trim(),
-          role_id: this.newRole || null,
-          user_id: this.newUserId || null,
-          is_bookable: 1,
-          status: 'active',
+          ...common,
+          role_id: f.role_id || null,
+          user_id: f.user_id || null,
+          notes: '',
         });
       }
-      this.editingId = '';
-      this.newFirst = '';
-      this.newLast = '';
-      this.newEmail = '';
-      this.newRole = '';
-      this.newUserId = '';
-      this.memberServices = [];
+      this.resetForm();
       this.dataTable()?.close();
-      await this.ctrl.load();
+      await Promise.all([this.ctrl.load(), this.loadRates()]);
     } catch (e) {
       this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errCreateMember'));
     } finally {
@@ -471,15 +645,52 @@ export class ErpStaffMembers extends LitElement {
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e: Event) => this.createMember(e)}>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.newFirst} @ionInput=${(e: any) => (this.newFirst = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.newLast} @ionInput=${(e: any) => (this.newLast = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.newEmail} @ionInput=${(e: any) => (this.newEmail = e.target.value)}></ion-input>
-            <ion-select fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.newRole} @ionChange=${(e: any) => (this.newRole = e.target.value)}>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
-            <ion-select fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.newUserId} @ionChange=${(e: any) => (this.newUserId = e.target.value)}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+            <ion-input fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.form.first_name} @ionInput=${(e: any) => this.patch({ first_name: e.target.value })}></ion-input>
+            <ion-input fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.form.last_name} @ionInput=${(e: any) => this.patch({ last_name: e.target.value })}></ion-input>
+            <ion-input fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.form.email} @ionInput=${(e: any) => this.patch({ email: e.target.value })}></ion-input>
+            <ion-input fill="outline" label-placement="floating" type="tel" label=${t('ui.colPhone')} .value=${this.form.phone} @ionInput=${(e: any) => this.patch({ phone: e.target.value })}></ion-input>
+            <ion-input fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
+            <ion-select fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
+            <ion-select fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+            <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
+            <section data-section="operation" class="grid2">
+              ${this.editingId
+                ? html`<ion-select fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${t(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>`
+                : nothing}
+              <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
+              <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
+              <ion-input fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
+              <ion-input fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
+              <ion-input fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
+              <ion-textarea fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>
+            </section>
+            <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
+            ${this.canSeeCompensation
+              ? html`<section data-section="compensation" class="grid2">
+                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.hourlyRateEuros')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
+                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
+                </section>`
+              : nothing}
             ${this.renderServices()}
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newFirst || !this.newLast}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
+            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>
+        <ion-alert
+          .isOpen=${this.pendingAction !== null}
+          header=${this.pendingAction?.kind === 'terminate' ? t('ui.terminateTitle') : t('ui.deactivateTitle')}
+          message=${erplora().t(CATALOG, this.pendingAction?.kind === 'terminate' ? 'ui.terminateMessage' : 'ui.deactivateMessage', { name: this.pendingAction?.label ?? '' })}
+          .inputs=${this.pendingAction?.kind === 'terminate'
+            ? [
+                { name: 'termination_date', type: 'date', label: t('ui.terminationDate') },
+                { name: 'reason', type: 'text', placeholder: t('ui.terminationReason') },
+              ]
+            : []}
+          .buttons=${[
+            { text: t('ui.cancel'), role: 'cancel' },
+            { text: this.pendingAction?.kind === 'terminate' ? t('ui.actionTerminate') : t('ui.actionDeactivate'), role: 'confirm', cssClass: 'alert-button-danger' },
+          ]}
+          @ionAlertDidDismiss=${(e: CustomEvent<{ role?: string; data?: { values?: Record<string, string> } }>) => this.onActionDismiss(e)}
+        ></ion-alert>
       </div>`;
   }
 }
