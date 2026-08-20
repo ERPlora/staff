@@ -135,9 +135,9 @@ export class ErpStaffRoles extends LitElement {
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e: Event) => this.createRole(e)}>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phRoleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phDescription')} .value=${this.newDesc} @ionInput=${(e: any) => (this.newDesc = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.colColor')} placeholder=${t('ui.phColor')} .value=${this.newColor} @ionInput=${(e: any) => (this.newColor = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phRoleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phDescription')} .value=${this.newDesc} @ionInput=${(e: any) => (this.newDesc = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.colColor')} placeholder=${t('ui.phColor')} .value=${this.newColor} @ionInput=${(e: any) => (this.newColor = e.target.value)}></ion-input>
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>

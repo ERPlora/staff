@@ -389,7 +389,7 @@ export class ErpStaffSchedules extends LitElement {
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
         <header>
-          <ion-select fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
+          <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
         ${!this.members.length ? html`<p class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
@@ -398,22 +398,22 @@ export class ErpStaffSchedules extends LitElement {
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
           <form slot="create" class="form" @submit=${(e: Event) => this.createSchedule(e)}>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-            <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
-            <ion-input fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
             <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
             <div class="week">
               ${this.week.map(
                 (d) => html`<div class="day">
                   <ion-checkbox justify="start" label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}><span class="name">${this.dayLabel(d.day)}</span></ion-checkbox>
                   ${d.working
-                    ? html`<ion-input fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
+                    ? html`<ion-input mode="md" fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
                         <span class="sep">${t('ui.sepTo')}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
                         <span class="sep">${t('ui.sepBreak')}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
                         <span class="sep">${t('ui.sepTo')}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
                     : html`<span class="sep">${t('ui.notWorking')}</span>`}
                 </div>`,
               )}
