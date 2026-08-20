@@ -31,6 +31,8 @@
     "phRole": "Rol…",
     "actionAdd": "Añadir",
     "actionEdit": "Editar",
+    "panelNew": "Nuevo",
+    "panelEdit": "Editar · {name}",
     "actionSave": "Guardar",
     "actionSaving": "Guardando…",
     "searchMember": "Buscar miembro…",

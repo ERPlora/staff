@@ -3348,6 +3348,8 @@ var es_default = {
     phRole: "Rol\u2026",
     actionAdd: "A\xF1adir",
     actionEdit: "Editar",
+    panelNew: "Nuevo",
+    panelEdit: "Editar \xB7 {name}",
     actionSave: "Guardar",
     actionSaving: "Guardando\u2026",
     searchMember: "Buscar miembro\u2026",
@@ -3543,6 +3545,8 @@ var en_default = {
     phRole: "Role\u2026",
     actionAdd: "Add",
     actionEdit: "Edit",
+    panelNew: "New",
+    panelEdit: "Edit \xB7 {name}",
     actionSave: "Save",
     actionSaving: "Saving\u2026",
     searchMember: "Search member\u2026",
@@ -3832,6 +3836,20 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       );
     }
     return out;
+  }
+  /**
+   * Rótulo de la cabecera del panel (staff#38). El panel es UNO con dos modos, y `ok-data-table`
+   * titula su drawer con `newRecord`; sin este override la edición se anunciaba como «Nuevo» y
+   * guardar parecía que iba a DUPLICAR la ficha (con su tarifa y su comisión dentro).
+   *
+   * En edición lleva además el nombre, como Odoo, Dynamics 365 BC, Square Team y Fresha: la
+   * cabecera identifica el registro que se está tocando, para no editar a la persona equivocada.
+   */
+  get panelLabels() {
+    const t5 = (k2, p4) => erplora().t(CATALOG, k2, p4);
+    if (!this.editingId) return { newRecord: t5("ui.panelNew") };
+    const name = `${this.form.first_name} ${this.form.last_name}`.trim();
+    return { newRecord: t5("ui.panelEdit", { name }) };
   }
   /** Referencia al panel lateral de la tabla: «editar» lo abre relleno, guardar lo cierra. */
   dataTable() {
@@ -4189,7 +4207,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     return b2`<div class="page">
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e5) => this.createMember(e5)}>
