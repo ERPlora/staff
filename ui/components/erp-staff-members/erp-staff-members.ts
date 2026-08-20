@@ -7,6 +7,7 @@ import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
+import { MEMBER_STATUS_KEY, enumLabel } from '../../lib/enums';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -233,10 +234,13 @@ export class ErpStaffMembers extends LitElement {
       sortable: true,
       filterable: true,
       filterType: 'select',
+      // El filtro sigue ofreciendo el dominio OPERATIVO (quién está y quién no); la celda, en
+      // cambio, tiene que saber nombrar los cuatro estados que la fila puede traer (staff#37).
       options: [
-        { value: 'active', label: t('ui.statusActive') },
-        { value: 'inactive', label: t('ui.statusInactive') },
+        { value: 'active', label: enumLabel(MEMBER_STATUS_KEY, 'active') },
+        { value: 'inactive', label: enumLabel(MEMBER_STATUS_KEY, 'inactive') },
       ],
+      format: (r) => enumLabel(MEMBER_STATUS_KEY, r.status),
     },
     // The rate column only exists for a session that may read it. Leaving it in place would print
     // «0,00 €» next to every colleague — «nobody earns anything» reads worse than no column.
@@ -670,7 +674,7 @@ export class ErpStaffMembers extends LitElement {
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
               ${this.editingId
-                ? html`<ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${t(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>`
+                ? html`<ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>`
                 : nothing}
               <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
               <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>

@@ -7,6 +7,7 @@ import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
+import { LEAVE_TYPE_KEY, REQUEST_STATUS_KEY, enumLabel, enumOptions, formatDate } from '../../lib/enums';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -33,12 +34,6 @@ interface DataTablePanel {
   open(panel?: 'filters' | 'create'): void;
   close(): void;
 }
-
-/** The leave types the command admits (`schemas/time_off_create.json`) → their i18n key. */
-const LEAVE_TYPE_KEY: Record<string, string> = {
-  vacation: 'ui.leaveVacation', sick: 'ui.leaveSick', personal: 'ui.leavePersonal',
-  training: 'ui.leaveTraining', other: 'ui.leaveOther',
-};
 
 /** What the create form holds while it is being typed (dates as `YYYY-MM-DD`, times as `HH:MM`). */
 interface TimeOffDraft {
@@ -117,21 +112,27 @@ export class ErpStaffTimeOff extends LitElement {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return [
     { key: 'staff_name', header: t('ui.colMember'), sortable: true, filterable: true, filterType: 'text' },
-    { key: 'leave_type', header: t('ui.colType'), sortable: true, filterable: true, filterType: 'text' },
-    { key: 'start_date', header: t('ui.colFrom'), sortable: true, filterable: true, filterType: 'daterange' },
-    { key: 'end_date', header: t('ui.colTo'), sortable: true, filterable: true, filterType: 'daterange' },
+    // El valor CRUDO (`vacation`, `pending`, `2026-09-10`) no se enseña: la celda lee del mismo
+    // catálogo que el desplegable del alta y que las opciones del filtro (staff#37).
+    {
+      key: 'leave_type',
+      header: t('ui.colType'),
+      sortable: true,
+      filterable: true,
+      filterType: 'select',
+      options: enumOptions(LEAVE_TYPE_KEY),
+      format: (r) => enumLabel(LEAVE_TYPE_KEY, r.leave_type),
+    },
+    { key: 'start_date', header: t('ui.colFrom'), sortable: true, filterable: true, filterType: 'daterange', format: (r) => formatDate(r.start_date) },
+    { key: 'end_date', header: t('ui.colTo'), sortable: true, filterable: true, filterType: 'daterange', format: (r) => formatDate(r.end_date) },
     {
       key: 'status',
       header: t('ui.colStatus'),
       sortable: true,
       filterable: true,
       filterType: 'select',
-      options: [
-        { value: 'pending', label: t('ui.statusPending') },
-        { value: 'approved', label: t('ui.statusApproved') },
-        { value: 'rejected', label: t('ui.statusRejected') },
-        { value: 'cancelled', label: t('ui.statusCancelled') },
-      ],
+      options: enumOptions(REQUEST_STATUS_KEY),
+      format: (r) => enumLabel(REQUEST_STATUS_KEY, r.status),
     },
   ];
   }
@@ -287,7 +288,7 @@ export class ErpStaffTimeOff extends LitElement {
         ${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}
       </ion-select>
       <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.draft.leave_type} @ionChange=${(e: any) => this.patch({ leave_type: e.target.value ?? 'vacation' })}>
-        ${Object.entries(LEAVE_TYPE_KEY).map(([value, key]) => html`<ion-select-option .value=${value}>${t(key)}</ion-select-option>`)}
+        ${enumOptions(LEAVE_TYPE_KEY).map((o) => html`<ion-select-option .value=${o.value}>${o.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
         <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colFrom')} .value=${this.draft.start_date} @ionInput=${(e: any) => this.patch({ start_date: e.target.value })}></ion-input>
