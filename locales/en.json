@@ -30,6 +30,8 @@
     "phRole": "Role…",
     "actionAdd": "Add",
     "actionEdit": "Edit",
+    "panelNew": "New",
+    "panelEdit": "Edit · {name}",
     "actionSave": "Save",
     "actionSaving": "Saving…",
     "searchMember": "Search member…",
