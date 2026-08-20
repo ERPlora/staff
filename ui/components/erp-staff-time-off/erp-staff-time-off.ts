@@ -18,7 +18,44 @@ interface ErploraClientLike extends ListClient {
   on(event: string, cb: (payload: unknown) => void): () => void;
   locale: string;
   t(catalog: Record<string, unknown>, key: string, params?: Record<string, unknown>): string;
+  /** Show/hide ONLY — the runtime is what enforces a permission (module-sdk). */
+  hasPermission(permission: string): boolean;
 }
+
+/** A staff member, for the picker of the create form (`staff.members.list`). */
+interface StaffMember {
+  id: string;
+  full_name: string;
+}
+
+/** Panel lateral de la tabla: el «+» de la barra lo abre, guardar lo cierra. */
+interface DataTablePanel {
+  open(panel?: 'filters' | 'create'): void;
+  close(): void;
+}
+
+/** The leave types the command admits (`schemas/time_off_create.json`) → their i18n key. */
+const LEAVE_TYPE_KEY: Record<string, string> = {
+  vacation: 'ui.leaveVacation', sick: 'ui.leaveSick', personal: 'ui.leavePersonal',
+  training: 'ui.leaveTraining', other: 'ui.leaveOther',
+};
+
+/** What the create form holds while it is being typed (dates as `YYYY-MM-DD`, times as `HH:MM`). */
+interface TimeOffDraft {
+  staff_id: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  is_full_day: boolean;
+  start_time: string;
+  end_time: string;
+  reason: string;
+}
+
+const EMPTY_DRAFT: TimeOffDraft = {
+  staff_id: '', leave_type: 'vacation', start_date: '', end_date: '',
+  is_full_day: true, start_time: '', end_time: '', reason: '',
+};
 
 interface TimeOff {
   id: string;
@@ -45,8 +82,11 @@ export class ErpStaffTimeOff extends LitElement {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
-    .form ion-select { flex:1 1 11rem; min-width:9rem; }
+    /* El alta vive en el panel lateral de la tabla: columna estrecha, no fila que se desborda. */
+    .form { display:flex; flex-direction:column; gap:.7rem; }
+    .form ion-button { align-self:flex-end; }
+    /* Two columns when the panel is wide enough (tablet/desktop), one on a phone. */
+    .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:.6rem; align-items:center; }
     .err { color:#d9480f; font-weight:600; }
   `;
 
@@ -56,9 +96,22 @@ export class ErpStaffTimeOff extends LitElement {
 
   @state() tick = 0;
 
+  /** Miembros del hub, para elegir de quién es la ausencia. */
+  @state() members: StaffMember[] = [];
+
+  /** The absence being typed in the panel (staff#36). */
+  @state() draft: TimeOffDraft = { ...EMPTY_DRAFT };
+
+  @state() saving = false;
+
   private ctrl!: ListController<TimeOff>;
 
   private unsub?: () => void;
+
+  /** Show/hide only: the runtime revalidates `staff.manage_time_off` on the command itself. */
+  private get canManage(): boolean {
+    return erplora().hasPermission?.('staff.manage_time_off') === true;
+  }
 
   private get columns(): DataTableColumn[] {
     const t = (k: string): string => erplora().t(CATALOG, k);
@@ -105,7 +158,7 @@ export class ErpStaffTimeOff extends LitElement {
       sort: 'id',
       dir: 'asc',
     });
-    await this.ctrl.load();
+    await Promise.all([this.ctrl.load(), this.loadMembers()]);
     try {
       const off1 = erplora().on('staff.time_off.created', () => this.ctrl.load());
       const off2 = erplora().on('staff.time_off.status_changed', () => this.ctrl.load());
@@ -122,6 +175,73 @@ export class ErpStaffTimeOff extends LitElement {
     window.removeEventListener('erplora:locale-changed', this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
+  }
+
+  /** Los miembros del hub para el selector del alta. Si no se pueden leer, el panel se queda sin
+   *  opciones — pero la pantalla sigue aprobando y rechazando, que es lo que ya hacía. */
+  private async loadMembers(): Promise<void> {
+    try {
+      this.members = (await erplora().query<StaffMember[]>('staff.members.list')) ?? [];
+    } catch { /* sin permiso de directorio (o preview) → selector vacío */ }
+  }
+
+  private dataTable(): DataTablePanel | null {
+    return this.renderRoot.querySelector('ok-data-table') as DataTablePanel | null;
+  }
+
+  private patch(p: Partial<TimeOffDraft>): void {
+    this.draft = { ...this.draft, ...p };
+  }
+
+  /**
+   * Lo que el usuario puede corregir se le dice AQUÍ, antes de gastar un viaje al servidor y de
+   * leer un error crudo del handler. Lo que solo sabe el servidor —el solape con otra ausencia
+   * `pending|approved`— no se adivina: se manda y se pinta su código de dominio traducido.
+   *
+   * Devuelve la clave i18n del primer problema, o `''` si el borrador es enviable.
+   */
+  private validationKey(): string {
+    const d = this.draft;
+    if (!d.staff_id) return 'ui.valTimeOffMember';
+    if (!d.start_date || !d.end_date) return 'ui.valTimeOffDates';
+    if (d.start_date > d.end_date) return 'ui.valTimeOffRange';
+    if (!d.is_full_day) {
+      if (!d.start_time || !d.end_time) return 'ui.valTimeOffHours';
+      if (d.start_time >= d.end_time) return 'ui.valTimeOffHoursOrder';
+    }
+    return '';
+  }
+
+  /** Alta de una ausencia (staff#36): la puerta que le faltaba a `staff.time_off.create`. */
+  async createTimeOff(ev: Event): Promise<void> {
+    ev.preventDefault?.();
+    const problem = this.validationKey();
+    if (problem) {
+      this.formError = erplora().t(CATALOG, problem);
+      return;
+    }
+    const d = this.draft;
+    this.saving = true;
+    this.formError = '';
+    try {
+      await erplora().command('staff.time_off.create', {
+        staff_id: d.staff_id,
+        leave_type: d.leave_type || 'vacation',
+        start_date: d.start_date,
+        end_date: d.end_date,
+        is_full_day: d.is_full_day ? 1 : 0,
+        start_time: d.is_full_day ? null : d.start_time,
+        end_time: d.is_full_day ? null : d.end_time,
+        reason: d.reason,
+      });
+      this.draft = { ...EMPTY_DRAFT };
+      this.dataTable()?.close();
+      await this.ctrl.load();
+    } catch (e) {
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errCreateTimeOff'));
+    } finally {
+      this.saving = false;
+    }
   }
 
   private async onRowAction(actionId: string, row: Record<string, unknown>) {
@@ -148,9 +268,41 @@ export class ErpStaffTimeOff extends LitElement {
         </header>
         ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
-            this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
+            this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+          <!-- El alta se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
+               abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
+          ${this.renderCreateForm()}
+        </ok-data-table>
       </div>`;
+  }
+
+  /** El alta (staff#36): «Miembro · Tipo · Desde · Hasta · Día completo · (horas) · Motivo», que es
+   *  lo que ofrecen Fresha, Vagaro, Mangomint, Square Team, Odoo Empleados y BC. `mode="md"` en cada
+   *  control con `fill`: el shell pinea Ionic en `ios` y ahí `fill` no pinta caja (staff#39/hub#760). */
+  private renderCreateForm() {
+    const t = (k: string): string => erplora().t(CATALOG, k);
+    return html`<form slot="create" class="form" @submit=${(e: Event) => this.createTimeOff(e)}>
+      <ion-select data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.draft.staff_id} @ionChange=${(e: any) => this.patch({ staff_id: e.target.value ?? '' })}>
+        ${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}
+      </ion-select>
+      <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.draft.leave_type} @ionChange=${(e: any) => this.patch({ leave_type: e.target.value ?? 'vacation' })}>
+        ${Object.entries(LEAVE_TYPE_KEY).map(([value, key]) => html`<ion-select-option .value=${value}>${t(key)}</ion-select-option>`)}
+      </ion-select>
+      <div class="grid2">
+        <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colFrom')} .value=${this.draft.start_date} @ionInput=${(e: any) => this.patch({ start_date: e.target.value })}></ion-input>
+        <ion-input data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colTo')} .value=${this.draft.end_date} @ionInput=${(e: any) => this.patch({ end_date: e.target.value })}></ion-input>
+      </div>
+      <ion-toggle data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e: any) => this.patch({ is_full_day: !!e.detail.checked })}>${t('ui.fullDay')}</ion-toggle>
+      ${this.draft.is_full_day
+        ? nothing
+        : html`<div class="grid2" data-section="hours">
+            <ion-input data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeFrom')} .value=${this.draft.start_time} @ionInput=${(e: any) => this.patch({ start_time: e.target.value })}></ion-input>
+            <ion-input data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeTo')} .value=${this.draft.end_time} @ionInput=${(e: any) => this.patch({ end_time: e.target.value })}></ion-input>
+          </div>`}
+      <ion-textarea data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.reason')} .value=${this.draft.reason} @ionInput=${(e: any) => this.patch({ reason: e.target.value })}></ion-textarea>
+      <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
+    </form>`;
   }
 }
 
