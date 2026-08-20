@@ -6,6 +6,7 @@ import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
+import { formatDate } from '../../lib/enums';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -148,8 +149,8 @@ export class ErpStaffSchedules extends LitElement {
     return [
     { key: 'name', header: t('ui.colSchedule'), sortable: true },
     { key: 'is_default', header: t('ui.colDefault'), sortable: true, format: (r) => (Number(r.is_default) ? t('ui.valYes') : '—') },
-    { key: 'effective_from', header: t('ui.colFrom'), sortable: true, format: (r) => (r.effective_from as string) || '—' },
-    { key: 'effective_until', header: t('ui.colTo'), sortable: true, format: (r) => (r.effective_until as string) || '—' },
+    { key: 'effective_from', header: t('ui.colFrom'), sortable: true, format: (r) => formatDate(r.effective_from) || '—' },
+    { key: 'effective_until', header: t('ui.colTo'), sortable: true, format: (r) => formatDate(r.effective_until) || '—' },
     { key: 'is_active', header: t('ui.colActive'), sortable: true, format: (r) => (Number(r.is_active) ? t('ui.valYes') : t('ui.valNo')) },
     // The week at a glance (staff#2): «Mon 09:00-18:00 (13:00-14:00) · Wed 10:00-16:00».
     { key: 'hours', header: t('ui.colHours'), sortable: false, format: (r) => this.hoursSummary(String(r.id)) },

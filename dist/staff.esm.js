@@ -3340,8 +3340,6 @@ var es_default = {
     colPhone: "Tel\xE9fono",
     colStatus: "Estado",
     colHourlyRate: "\u20AC/h",
-    statusActive: "Activo",
-    statusInactive: "Inactivo",
     phFirstName: "Nombre",
     phLastName: "Apellidos",
     phEmail: "Email",
@@ -3371,10 +3369,10 @@ var es_default = {
     colType: "Tipo",
     colFrom: "Desde",
     colTo: "Hasta",
-    statusPending: "Pendientes",
-    statusApproved: "Aprobadas",
-    statusRejected: "Rechazadas",
-    statusCancelled: "Canceladas",
+    statusPending: "Pendiente",
+    statusApproved: "Aprobada",
+    statusRejected: "Rechazada",
+    statusCancelled: "Cancelada",
     actionApprove: "Aprobar",
     actionReject: "Rechazar",
     emptyTimeOff: "Sin solicitudes de ausencia.",
@@ -3457,6 +3455,7 @@ var es_default = {
     status_active: "Activo",
     status_inactive: "Inactivo",
     status_on_leave: "De baja",
+    status_terminated: "Dado de baja",
     bookable: "Reservable",
     bookingBuffer: "Margen entre citas (min)",
     hireDate: "Fecha de alta",
@@ -3537,8 +3536,6 @@ var en_default = {
     colPhone: "Phone",
     colStatus: "Status",
     colHourlyRate: "\u20AC/h",
-    statusActive: "Active",
-    statusInactive: "Inactive",
     phFirstName: "First name",
     phLastName: "Last name",
     phEmail: "Email",
@@ -3654,6 +3651,7 @@ var en_default = {
     status_active: "Active",
     status_inactive: "Inactive",
     status_on_leave: "On leave",
+    status_terminated: "Terminated",
     bookable: "Bookable",
     bookingBuffer: "Buffer between appointments (min)",
     hireDate: "Hire date",
@@ -3704,8 +3702,60 @@ function domainMessage(e5, lang, fallback) {
   return e5.message || fallback;
 }
 
-// modules/staff/ui/components/erp-staff-members/erp-staff-members.ts
+// modules/staff/ui/lib/enums.ts
 var CATALOG = { es: es_default, en: en_default };
+function erplora() {
+  const c5 = globalThis.erplora;
+  if (!c5) throw new Error("erplora SDK no inicializado por el shell");
+  return c5;
+}
+var MEMBER_STATUS_KEY = {
+  active: "ui.status_active",
+  inactive: "ui.status_inactive",
+  on_leave: "ui.status_on_leave",
+  terminated: "ui.status_terminated"
+};
+var LEAVE_TYPE_KEY = {
+  vacation: "ui.leaveVacation",
+  sick: "ui.leaveSick",
+  personal: "ui.leavePersonal",
+  training: "ui.leaveTraining",
+  other: "ui.leaveOther"
+};
+var REQUEST_STATUS_KEY = {
+  pending: "ui.statusPending",
+  approved: "ui.statusApproved",
+  rejected: "ui.statusRejected",
+  cancelled: "ui.statusCancelled"
+};
+function enumLabel(keys, value) {
+  const raw = value == null ? "" : String(value);
+  const key = keys[raw];
+  return key ? erplora().t(CATALOG, key) : raw;
+}
+function enumOptions(keys) {
+  return Object.keys(keys).map((value) => ({ value, label: enumLabel(keys, value) }));
+}
+function formatDate(value) {
+  const raw = value == null ? "" : String(value);
+  const iso = raw.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return raw;
+  const d3 = /* @__PURE__ */ new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(d3.getTime())) return raw;
+  try {
+    return new Intl.DateTimeFormat(erplora().locale || "es", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC"
+    }).format(d3);
+  } catch {
+    return iso;
+  }
+}
+
+// modules/staff/ui/components/erp-staff-members/erp-staff-members.ts
+var CATALOG2 = { es: es_default, en: en_default };
 var EMPTY_FORM = {
   first_name: "",
   last_name: "",
@@ -3725,7 +3775,7 @@ var EMPTY_FORM = {
   commission_rate: ""
 };
 var STATUS_OPTIONS = ["active", "inactive", "on_leave"];
-function erplora() {
+function erplora2() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
@@ -3777,10 +3827,10 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
   `;
   }
   get canSeeCompensation() {
-    return erplora().hasPermission?.("staff.view_compensation") === true;
+    return erplora2().hasPermission?.("staff.view_compensation") === true;
   }
   get columns() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return [
       { key: "full_name", header: t5("ui.colName"), sortable: true, filterable: true, filterType: "text" },
       {
@@ -3804,10 +3854,13 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         sortable: true,
         filterable: true,
         filterType: "select",
+        // El filtro sigue ofreciendo el dominio OPERATIVO (quién está y quién no); la celda, en
+        // cambio, tiene que saber nombrar los cuatro estados que la fila puede traer (staff#37).
         options: [
-          { value: "active", label: t5("ui.statusActive") },
-          { value: "inactive", label: t5("ui.statusInactive") }
-        ]
+          { value: "active", label: enumLabel(MEMBER_STATUS_KEY, "active") },
+          { value: "inactive", label: enumLabel(MEMBER_STATUS_KEY, "inactive") }
+        ],
+        format: (r6) => enumLabel(MEMBER_STATUS_KEY, r6.status)
       },
       // The rate column only exists for a session that may read it. Leaving it in place would print
       // «0,00 €» next to every colleague — «nobody earns anything» reads worse than no column.
@@ -3819,15 +3872,15 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         // Not server-filterable any more: the value no longer travels in the directory query.
         filterable: false,
         // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
-        format: (r6) => erplora().formatMoney(Number(this.rates[String(r6.id)] ?? 0))
+        format: (r6) => erplora2().formatMoney(Number(this.rates[String(r6.id)] ?? 0))
       }] : []
     ];
   }
   get canDelete() {
-    return erplora().hasPermission?.("staff.delete_staff_member") === true;
+    return erplora2().hasPermission?.("staff.delete_staff_member") === true;
   }
   get actions() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     const out = [{ id: "edit", label: t5("ui.actionEdit"), icon: "create-outline" }];
     if (this.canDelete) {
       out.push(
@@ -3846,7 +3899,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
    * cabecera identifica el registro que se está tocando, para no editar a la persona equivocada.
    */
   get panelLabels() {
-    const t5 = (k2, p4) => erplora().t(CATALOG, k2, p4);
+    const t5 = (k2, p4) => erplora2().t(CATALOG2, k2, p4);
     if (!this.editingId) return { newRecord: t5("ui.panelNew") };
     const name = `${this.form.first_name} ${this.form.last_name}`.trim();
     return { newRecord: t5("ui.panelEdit", { name }) };
@@ -3886,8 +3939,8 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     void this.loadMemberServices();
     try {
       const [detail, comp] = await Promise.all([
-        erplora().query("staff.members.get", { staff_id: m4.id }),
-        this.canSeeCompensation ? erplora().query("staff.members.compensation", { staff_id: m4.id }) : Promise.resolve([])
+        erplora2().query("staff.members.get", { staff_id: m4.id }),
+        this.canSeeCompensation ? erplora2().query("staff.members.compensation", { staff_id: m4.id }) : Promise.resolve([])
       ]);
       if (this.editingId !== m4.id) return;
       const d3 = detail?.[0];
@@ -3919,7 +3972,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         };
       }
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errLoadMember"));
+      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errLoadMember"));
     }
   }
   /** A record is linkable (staff#4): `?member=<id>` in the URL opens it, and opening one writes it. */
@@ -3950,10 +4003,10 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     this.formError = "";
     try {
       if (pending.kind === "deactivate") {
-        await erplora().command("staff.members.deactivate", { staff_id: pending.id });
+        await erplora2().command("staff.members.deactivate", { staff_id: pending.id });
       } else {
         const values = ev.detail?.data?.values ?? {};
-        await erplora().command("staff.members.delete", {
+        await erplora2().command("staff.members.delete", {
           staff_id: pending.id,
           termination_date: values.termination_date || null,
           reason: values.reason || null
@@ -3962,7 +4015,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       if (this.editingId === pending.id) this.resetForm();
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errLifecycle"));
+      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errLifecycle"));
     }
   }
   resetForm() {
@@ -3982,11 +4035,11 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     let cat = [];
     try {
       [own, cat] = await Promise.all([
-        erplora().query("staff.services.list_for_member", { staff_id: staffId }),
-        erplora().queryOptional("services.services.list", { limit: 500 })
+        erplora2().query("staff.services.list_for_member", { staff_id: staffId }),
+        erplora2().queryOptional("services.services.list", { limit: 500 })
       ]);
     } catch (e5) {
-      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+      this.servicesError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
     }
     if (this.editingId !== staffId) return;
     this.memberServices = own ?? [];
@@ -4007,7 +4060,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     const euros = parseFloat(String(this.newServicePrice).replace(",", "."));
     this.servicesError = "";
     try {
-      await erplora().command("staff.services.assign", {
+      await erplora2().command("staff.services.assign", {
         staff_id: this.editingId,
         service_id: svc.id,
         service_name: svc.name,
@@ -4020,16 +4073,16 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       this.newServicePrice = "";
       await this.loadMemberServices();
     } catch (e5) {
-      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+      this.servicesError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
     }
   }
   async removeService(id) {
     this.servicesError = "";
     try {
-      await erplora().command("staff.services.remove", { id });
+      await erplora2().command("staff.services.remove", { id });
       await this.loadMemberServices();
     } catch (e5) {
-      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+      this.servicesError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
     }
   }
   /** Mark as the member's primary service (the command demotes the previous one). */
@@ -4037,7 +4090,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     const current = this.memberServices.find((s5) => s5.id === row.id);
     this.servicesError = "";
     try {
-      await erplora().command("staff.services.update", {
+      await erplora2().command("staff.services.update", {
         id: row.id,
         custom_duration: current?.custom_duration ?? null,
         custom_price: current?.custom_price ?? null,
@@ -4046,11 +4099,11 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       });
       await this.loadMemberServices();
     } catch (e5) {
-      this.servicesError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errAssignService"));
+      this.servicesError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
     }
   }
   renderServices() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     if (!this.editingId) return A;
     return b2`<section class="services" data-section="services">
       <h4>${t5("ui.servicesTitle")}</h4>
@@ -4060,7 +4113,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         ${this.memberServices.map((s5) => b2`<li>
           <ion-icon name=${s5.is_primary ? "star" : "star-outline"} title=${t5("ui.servicePrimary")} aria-label=${t5("ui.servicePrimary")} role="button" tabindex="0" @click=${() => s5.is_primary ? void 0 : this.setPrimaryService(s5)}></ion-icon>
           <span class="name">${s5.service_name}</span>
-          <span class="meta">${s5.custom_duration ? `${s5.custom_duration} min` : ""}${s5.custom_duration && s5.custom_price != null ? " \xB7 " : ""}${s5.custom_price != null ? erplora().formatMoney(Number(s5.custom_price)) : ""}</span>
+          <span class="meta">${s5.custom_duration ? `${s5.custom_duration} min` : ""}${s5.custom_duration && s5.custom_price != null ? " \xB7 " : ""}${s5.custom_price != null ? erplora2().formatMoney(Number(s5.custom_price)) : ""}</span>
           <ion-button fill="clear" size="small" color="medium" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
         </li>`)}
       </ul>
@@ -4079,7 +4132,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
   async loadRates() {
     if (!this.canSeeCompensation) return;
     try {
-      const rows = await erplora().query(
+      const rows = await erplora2().query(
         "staff.members.compensation",
         { staff_id: "" }
       );
@@ -4094,7 +4147,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    this.ctrl = createListController(erplora(), "staff.members.list", () => this.requestUpdate(), {
+    this.ctrl = createListController(erplora2(), "staff.members.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "id",
       dir: "asc"
@@ -4106,10 +4159,10 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       void this.openRecord(row ?? { id: linked });
     }
     try {
-      const off1 = erplora().on("staff.member.created", () => this.ctrl.load());
-      const off2 = erplora().on("staff.member.updated", () => this.ctrl.load());
-      const off3 = erplora().on("staff.member.terminated", () => this.ctrl.load());
-      const off4 = erplora().on("staff.member.deactivated", () => this.ctrl.load());
+      const off1 = erplora2().on("staff.member.created", () => this.ctrl.load());
+      const off2 = erplora2().on("staff.member.updated", () => this.ctrl.load());
+      const off3 = erplora2().on("staff.member.terminated", () => this.ctrl.load());
+      const off4 = erplora2().on("staff.member.deactivated", () => this.ctrl.load());
       this.unsub = () => {
         off1();
         off2();
@@ -4126,7 +4179,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
   }
   async loadRoles() {
     try {
-      this.roles = await erplora().query("staff.roles.list") ?? [];
+      this.roles = await erplora2().query("staff.roles.list") ?? [];
     } catch {
     }
   }
@@ -4135,7 +4188,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
    *  (el vínculo es opcional, no puede bloquear el alta). */
   async loadHubUsers() {
     try {
-      const users = await erplora().query("hub.users.list") ?? [];
+      const users = await erplora2().query("hub.users.list") ?? [];
       this.hubUsers = users.filter((u5) => u5.is_active);
     } catch {
     }
@@ -4177,7 +4230,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     }
     try {
       if (this.editingId) {
-        await erplora().command("staff.members.update", {
+        await erplora2().command("staff.members.update", {
           staff_id: this.editingId,
           ...common,
           // '' CLEARS role and user; null would mean «keep» (COALESCE/CASE of the command).
@@ -4186,7 +4239,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
           booking_buffer: Number.isFinite(buffer) ? buffer : 0
         });
       } else {
-        await erplora().command("staff.members.create", {
+        await erplora2().command("staff.members.create", {
           ...common,
           role_id: f3.role_id || null,
           user_id: f3.user_id || null,
@@ -4197,13 +4250,13 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora().locale, erplora().t(CATALOG, "ui.errCreateMember"));
+      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errCreateMember"));
     } finally {
       this.saving = false;
     }
   }
   render() {
-    const t5 = (k2) => erplora().t(CATALOG, k2);
+    const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div class="page">
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
@@ -4220,7 +4273,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
             <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.form.user_id} @ionChange=${(e5) => this.patch({ user_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
-              ${this.editingId ? b2`<ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${t5(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>` : A}
+              ${this.editingId ? b2`<ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>` : A}
               <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e5) => this.patch({ is_bookable: !!e5.detail.checked })}>${t5("ui.bookable")}</ion-toggle>
               <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
               <ion-input mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
@@ -4240,7 +4293,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         <ion-alert
           .isOpen=${this.pendingAction !== null}
           header=${this.pendingAction?.kind === "terminate" ? t5("ui.terminateTitle") : t5("ui.deactivateTitle")}
-          message=${erplora().t(CATALOG, this.pendingAction?.kind === "terminate" ? "ui.terminateMessage" : "ui.deactivateMessage", { name: this.pendingAction?.label ?? "" })}
+          message=${erplora2().t(CATALOG2, this.pendingAction?.kind === "terminate" ? "ui.terminateMessage" : "ui.deactivateMessage", { name: this.pendingAction?.label ?? "" })}
           .inputs=${this.pendingAction?.kind === "terminate" ? [
       { name: "termination_date", type: "date", label: t5("ui.terminationDate") },
       { name: "reason", type: "text", placeholder: t5("ui.terminationReason") }
@@ -4303,8 +4356,8 @@ var ErpStaffMembers = _ErpStaffMembers;
 define("erp-staff-members", ErpStaffMembers);
 
 // modules/staff/ui/components/erp-staff-roles/erp-staff-roles.ts
-var CATALOG2 = { es: es_default, en: en_default };
-function erplora2() {
+var CATALOG3 = { es: es_default, en: en_default };
+function erplora3() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
@@ -4332,7 +4385,7 @@ var ErpStaffRoles = class extends i3 {
   `;
   }
   get columns() {
-    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return [
       { key: "name", header: t5("ui.colRole"), sortable: true, filterable: true, filterType: "text" },
       { key: "description", header: t5("ui.colDescription"), sortable: true, filterable: true, filterType: "text" },
@@ -4345,14 +4398,14 @@ var ErpStaffRoles = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    this.ctrl = createListController(erplora2(), "staff.roles.list", () => this.requestUpdate(), {
+    this.ctrl = createListController(erplora3(), "staff.roles.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "name",
       dir: "asc"
     });
     await this.ctrl.load();
     try {
-      this.unsub = erplora2().on("staff.role.created", () => this.ctrl.load());
+      this.unsub = erplora3().on("staff.role.created", () => this.ctrl.load());
     } catch {
     }
   }
@@ -4371,7 +4424,7 @@ var ErpStaffRoles = class extends i3 {
     this.saving = true;
     this.formError = "";
     try {
-      await erplora2().command("staff.roles.create", {
+      await erplora3().command("staff.roles.create", {
         name: this.newName.trim(),
         description: this.newDesc.trim(),
         color: this.newColor.trim(),
@@ -4383,13 +4436,13 @@ var ErpStaffRoles = class extends i3 {
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora2().t(CATALOG2, "ui.errCreateRole");
+      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errCreateRole");
     } finally {
       this.saving = false;
     }
   }
   render() {
-    const t5 = (k2) => erplora2().t(CATALOG2, k2);
+    const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div class="page">
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
@@ -4424,7 +4477,7 @@ __decorateClass([
 define("erp-staff-roles", ErpStaffRoles);
 
 // modules/staff/ui/components/erp-staff-schedules/erp-staff-schedules.ts
-var CATALOG3 = { es: es_default, en: en_default };
+var CATALOG4 = { es: es_default, en: en_default };
 var hhmm = (t5) => t5 ? String(t5).slice(0, 5) : "";
 var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
 function defaultWeek() {
@@ -4438,7 +4491,7 @@ function defaultWeek() {
     breakEnd: ""
   }));
 }
-function erplora3() {
+function erplora4() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
@@ -4487,19 +4540,19 @@ var ErpStaffSchedules = class extends i3 {
   `;
   }
   get columns() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return [
       { key: "name", header: t5("ui.colSchedule"), sortable: true },
       { key: "is_default", header: t5("ui.colDefault"), sortable: true, format: (r6) => Number(r6.is_default) ? t5("ui.valYes") : "\u2014" },
-      { key: "effective_from", header: t5("ui.colFrom"), sortable: true, format: (r6) => r6.effective_from || "\u2014" },
-      { key: "effective_until", header: t5("ui.colTo"), sortable: true, format: (r6) => r6.effective_until || "\u2014" },
+      { key: "effective_from", header: t5("ui.colFrom"), sortable: true, format: (r6) => formatDate(r6.effective_from) || "\u2014" },
+      { key: "effective_until", header: t5("ui.colTo"), sortable: true, format: (r6) => formatDate(r6.effective_until) || "\u2014" },
       { key: "is_active", header: t5("ui.colActive"), sortable: true, format: (r6) => Number(r6.is_active) ? t5("ui.valYes") : t5("ui.valNo") },
       // The week at a glance (staff#2): «Mon 09:00-18:00 (13:00-14:00) · Wed 10:00-16:00».
       { key: "hours", header: t5("ui.colHours"), sortable: false, format: (r6) => this.hoursSummary(String(r6.id)) }
     ];
   }
   get actions() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return [
       { id: "edit", label: t5("ui.actionEdit"), icon: "create-outline" },
       { id: "toggle", label: t5("ui.actionToggleActive"), icon: "power-outline" },
@@ -4516,7 +4569,7 @@ var ErpStaffSchedules = class extends i3 {
   }
   /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
   dayLabel(day) {
-    return erplora3().t(CATALOG3, DAY_KEYS[day]);
+    return erplora4().t(CATALOG4, DAY_KEYS[day]);
   }
   async connectedCallback() {
     super.connectedCallback();
@@ -4524,9 +4577,9 @@ var ErpStaffSchedules = class extends i3 {
     await this.loadMembers();
     try {
       const reload = () => this.loadSchedules();
-      const off1 = erplora3().on("staff.schedule.created", reload);
-      const off2 = erplora3().on("staff.schedule.updated", reload);
-      const off3 = erplora3().on("staff.schedule.deleted", reload);
+      const off1 = erplora4().on("staff.schedule.created", reload);
+      const off2 = erplora4().on("staff.schedule.updated", reload);
+      const off3 = erplora4().on("staff.schedule.deleted", reload);
       this.unsub = () => {
         off1();
         off2();
@@ -4542,13 +4595,13 @@ var ErpStaffSchedules = class extends i3 {
   }
   async loadMembers() {
     try {
-      this.members = await erplora3().query("staff.members.list") ?? [];
+      this.members = await erplora4().query("staff.members.list") ?? [];
       if (!this.staffId && this.members.length) {
         this.staffId = this.members[0].id;
         await this.loadSchedules();
       }
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errLoadMembers");
+      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
     }
   }
   async loadSchedules() {
@@ -4559,13 +4612,13 @@ var ErpStaffSchedules = class extends i3 {
     this.loading = true;
     try {
       const [schedules, hours] = await Promise.all([
-        erplora3().query("staff.schedules.list_for_member", { staff_id: this.staffId }),
-        erplora3().query("staff.schedules.hours_for_member", { staff_id: this.staffId })
+        erplora4().query("staff.schedules.list_for_member", { staff_id: this.staffId }),
+        erplora4().query("staff.schedules.hours_for_member", { staff_id: this.staffId })
       ]);
       this.schedules = schedules ?? [];
       this.hours = hours ?? [];
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errLoadSchedules");
+      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadSchedules");
     } finally {
       this.loading = false;
     }
@@ -4580,7 +4633,7 @@ var ErpStaffSchedules = class extends i3 {
   }
   /** Valida en cliente lo mismo que el handler WASM para dar feedback inmediato. */
   validateWeek() {
-    const t5 = (k2, p4) => erplora3().t(CATALOG3, k2, p4);
+    const t5 = (k2, p4) => erplora4().t(CATALOG4, k2, p4);
     const active = this.week.filter((d3) => d3.working);
     if (!active.length) return t5("ui.valNeedWorkingDay");
     for (const d3 of active) {
@@ -4617,10 +4670,10 @@ var ErpStaffSchedules = class extends i3 {
     }
     if (ev.detail.actionId === "toggle") {
       try {
-        await erplora3().command("staff.schedules.set_active", { schedule_id: row.id, is_active: Number(row.is_active) ? 0 : 1 });
+        await erplora4().command("staff.schedules.set_active", { schedule_id: row.id, is_active: Number(row.is_active) ? 0 : 1 });
         await this.loadSchedules();
       } catch (e5) {
-        this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, "ui.errUpdateSchedule"));
+        this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
       }
       return;
     }
@@ -4633,11 +4686,11 @@ var ErpStaffSchedules = class extends i3 {
     this.pendingDelete = null;
     if (ev.detail?.role !== "confirm" || !pending) return;
     try {
-      await erplora3().command("staff.schedules.delete", { schedule_id: pending.id });
+      await erplora4().command("staff.schedules.delete", { schedule_id: pending.id });
       if (this.editingId === pending.id) this.resetForm();
       await this.loadSchedules();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, "ui.errUpdateSchedule"));
+      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
     }
   }
   resetForm() {
@@ -4658,7 +4711,7 @@ var ErpStaffSchedules = class extends i3 {
     ev.preventDefault();
     if (!this.staffId) return;
     if (this.effectiveFrom && this.effectiveUntil && this.effectiveFrom > this.effectiveUntil) {
-      this.formError = erplora3().t(CATALOG3, "ui.valRangeOrder");
+      this.formError = erplora4().t(CATALOG4, "ui.valRangeOrder");
       return;
     }
     const err = this.validateWeek();
@@ -4669,7 +4722,7 @@ var ErpStaffSchedules = class extends i3 {
     this.saving = true;
     this.formError = "";
     const body = {
-      name: this.newName.trim() || erplora3().t(CATALOG3, "ui.defaultScheduleName"),
+      name: this.newName.trim() || erplora4().t(CATALOG4, "ui.defaultScheduleName"),
       is_default: this.newDefault ? 1 : 0,
       effective_from: this.effectiveFrom || null,
       effective_until: this.effectiveUntil || null,
@@ -4684,21 +4737,21 @@ var ErpStaffSchedules = class extends i3 {
     };
     try {
       if (this.editingId) {
-        await erplora3().command("staff.schedules.update", { schedule_id: this.editingId, ...body });
+        await erplora4().command("staff.schedules.update", { schedule_id: this.editingId, ...body });
       } else {
-        await erplora3().command("staff.schedules.create", { staff_id: this.staffId, ...body });
+        await erplora4().command("staff.schedules.create", { staff_id: this.staffId, ...body });
       }
       this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora3().locale, erplora3().t(CATALOG3, this.editingId ? "ui.errUpdateSchedule" : "ui.errCreateSchedule"));
+      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, this.editingId ? "ui.errUpdateSchedule" : "ui.errCreateSchedule"));
     } finally {
       this.saving = false;
     }
   }
   render() {
-    const t5 = (k2) => erplora3().t(CATALOG3, k2);
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return b2`<div class="page">
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
@@ -4736,7 +4789,7 @@ var ErpStaffSchedules = class extends i3 {
         <ion-alert
           .isOpen=${this.pendingDelete !== null}
           header=${t5("ui.deleteScheduleTitle")}
-          message=${erplora3().t(CATALOG3, "ui.deleteScheduleMessage", { name: this.pendingDelete?.label ?? "" })}
+          message=${erplora4().t(CATALOG4, "ui.deleteScheduleMessage", { name: this.pendingDelete?.label ?? "" })}
           .buttons=${[
       { text: t5("ui.cancel"), role: "cancel" },
       { text: t5("ui.actionDelete"), role: "confirm", cssClass: "alert-button-danger" }
@@ -4791,14 +4844,7 @@ __decorateClass([
 define("erp-staff-schedules", ErpStaffSchedules);
 
 // modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts
-var CATALOG4 = { es: es_default, en: en_default };
-var LEAVE_TYPE_KEY = {
-  vacation: "ui.leaveVacation",
-  sick: "ui.leaveSick",
-  personal: "ui.leavePersonal",
-  training: "ui.leaveTraining",
-  other: "ui.leaveOther"
-};
+var CATALOG5 = { es: es_default, en: en_default };
 var EMPTY_DRAFT = {
   staff_id: "",
   leave_type: "vacation",
@@ -4809,7 +4855,7 @@ var EMPTY_DRAFT = {
   end_time: "",
   reason: ""
 };
-function erplora4() {
+function erplora5() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
@@ -4840,32 +4886,38 @@ var ErpStaffTimeOff = class extends i3 {
   }
   /** Show/hide only: the runtime revalidates `staff.manage_time_off` on the command itself. */
   get canManage() {
-    return erplora4().hasPermission?.("staff.manage_time_off") === true;
+    return erplora5().hasPermission?.("staff.manage_time_off") === true;
   }
   get columns() {
-    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    const t5 = (k2) => erplora5().t(CATALOG5, k2);
     return [
       { key: "staff_name", header: t5("ui.colMember"), sortable: true, filterable: true, filterType: "text" },
-      { key: "leave_type", header: t5("ui.colType"), sortable: true, filterable: true, filterType: "text" },
-      { key: "start_date", header: t5("ui.colFrom"), sortable: true, filterable: true, filterType: "daterange" },
-      { key: "end_date", header: t5("ui.colTo"), sortable: true, filterable: true, filterType: "daterange" },
+      // El valor CRUDO (`vacation`, `pending`, `2026-09-10`) no se enseña: la celda lee del mismo
+      // catálogo que el desplegable del alta y que las opciones del filtro (staff#37).
+      {
+        key: "leave_type",
+        header: t5("ui.colType"),
+        sortable: true,
+        filterable: true,
+        filterType: "select",
+        options: enumOptions(LEAVE_TYPE_KEY),
+        format: (r6) => enumLabel(LEAVE_TYPE_KEY, r6.leave_type)
+      },
+      { key: "start_date", header: t5("ui.colFrom"), sortable: true, filterable: true, filterType: "daterange", format: (r6) => formatDate(r6.start_date) },
+      { key: "end_date", header: t5("ui.colTo"), sortable: true, filterable: true, filterType: "daterange", format: (r6) => formatDate(r6.end_date) },
       {
         key: "status",
         header: t5("ui.colStatus"),
         sortable: true,
         filterable: true,
         filterType: "select",
-        options: [
-          { value: "pending", label: t5("ui.statusPending") },
-          { value: "approved", label: t5("ui.statusApproved") },
-          { value: "rejected", label: t5("ui.statusRejected") },
-          { value: "cancelled", label: t5("ui.statusCancelled") }
-        ]
+        options: enumOptions(REQUEST_STATUS_KEY),
+        format: (r6) => enumLabel(REQUEST_STATUS_KEY, r6.status)
       }
     ];
   }
   get actions() {
-    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    const t5 = (k2) => erplora5().t(CATALOG5, k2);
     return [
       // Solo icono (ADR-0133): el `label` viaja como title + aria-label del botón, no como texto.
       { id: "approve", label: t5("ui.actionApprove"), icon: "checkmark-circle-outline", color: "primary" },
@@ -4878,15 +4930,15 @@ var ErpStaffTimeOff = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    this.ctrl = createListController(erplora4(), "staff.time_off.list", () => this.requestUpdate(), {
+    this.ctrl = createListController(erplora5(), "staff.time_off.list", () => this.requestUpdate(), {
       pageSize: 50,
       sort: "id",
       dir: "asc"
     });
     await Promise.all([this.ctrl.load(), this.loadMembers()]);
     try {
-      const off1 = erplora4().on("staff.time_off.created", () => this.ctrl.load());
-      const off2 = erplora4().on("staff.time_off.status_changed", () => this.ctrl.load());
+      const off1 = erplora5().on("staff.time_off.created", () => this.ctrl.load());
+      const off2 = erplora5().on("staff.time_off.status_changed", () => this.ctrl.load());
       this.unsub = () => {
         off1();
         off2();
@@ -4903,7 +4955,7 @@ var ErpStaffTimeOff = class extends i3 {
    *  opciones — pero la pantalla sigue aprobando y rechazando, que es lo que ya hacía. */
   async loadMembers() {
     try {
-      this.members = await erplora4().query("staff.members.list") ?? [];
+      this.members = await erplora5().query("staff.members.list") ?? [];
     } catch {
     }
   }
@@ -4936,14 +4988,14 @@ var ErpStaffTimeOff = class extends i3 {
     ev.preventDefault?.();
     const problem = this.validationKey();
     if (problem) {
-      this.formError = erplora4().t(CATALOG4, problem);
+      this.formError = erplora5().t(CATALOG5, problem);
       return;
     }
     const d3 = this.draft;
     this.saving = true;
     this.formError = "";
     try {
-      await erplora4().command("staff.time_off.create", {
+      await erplora5().command("staff.time_off.create", {
         staff_id: d3.staff_id,
         leave_type: d3.leave_type || "vacation",
         start_date: d3.start_date,
@@ -4957,7 +5009,7 @@ var ErpStaffTimeOff = class extends i3 {
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errCreateTimeOff"));
+      this.formError = domainMessage(e5, erplora5().locale, erplora5().t(CATALOG5, "ui.errCreateTimeOff"));
     } finally {
       this.saving = false;
     }
@@ -4969,16 +5021,16 @@ var ErpStaffTimeOff = class extends i3 {
     this.busyId = id;
     this.formError = "";
     try {
-      await erplora4().command("staff.time_off.set_status", { time_off_id: id, status });
+      await erplora5().command("staff.time_off.set_status", { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errSetStatus"));
+      this.formError = domainMessage(e5, erplora5().locale, erplora5().t(CATALOG5, "ui.errSetStatus"));
     } finally {
       this.busyId = "";
     }
   }
   render() {
-    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    const t5 = (k2) => erplora5().t(CATALOG5, k2);
     return b2`<div>
         <header>
           <h2>${t5("ui.timeOffTitle")}</h2>
@@ -4996,13 +5048,13 @@ var ErpStaffTimeOff = class extends i3 {
    *  lo que ofrecen Fresha, Vagaro, Mangomint, Square Team, Odoo Empleados y BC. `mode="md"` en cada
    *  control con `fill`: el shell pinea Ionic en `ios` y ahí `fill` no pinta caja (staff#39/hub#760). */
   renderCreateForm() {
-    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    const t5 = (k2) => erplora5().t(CATALOG5, k2);
     return b2`<form slot="create" class="form" @submit=${(e5) => this.createTimeOff(e5)}>
       <ion-select data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.draft.staff_id} @ionChange=${(e5) => this.patch({ staff_id: e5.target.value ?? "" })}>
         ${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}
       </ion-select>
       <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colType")} .value=${this.draft.leave_type} @ionChange=${(e5) => this.patch({ leave_type: e5.target.value ?? "vacation" })}>
-        ${Object.entries(LEAVE_TYPE_KEY).map(([value, key]) => b2`<ion-select-option .value=${value}>${t5(key)}</ion-select-option>`)}
+        ${enumOptions(LEAVE_TYPE_KEY).map((o7) => b2`<ion-select-option .value=${o7.value}>${o7.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
         <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colFrom")} .value=${this.draft.start_date} @ionInput=${(e5) => this.patch({ start_date: e5.target.value })}></ion-input>
