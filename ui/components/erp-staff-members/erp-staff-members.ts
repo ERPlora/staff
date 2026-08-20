@@ -490,11 +490,11 @@ export class ErpStaffMembers extends LitElement {
       ${this.catalogUnavailable
         ? html`<div class="hint" data-hint="no-catalog">${t('ui.servicesNoCatalog')}</div>`
         : html`<div class="assign">
-            <ion-select fill="outline" label-placement="floating" label=${t('ui.serviceAdd')} .value=${this.newServiceId} @ionChange=${(e: any) => (this.newServiceId = e.target.value)}>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.serviceAdd')} .value=${this.newServiceId} @ionChange=${(e: any) => (this.newServiceId = e.target.value)}>
               ${this.assignableServices.map((c) => html`<ion-select-option .value=${c.id}>${c.name}</ion-select-option>`)}
             </ion-select>
-            <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
             <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
           </div>`}
     </section>`;
@@ -645,30 +645,30 @@ export class ErpStaffMembers extends LitElement {
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e: Event) => this.createMember(e)}>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.form.first_name} @ionInput=${(e: any) => this.patch({ first_name: e.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.form.last_name} @ionInput=${(e: any) => this.patch({ last_name: e.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.form.email} @ionInput=${(e: any) => this.patch({ email: e.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="tel" label=${t('ui.colPhone')} .value=${this.form.phone} @ionInput=${(e: any) => this.patch({ phone: e.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
-            <ion-select fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
-            <ion-select fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.form.first_name} @ionInput=${(e: any) => this.patch({ first_name: e.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.form.last_name} @ionInput=${(e: any) => this.patch({ last_name: e.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.form.email} @ionInput=${(e: any) => this.patch({ email: e.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="tel" label=${t('ui.colPhone')} .value=${this.form.phone} @ionInput=${(e: any) => this.patch({ phone: e.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
               ${this.editingId
-                ? html`<ion-select fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${t(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>`
+                ? html`<ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${t(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>`
                 : nothing}
               <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
-              <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
-              <ion-textarea fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
+              <ion-textarea mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>
             </section>
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation
               ? html`<section data-section="compensation" class="grid2">
-                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.hourlyRateEuros')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
-                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.hourlyRateEuros')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
                 </section>`
               : nothing}
             ${this.renderServices()}

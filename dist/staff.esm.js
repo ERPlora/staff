@@ -4047,11 +4047,11 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         </li>`)}
       </ul>
       ${this.catalogUnavailable ? b2`<div class="hint" data-hint="no-catalog">${t5("ui.servicesNoCatalog")}</div>` : b2`<div class="assign">
-            <ion-select fill="outline" label-placement="floating" label=${t5("ui.serviceAdd")} .value=${this.newServiceId} @ionChange=${(e5) => this.newServiceId = e5.target.value}>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.serviceAdd")} .value=${this.newServiceId} @ionChange=${(e5) => this.newServiceId = e5.target.value}>
               ${this.assignableServices.map((c5) => b2`<ion-select-option .value=${c5.id}>${c5.name}</ion-select-option>`)}
             </ion-select>
-            <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
             <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e5) => this.assignService(e5)}>${t5("ui.serviceAssign")}</ion-button>
           </div>`}
     </section>`;
@@ -4193,27 +4193,27 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e5) => this.createMember(e5)}>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.phFirstName")} .value=${this.form.first_name} @ionInput=${(e5) => this.patch({ first_name: e5.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.phLastName")} .value=${this.form.last_name} @ionInput=${(e5) => this.patch({ last_name: e5.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.form.email} @ionInput=${(e5) => this.patch({ email: e5.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" type="tel" label=${t5("ui.colPhone")} .value=${this.form.phone} @ionInput=${(e5) => this.patch({ phone: e5.target.value })}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.employeeId")} .value=${this.form.employee_id} @ionInput=${(e5) => this.patch({ employee_id: e5.target.value })}></ion-input>
-            <ion-select fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.form.role_id} @ionChange=${(e5) => this.patch({ role_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.roleNone")}</ion-select-option>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
-            <ion-select fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.form.user_id} @ionChange=${(e5) => this.patch({ user_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phFirstName")} .value=${this.form.first_name} @ionInput=${(e5) => this.patch({ first_name: e5.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phLastName")} .value=${this.form.last_name} @ionInput=${(e5) => this.patch({ last_name: e5.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.form.email} @ionInput=${(e5) => this.patch({ email: e5.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="tel" label=${t5("ui.colPhone")} .value=${this.form.phone} @ionInput=${(e5) => this.patch({ phone: e5.target.value })}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.employeeId")} .value=${this.form.employee_id} @ionInput=${(e5) => this.patch({ employee_id: e5.target.value })}></ion-input>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.form.role_id} @ionChange=${(e5) => this.patch({ role_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.roleNone")}</ion-select-option>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
+            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.form.user_id} @ionChange=${(e5) => this.patch({ user_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
-              ${this.editingId ? b2`<ion-select fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${t5(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>` : A}
+              ${this.editingId ? b2`<ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${t5(`ui.status_${st}`)}</ion-select-option>`)}</ion-select>` : A}
               <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e5) => this.patch({ is_bookable: !!e5.detail.checked })}>${t5("ui.bookable")}</ion-toggle>
-              <ion-input fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" type="color" label=${t5("ui.colColor")} .value=${this.form.color || "#000000"} @ionInput=${(e5) => this.patch({ color: e5.target.value })}></ion-input>
-              <ion-input fill="outline" label-placement="floating" label=${t5("ui.specialties")} .value=${this.form.specialties} @ionInput=${(e5) => this.patch({ specialties: e5.target.value })}></ion-input>
-              <ion-textarea fill="outline" label-placement="floating" auto-grow label=${t5("ui.bio")} .value=${this.form.bio} @ionInput=${(e5) => this.patch({ bio: e5.target.value })}></ion-textarea>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" type="color" label=${t5("ui.colColor")} .value=${this.form.color || "#000000"} @ionInput=${(e5) => this.patch({ color: e5.target.value })}></ion-input>
+              <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.specialties")} .value=${this.form.specialties} @ionInput=${(e5) => this.patch({ specialties: e5.target.value })}></ion-input>
+              <ion-textarea mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.bio")} .value=${this.form.bio} @ionInput=${(e5) => this.patch({ bio: e5.target.value })}></ion-textarea>
             </section>
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation ? b2`<section data-section="compensation" class="grid2">
-                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.hourlyRateEuros")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
-                  <ion-input fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.hourlyRateEuros")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
                 </section>` : A}
             ${this.renderServices()}
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
@@ -4379,9 +4379,9 @@ var ErpStaffRoles = class extends i3 {
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e5) => this.createRole(e5)}>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
             <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
@@ -4685,7 +4685,7 @@ var ErpStaffSchedules = class extends i3 {
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
         <header>
-          <ion-select fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
+          <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
@@ -4694,21 +4694,21 @@ var ErpStaffSchedules = class extends i3 {
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
           <form slot="create" class="form" @submit=${(e5) => this.createSchedule(e5)}>
-            <ion-input fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
-            <ion-input fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
             <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
             <div class="week">
               ${this.week.map(
       (d3) => b2`<div class="day">
                   <ion-checkbox justify="start" label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}><span class="name">${this.dayLabel(d3.day)}</span></ion-checkbox>
-                  ${d3.working ? b2`<ion-input fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
+                  ${d3.working ? b2`<ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepBreak")}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
+                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
                 </div>`
     )}
             </div>

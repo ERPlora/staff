@@ -120,6 +120,20 @@ describe('the record: edit loads everything and saves a full snapshot', () => {
     });
   });
 
+  // staff#39 — the two invisible fields were the PAYROLL ones, so making them visible must not move
+  // a cent. A rate with decimals is where a stray ×100 or a `toFixed` would show up: `15.75` €/h is
+  // `1575` cents, not `1575.00` and not `157500`.
+  it('a rate with decimals still travels as integer cents (15,75 €/h → 1575)', async () => {
+    const el = await montar();
+    await accion(el, 'edit');
+    await new Promise((r) => setTimeout(r, 0));
+    el.form = { ...el.form, hourly_rate: '15.75', commission_rate: '12.5' };
+    await el.createMember(new Event('submit'));
+    const upd = comandos.find((c) => c.name === 'staff.members.update')!;
+    expect(upd.payload.hourly_rate).toBe(1575);
+    expect(upd.payload.commission_rate).toBe(12.5);
+  });
+
   it('without view_compensation the form neither loads nor sends compensation', async () => {
     permisos = ['staff.view_staff_member', 'staff.change_staff_member'];
     const el = await montar();
