@@ -29,6 +29,7 @@
       "staff.services.assign",
       "staff.services.remove",
       "staff.services.update",
+      "staff.time_off.create",
       "staff.time_off.set_status"
     ],
     "events": [

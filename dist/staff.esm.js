@@ -3377,6 +3377,21 @@ var es_default = {
     actionReject: "Rechazar",
     emptyTimeOff: "Sin solicitudes de ausencia.",
     errSetStatus: "No se pudo cambiar el estado",
+    leaveVacation: "Vacaciones",
+    leaveSick: "Baja por enfermedad",
+    leavePersonal: "Asuntos propios",
+    leaveTraining: "Formaci\xF3n",
+    leaveOther: "Otros",
+    fullDay: "D\xEDa completo",
+    timeFrom: "Desde (hora)",
+    timeTo: "Hasta (hora)",
+    reason: "Motivo",
+    errCreateTimeOff: "No se pudo registrar la ausencia",
+    valTimeOffMember: "Elige de qui\xE9n es la ausencia.",
+    valTimeOffDates: "Indica la fecha de inicio y la de fin.",
+    valTimeOffRange: "La fecha de fin no puede ser anterior a la de inicio.",
+    valTimeOffHours: "Una ausencia de medio d\xEDa necesita hora de inicio y de fin.",
+    valTimeOffHoursOrder: "La hora de inicio tiene que ser anterior a la de fin.",
     schedulesTitle: "Horarios",
     phMember: "Miembro\u2026",
     colSchedule: "Horario",
@@ -3557,6 +3572,21 @@ var en_default = {
     actionReject: "Reject",
     emptyTimeOff: "No time-off requests.",
     errSetStatus: "Could not change the status",
+    leaveVacation: "Vacation",
+    leaveSick: "Sick leave",
+    leavePersonal: "Personal",
+    leaveTraining: "Training",
+    leaveOther: "Other",
+    fullDay: "Full day",
+    timeFrom: "From (time)",
+    timeTo: "To (time)",
+    reason: "Reason",
+    errCreateTimeOff: "Could not register the time off",
+    valTimeOffMember: "Pick the staff member this time off is for.",
+    valTimeOffDates: "Enter the start and end dates.",
+    valTimeOffRange: "The end date must be on or after the start date.",
+    valTimeOffHours: "A part-day absence needs a start and an end time.",
+    valTimeOffHoursOrder: "The start time must be earlier than the end time.",
     schedulesTitle: "Schedules",
     phMember: "Member\u2026",
     colSchedule: "Schedule",
@@ -4744,6 +4774,23 @@ define("erp-staff-schedules", ErpStaffSchedules);
 
 // modules/staff/ui/components/erp-staff-time-off/erp-staff-time-off.ts
 var CATALOG4 = { es: es_default, en: en_default };
+var LEAVE_TYPE_KEY = {
+  vacation: "ui.leaveVacation",
+  sick: "ui.leaveSick",
+  personal: "ui.leavePersonal",
+  training: "ui.leaveTraining",
+  other: "ui.leaveOther"
+};
+var EMPTY_DRAFT = {
+  staff_id: "",
+  leave_type: "vacation",
+  start_date: "",
+  end_date: "",
+  is_full_day: true,
+  start_time: "",
+  end_time: "",
+  reason: ""
+};
 function erplora4() {
   const c5 = globalThis.erplora;
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
@@ -4755,6 +4802,9 @@ var ErpStaffTimeOff = class extends i3 {
     this.formError = "";
     this.busyId = "";
     this.tick = 0;
+    this.members = [];
+    this.draft = { ...EMPTY_DRAFT };
+    this.saving = false;
     this.onLocaleChange = () => this.requestUpdate();
   }
   static {
@@ -4762,10 +4812,17 @@ var ErpStaffTimeOff = class extends i3 {
     :host { display:block; font-family: system-ui, sans-serif; color: var(--ion-text-color, #1c1b18); }
     header { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; }
     h2 { margin:0; font-size:1.15rem; flex:1; }
-    .form { display:flex; gap:.75rem; flex-wrap:wrap; align-items:end; margin:.5rem 0 1.25rem; }
-    .form ion-select { flex:1 1 11rem; min-width:9rem; }
+    /* El alta vive en el panel lateral de la tabla: columna estrecha, no fila que se desborda. */
+    .form { display:flex; flex-direction:column; gap:.7rem; }
+    .form ion-button { align-self:flex-end; }
+    /* Two columns when the panel is wide enough (tablet/desktop), one on a phone. */
+    .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:.6rem; align-items:center; }
     .err { color:#d9480f; font-weight:600; }
   `;
+  }
+  /** Show/hide only: the runtime revalidates `staff.manage_time_off` on the command itself. */
+  get canManage() {
+    return erplora4().hasPermission?.("staff.manage_time_off") === true;
   }
   get columns() {
     const t5 = (k2) => erplora4().t(CATALOG4, k2);
@@ -4808,7 +4865,7 @@ var ErpStaffTimeOff = class extends i3 {
       sort: "id",
       dir: "asc"
     });
-    await this.ctrl.load();
+    await Promise.all([this.ctrl.load(), this.loadMembers()]);
     try {
       const off1 = erplora4().on("staff.time_off.created", () => this.ctrl.load());
       const off2 = erplora4().on("staff.time_off.status_changed", () => this.ctrl.load());
@@ -4823,6 +4880,69 @@ var ErpStaffTimeOff = class extends i3 {
     window.removeEventListener("erplora:locale-changed", this.onLocaleChange);
     super.disconnectedCallback();
     this.unsub?.();
+  }
+  /** Los miembros del hub para el selector del alta. Si no se pueden leer, el panel se queda sin
+   *  opciones — pero la pantalla sigue aprobando y rechazando, que es lo que ya hacía. */
+  async loadMembers() {
+    try {
+      this.members = await erplora4().query("staff.members.list") ?? [];
+    } catch {
+    }
+  }
+  dataTable() {
+    return this.renderRoot.querySelector("ok-data-table");
+  }
+  patch(p4) {
+    this.draft = { ...this.draft, ...p4 };
+  }
+  /**
+   * Lo que el usuario puede corregir se le dice AQUÍ, antes de gastar un viaje al servidor y de
+   * leer un error crudo del handler. Lo que solo sabe el servidor —el solape con otra ausencia
+   * `pending|approved`— no se adivina: se manda y se pinta su código de dominio traducido.
+   *
+   * Devuelve la clave i18n del primer problema, o `''` si el borrador es enviable.
+   */
+  validationKey() {
+    const d3 = this.draft;
+    if (!d3.staff_id) return "ui.valTimeOffMember";
+    if (!d3.start_date || !d3.end_date) return "ui.valTimeOffDates";
+    if (d3.start_date > d3.end_date) return "ui.valTimeOffRange";
+    if (!d3.is_full_day) {
+      if (!d3.start_time || !d3.end_time) return "ui.valTimeOffHours";
+      if (d3.start_time >= d3.end_time) return "ui.valTimeOffHoursOrder";
+    }
+    return "";
+  }
+  /** Alta de una ausencia (staff#36): la puerta que le faltaba a `staff.time_off.create`. */
+  async createTimeOff(ev) {
+    ev.preventDefault?.();
+    const problem = this.validationKey();
+    if (problem) {
+      this.formError = erplora4().t(CATALOG4, problem);
+      return;
+    }
+    const d3 = this.draft;
+    this.saving = true;
+    this.formError = "";
+    try {
+      await erplora4().command("staff.time_off.create", {
+        staff_id: d3.staff_id,
+        leave_type: d3.leave_type || "vacation",
+        start_date: d3.start_date,
+        end_date: d3.end_date,
+        is_full_day: d3.is_full_day ? 1 : 0,
+        start_time: d3.is_full_day ? null : d3.start_time,
+        end_time: d3.is_full_day ? null : d3.end_time,
+        reason: d3.reason
+      });
+      this.draft = { ...EMPTY_DRAFT };
+      this.dataTable()?.close();
+      await this.ctrl.load();
+    } catch (e5) {
+      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errCreateTimeOff"));
+    } finally {
+      this.saving = false;
+    }
   }
   async onRowAction(actionId, row) {
     if (row.status !== "pending") return;
@@ -4847,8 +4967,37 @@ var ErpStaffTimeOff = class extends i3 {
         </header>
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.staff_name ?? "\u2014")} .cardIcon=${() => "airplane-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}></ok-data-table>
+        <ok-data-table .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.staff_name ?? "\u2014")} .cardIcon=${() => "airplane-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+          <!-- El alta se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
+               abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
+          ${this.renderCreateForm()}
+        </ok-data-table>
       </div>`;
+  }
+  /** El alta (staff#36): «Miembro · Tipo · Desde · Hasta · Día completo · (horas) · Motivo», que es
+   *  lo que ofrecen Fresha, Vagaro, Mangomint, Square Team, Odoo Empleados y BC. `mode="md"` en cada
+   *  control con `fill`: el shell pinea Ionic en `ios` y ahí `fill` no pinta caja (staff#39/hub#760). */
+  renderCreateForm() {
+    const t5 = (k2) => erplora4().t(CATALOG4, k2);
+    return b2`<form slot="create" class="form" @submit=${(e5) => this.createTimeOff(e5)}>
+      <ion-select data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.draft.staff_id} @ionChange=${(e5) => this.patch({ staff_id: e5.target.value ?? "" })}>
+        ${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}
+      </ion-select>
+      <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colType")} .value=${this.draft.leave_type} @ionChange=${(e5) => this.patch({ leave_type: e5.target.value ?? "vacation" })}>
+        ${Object.entries(LEAVE_TYPE_KEY).map(([value, key]) => b2`<ion-select-option .value=${value}>${t5(key)}</ion-select-option>`)}
+      </ion-select>
+      <div class="grid2">
+        <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colFrom")} .value=${this.draft.start_date} @ionInput=${(e5) => this.patch({ start_date: e5.target.value })}></ion-input>
+        <ion-input data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colTo")} .value=${this.draft.end_date} @ionInput=${(e5) => this.patch({ end_date: e5.target.value })}></ion-input>
+      </div>
+      <ion-toggle data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e5) => this.patch({ is_full_day: !!e5.detail.checked })}>${t5("ui.fullDay")}</ion-toggle>
+      ${this.draft.is_full_day ? A : b2`<div class="grid2" data-section="hours">
+            <ion-input data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeFrom")} .value=${this.draft.start_time} @ionInput=${(e5) => this.patch({ start_time: e5.target.value })}></ion-input>
+            <ion-input data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeTo")} .value=${this.draft.end_time} @ionInput=${(e5) => this.patch({ end_time: e5.target.value })}></ion-input>
+          </div>`}
+      <ion-textarea data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.reason")} .value=${this.draft.reason} @ionInput=${(e5) => this.patch({ reason: e5.target.value })}></ion-textarea>
+      <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
+    </form>`;
   }
 };
 __decorateClass([
@@ -4860,4 +5009,13 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "tick", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "members", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "draft", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "saving", 2);
 define("erp-staff-time-off", ErpStaffTimeOff);
