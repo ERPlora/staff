@@ -71,7 +71,7 @@ async function montar() {
 }
 
 const tabla = (el: HTMLElement & { shadowRoot: ShadowRoot }) =>
-  el.shadowRoot.querySelector('ok-data-table') as (HTMLElement & { addable: boolean; fill: boolean }) | null;
+  el.shadowRoot.querySelector('ok-data-table') as (HTMLElement & { addable: boolean; fill: boolean; rowClickable: boolean }) | null;
 
 type Col = { key: string; filterType?: string; options?: { value: string; label: string }[] };
 const columnas = (el: HTMLElement) => (el as unknown as { columns: Col[] }).columns;
@@ -206,5 +206,33 @@ describe('vínculo con el usuario del Hub', () => {
     await wc.createMember(new Event('submit'));
     // '' (no null) es el centinela de DESVINCULAR del command: null significaría «no lo toques».
     expect(comandos.find((c) => c.name === 'staff.members.update')!.payload.user_id).toBe('');
+  });
+});
+
+// ── pm#155 (outfitkit#67, second half) ────────────────────────────────────────────────────────
+//
+// At 1440 px the «Actions» column fell off the screen with nothing hinting the table went on to
+// the right, so the only door into a member was a button nobody could see. OutfitKit 0.1.44
+// pins that column, but the other half of the fix is opt-in: `rowClickable` turns the whole row
+// into a door — the first thing a user tries. The list has to ask for it, and wire `rowClick`
+// to the same record panel the «edit» action opens.
+describe('clicking the row opens the member (pm#155)', () => {
+  const MIEMBRO = { id: 'm1', first_name: 'Ana', last_name: 'Ruiz', full_name: 'Ana Ruiz', status: 'active' };
+
+  it('the table declares `rowClickable` → the whole row is a door, not just the action button', async () => {
+    const el = await montar();
+    expect(
+      tabla(el)?.rowClickable,
+      'without `rowClickable` the row is dead: if the actions column is off-screen there is no way in',
+    ).toBe(true);
+  });
+
+  it('`rowClick` opens the record panel of the clicked member, same as the «edit» action', async () => {
+    const el = await montar();
+    tabla(el)!.dispatchEvent(new CustomEvent('rowClick', { detail: { row: MIEMBRO } }));
+    await new Promise((r) => setTimeout(r, 0));
+    await (el as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+    const wc = el as unknown as { editingId: string | null };
+    expect(wc.editingId, 'the row was clicked and the record panel did not take the member').toBe('m1');
   });
 });
