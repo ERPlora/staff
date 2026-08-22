@@ -1770,12 +1770,53 @@ var o6 = e4(class extends i4 {
 
 // ../outfitkit/dist/ok-data-table.js
 var CSV_BOM = "\uFEFF";
+var WINDOWS_1252_C1 = [
+  8364,
+  129,
+  8218,
+  402,
+  8222,
+  8230,
+  8224,
+  8225,
+  710,
+  8240,
+  352,
+  8249,
+  338,
+  141,
+  381,
+  143,
+  144,
+  8216,
+  8217,
+  8220,
+  8221,
+  8226,
+  8211,
+  8212,
+  732,
+  8482,
+  353,
+  8250,
+  339,
+  157,
+  382,
+  376
+];
+function decodeWindows1252(bytes) {
+  let text = "";
+  for (const byte of bytes) {
+    text += String.fromCharCode(byte >= 128 && byte <= 159 ? WINDOWS_1252_C1[byte - 128] : byte);
+  }
+  return text;
+}
 function decodeCsvBuffer(buf) {
   let text;
   try {
     text = new TextDecoder("utf-8", { fatal: true }).decode(buf);
   } catch {
-    text = new TextDecoder("windows-1252").decode(buf);
+    text = decodeWindows1252(new Uint8Array(buf));
   }
   return text.charCodeAt(0) === 65279 ? text.slice(1) : text;
 }
@@ -4260,7 +4301,9 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     return b2`<div class="page">
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
+             same record panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
+        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           <form slot="create" class="form" @submit=${(e5) => this.createMember(e5)}>
@@ -4760,7 +4803,9 @@ var ErpStaffSchedules = class extends i3 {
         </header>
         ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
-        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)}>
+        <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
+             same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
+        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
