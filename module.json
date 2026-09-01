@@ -73,7 +73,7 @@
     }
   ],
   "settings": {
-    "title": "Personal",
+    "title": "Staff",
     "icon": "people-outline",
     "schema": "schemas/settings_update.json",
     "get": "staff.settings.get",

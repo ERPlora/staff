@@ -14,6 +14,50 @@
       "label": "Horarios"
     }
   },
+  "settings": {
+    "title": "Staff",
+    "fields": {
+      "default_work_start": {
+        "label": "Working day starts (HH:MM)",
+        "description": "Default start of the working day. A night shift (end before start) is valid."
+      },
+      "default_work_end": {
+        "label": "Working day ends (HH:MM)",
+        "description": "Default end of the working day. If it is earlier than the start, the shift is taken to cross midnight."
+      },
+      "default_break_duration": {
+        "label": "Break duration (minutes)",
+        "description": "Between 0 and 480 minutes."
+      },
+      "min_advance_booking": {
+        "label": "Minimum booking notice (hours)",
+        "description": "Between 0 and 168 hours (one week)."
+      },
+      "max_daily_hours": {
+        "label": "Maximum hours per day",
+        "description": "Between 1 and 24 hours."
+      },
+      "overtime_threshold": {
+        "label": "Overtime threshold (hours/week)",
+        "description": "Between 1 and 168 hours per week."
+      },
+      "show_staff_photos": {
+        "label": "Show staff photos"
+      },
+      "show_staff_bio": {
+        "label": "Show staff bio"
+      },
+      "allow_staff_selection": {
+        "label": "Let customers choose the professional"
+      },
+      "notify_new_appointment": {
+        "label": "Notify on a new appointment"
+      },
+      "notify_cancellation": {
+        "label": "Notify on a cancellation"
+      }
+    }
+  },
   "ui": {
     "staffTitle": "Staff",
     "colName": "Name",

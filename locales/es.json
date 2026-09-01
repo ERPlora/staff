@@ -15,6 +15,50 @@
       "label": "Horarios"
     }
   },
+  "settings": {
+    "title": "Personal",
+    "fields": {
+      "default_work_start": {
+        "label": "Inicio de jornada (HH:MM)",
+        "description": "Hora de inicio de la jornada por defecto. La jornada nocturna (fin antes del inicio) es válida."
+      },
+      "default_work_end": {
+        "label": "Fin de jornada (HH:MM)",
+        "description": "Hora de fin de la jornada por defecto. Si es anterior al inicio, se entiende que el turno cruza la medianoche."
+      },
+      "default_break_duration": {
+        "label": "Duración del descanso (minutos)",
+        "description": "Entre 0 y 480 minutos."
+      },
+      "min_advance_booking": {
+        "label": "Antelación mínima de reserva (horas)",
+        "description": "Entre 0 y 168 horas (una semana)."
+      },
+      "max_daily_hours": {
+        "label": "Horas máximas por día",
+        "description": "Entre 1 y 24 horas."
+      },
+      "overtime_threshold": {
+        "label": "Umbral de horas extra (horas/semana)",
+        "description": "Entre 1 y 168 horas semanales."
+      },
+      "show_staff_photos": {
+        "label": "Mostrar fotos del personal"
+      },
+      "show_staff_bio": {
+        "label": "Mostrar biografía del personal"
+      },
+      "allow_staff_selection": {
+        "label": "Permitir elegir profesional"
+      },
+      "notify_new_appointment": {
+        "label": "Avisar de nueva cita"
+      },
+      "notify_cancellation": {
+        "label": "Avisar de cancelación"
+      }
+    }
+  },
   "ui": {
     "staffTitle": "Personal",
     "colName": "Nombre",
