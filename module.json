@@ -82,7 +82,12 @@
   "migrations": {
     "postgres": [
       "migrations/postgres/001_init.sql",
-      "migrations/postgres/002_termination_reason.sql"
+      "migrations/postgres/002_termination_reason.sql",
+      "migrations/postgres/003_worktime_hhmm.sql",
+      {
+        "file": "migrations/postgres/004_worktime_hhmm_backfill.sql",
+        "kind": "backfill"
+      }
     ]
   },
   "queries": {

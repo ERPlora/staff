@@ -1,0 +1,24 @@
+-- staff#51 — the working-day columns are born in the shape their label promises: HH:MM.
+--
+-- The Ajustes screen rendered a field titled `(HH:MM)` holding `09:00:00`. Two values decided what
+-- a business saw and they were not the same one: the `default` of `schemas/settings_update.json`
+-- (`09:00`, what the form shows while the hub has no row) and the `DEFAULT` of this column
+-- (`09:00:00`, what the row is BORN with, because `commands/_settings_ensure.sql` deliberately does
+-- not list the settings columns so the table stays their single source). Any write that does not
+-- name these two columns — the assistant changing one limit, any partial API call — created the
+-- singleton with the column's value, and the field contradicted its own label from then on.
+--
+-- HH:MM is the canonical shape because of who CONSUMES the value: nobody parses it. Its only
+-- consumer is that form, where the shell renders a `string` without `enum` as a plain text input,
+-- and the rest of the product already stores hour and minute (`cash_register.auto_close_time`,
+-- `schedules_business_hours.open_time`). This table was the outlier.
+--
+-- `expand`: `SET DEFAULT` only WIDENS what the previous binary may write — it changes no row and
+-- breaks no N-1 (`crates/runtime/src/migration_guard.rs`, `reshape_verb`). The rows that already
+-- exist are the next migration's job, because DML belongs in a `backfill`.
+--
+-- Idempotent (`SET DEFAULT` twice is the same default) and reversible: rolling the module back
+-- leaves every row readable and writable by the previous version — its `pattern` accepts `HH:MM`
+-- and its schema `default` was already `09:00`.
+ALTER TABLE staff_settings ALTER COLUMN default_work_start SET DEFAULT '09:00';
+ALTER TABLE staff_settings ALTER COLUMN default_work_end   SET DEFAULT '18:00';
