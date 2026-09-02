@@ -36,6 +36,20 @@ NOW = "2026-08-18T10:00:00Z"
 PARAM = re.compile(r":([a-z_][a-z0-9_]*)", re.IGNORECASE)
 
 
+def migration_paths(block: str = "migrations", dialect: str = "postgres") -> list:
+    """The migration files of the manifest, in order, in BOTH shapes the runtime accepts.
+
+    A migration is either a bare path (`"migrations/postgres/001_init.sql"`, read as `expand`) or
+    `{"file": …, "kind": …}` when the module declares what it does (`crates/runtime/src/manifest.rs`,
+    `MigrationEntry`). This harness assumed the first shape, so the day a migration declared its
+    `kind` every Postgres battery of the module died building its scratch database (staff#51).
+    """
+    return [
+        entry["file"] if isinstance(entry, dict) else entry
+        for entry in MANIFEST.get(block, {}).get(dialect, [])
+    ]
+
+
 def container_available() -> bool:
     try:
         subprocess.run(
@@ -125,7 +139,7 @@ class ScratchDb:
     def create(self) -> None:
         self.psql(["-c", f'DROP DATABASE IF EXISTS "{self.name}"'])
         self.psql(["-c", f'CREATE DATABASE "{self.name}"'])
-        for rel in MANIFEST["migrations"]["postgres"]:
+        for rel in migration_paths():
             self.psql([], db=self.name, stdin=(MODULE_DIR / rel).read_text())
 
     def drop(self) -> None:

@@ -116,7 +116,10 @@ def test_the_blocks_carry_the_type_the_runtime_deserializes() -> None:
 
 
 def declared_paths() -> list[str]:
-    paths = list(MANIFEST["migrations"]["postgres"])
+    # A migration is a bare path, or `{"file": …, "kind": …}` when the module declares what it
+    # does (`crates/runtime/src/manifest.rs`, `MigrationEntry`). Both are the manifest's own
+    # shapes, and reading only the first blew this check up the day one declared a `kind`.
+    paths = [e["file"] if isinstance(e, dict) else e for e in MANIFEST["migrations"]["postgres"]]
     paths += [q["sql"] for q in MANIFEST["queries"].values()]
     for c in MANIFEST["commands"].values():
         paths += list(c.get("sql", []))
