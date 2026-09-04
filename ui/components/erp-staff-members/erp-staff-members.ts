@@ -142,6 +142,7 @@ export class ErpStaffMembers extends LitElement {
     /* El alta vive en el panel lateral de la tabla: columna estrecha, no fila que se desborda. */
     .form { display:flex; flex-direction:column; gap:.7rem; }
     .form ion-button { align-self:flex-end; }
+    .hint { margin:-.35rem 0 0; font-size:.8rem; line-height:1.35; color: var(--ion-color-medium, #6b6b6b); }
     .err { color:#d9480f; font-weight:600; }
     /* Two columns when the panel is wide enough (tablet/desktop), one on a phone. */
     .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:.6rem; align-items:center; border-top:1px solid var(--ion-border-color, #e5e3dd); padding-top:.6rem; }
@@ -673,6 +674,12 @@ export class ErpStaffMembers extends LitElement {
             <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
             <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
             <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+            <!-- staff#46: without a link, what this person charges at the COUNTER is attributed to
+                 the session user, not to their record, and does not count towards their commission.
+                 Nobody is preselected: guessing the user ties one person's payroll to another's session. -->
+            ${this.form.user_id
+              ? nothing
+              : html`<p class="hint" data-hint="hub-user">${t('ui.hubUserWhyLink')}</p>`}
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
               ${this.editingId

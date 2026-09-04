@@ -158,6 +158,7 @@
     "ariaBreakEnd": "Break end",
     "hubUser": "Hub user",
     "hubUserNone": "No Hub access",
+    "hubUserWhyLink": "Without a Hub user, counter sales go to whoever is signed in and will not count towards this person's commission.",
     "servicesTitle": "Services performed",
     "servicesEmpty": "No services assigned yet.",
     "servicesNoCatalog": "Install the Services module to assign services to this professional.",

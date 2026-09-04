@@ -210,13 +210,20 @@ def key(tag: str) -> str:
     return f"staff-battery-{tag}-{uuid.uuid4().hex[:8]}"
 
 
-def create_member(hub: Hub, first: str, last: str, commission_rate: float, status="active") -> str:
+def create_member(
+    hub: Hub, first: str, last: str, commission_rate: float, status="active", user_id=None
+) -> str:
     """A staff member through the module's own door, and the id the RUNTIME minted for them — which
     is the `staff_id` the whole seam is keyed on. The payload is complete on purpose: the command's
-    SQL binds every column, so a field left out binds NULL (see the module's `member_create.sql`)."""
+    SQL binds every column, so a field left out binds NULL (see the module's `member_create.sql`).
+
+    `user_id` is the hub user the record hangs from (ADR-0192, optional). It is the SECOND id the
+    same person's day can arrive under: since sales#179 a counter sale is attributed to the user of
+    the session, not to a staff record (staff#46)."""
     out = hub.run(
         "staff.members.create",
         {
+            "user_id": user_id,
             "first_name": first,
             "last_name": last,
             "email": "",
@@ -279,3 +286,31 @@ def by_staff(hub: Hub) -> dict:
 def commissions(hub: Hub) -> list:
     """`staff.commissions.summary` as the day close reads it: every ACTIVE member, in its order."""
     return hub.query("staff.commissions.summary")
+
+
+def person_index(sheet: list) -> dict:
+    """The day close's own index (staff#46), built from NOTHING but the commission sheet: EVERY id a
+    person can be attributed under → their row. A member's `staff_id` is one; the `user_id` their
+    record hangs from is the other, and it is the one a counter sale arrives under since sales#179.
+    Folding on this index is what stops a professional's day being paid in halves."""
+    index = {}
+    for row in sheet:
+        index[row["staff_id"]] = row
+        if row.get("user_id"):
+            index[row["user_id"]] = row
+    return index
+
+
+def day_gross_by_person(sheet: list, gross_rows: dict) -> dict:
+    """`sales.by_staff` folded onto people: `{staff_id: gross_cents}` where every id that names the
+    same person has been added together. Ids the sheet does not know (a hub user with no staff
+    record, a member who has left) are left out — there is no rate to pay them against, which is
+    exactly what happened before sales#179 too."""
+    index = person_index(sheet)
+    day: dict = {}
+    for attributed_to, row in gross_rows.items():
+        person = index.get(attributed_to)
+        if person is None:
+            continue
+        day[person["staff_id"]] = day.get(person["staff_id"], 0) + cents(row["gross_total"])
+    return day
