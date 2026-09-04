@@ -1,21 +1,21 @@
--- Lado de la COMISIÓN para el cierre del día por profesional: por cada miembro activo del staff,
--- su id, nombre y tasa de comisión (`commission_rate`, % 0..100). Runtime inyecta :hub_id.
+-- The COMMISSION side of the per-professional day close: for every active staff member, their
+-- id, name and commission rate (`commission_rate`, % 0..100). The runtime injects :hub_id.
 --
--- Es DATOS DE STAFF SOLAMENTE: NO conoce las ventas (viven en el módulo sales; prohibido el JOIN
--- cross-módulo, ADR-0007/contrato de módulos). El importe de comisión =
--- gross_total × (commission_rate/100) lo compone el llamador (cierre del día) cruzando ESTAS filas
--- con `sales.by_staff` por `staff_id`. Seam documentado en architecture/modules/staff.md y sales.md.
--- Se excluyen miembros terminados/inactivos (no atribuyen comisión hoy) y los de comisión 0 NO se
--- filtran (aparecen con rate 0 para que el cierre los liste igual).
+-- STAFF DATA ONLY: it knows NOTHING about sales (they live in the sales module; the cross-module
+-- JOIN is forbidden, ADR-0007 / module contract). The commission amount =
+-- gross_total × (commission_rate/100) is composed by the caller (the day close) crossing THESE rows
+-- with `sales.by_staff` by `staff_id`. Seam documented in architecture/modules/staff.md and sales.md.
+-- Terminated/inactive members are excluded (they earn no commission today) and members with a 0
+-- rate are NOT filtered out (they show up with rate 0 so the close lists them all the same).
 --
--- LA MISMA PERSONA LLEGA POR DOS IDS (staff#46). Desde sales#179 ninguna venta queda sin atribuir:
--- `sales_sale.staff_id` es el `staff_member` que nombra la cita, o el **usuario del hub** de la
--- sesión en toda venta de mostrador. Es una referencia OPACA a una persona, no a una ficha. Por eso
--- la hoja publica junto al `staff_id` el `user_id` del que cuelga la ficha (la costura del ADR-0192,
--- opcional): son los DOS ids bajo los que puede llegar el día de un mismo profesional, y con ellos
--- el cierre los suma como uno solo sin que `staff` lea una venta ni `sales` sepa qué es una ficha.
--- Sin ese segundo id, la mitad de mostrador no casaba con ninguna tasa y el día se pagaba a medias.
--- `user_id` NULL = ficha sin usuario del Hub: no hay nada que unificar (comportamiento de siempre).
+-- THE SAME PERSON ARRIVES UNDER TWO IDS (staff#46). Since sales#179 no sale is left unattributed:
+-- `sales_sale.staff_id` is the `staff_member` the appointment names, or the **hub user** of the
+-- session in every counter sale. It is an OPAQUE reference to a person, not to a record. That is
+-- why the sheet publishes, beside the `staff_id`, the `user_id` the record hangs from (the ADR-0192
+-- seam, optional): they are the TWO ids a professional's day can arrive under, and with both of
+-- them the close adds it up as one without `staff` reading a sale or `sales` knowing what a record
+-- is. Without that second id the counter half matched no rate and the day was paid in halves.
+-- `user_id` NULL = a record with no Hub user: nothing to unify (the behaviour there always was).
 SELECT
     m.id                                       AS staff_id,
     m.user_id                                  AS user_id,

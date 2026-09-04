@@ -674,9 +674,9 @@ export class ErpStaffMembers extends LitElement {
             <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
             <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
             <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
-            <!-- staff#46: sin vínculo, lo que esta persona cobre en el MOSTRADOR se atribuye al
-                 usuario de la sesión, no a su ficha, y no le cuenta para la comisión. No se
-                 preselecciona a nadie: adivinar el usuario ata la nómina de uno a la sesión de otro. -->
+            <!-- staff#46: without a link, what this person charges at the COUNTER is attributed to
+                 the session user, not to their record, and does not count towards their commission.
+                 Nobody is preselected: guessing the user ties one person's payroll to another's session. -->
             ${this.form.user_id
               ? nothing
               : html`<p class="hint" data-hint="hub-user">${t('ui.hubUserWhyLink')}</p>`}
