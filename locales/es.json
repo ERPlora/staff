@@ -159,6 +159,7 @@
     "ariaBreakEnd": "Fin descanso",
     "hubUser": "Usuario del Hub",
     "hubUserNone": "Sin acceso al Hub",
+    "hubUserWhyLink": "Sin usuario del Hub, las ventas de mostrador se atribuyen a quien tenga la sesión y no le contarán para su comisión.",
     "servicesTitle": "Servicios que realiza",
     "servicesEmpty": "Sin servicios asignados todavía.",
     "servicesNoCatalog": "Instala el módulo Servicios para asignar servicios a este profesional.",

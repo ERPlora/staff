@@ -60,6 +60,8 @@ from hub_harness import (
     commission_cents,
     commissions,
     create_member,
+    day_gross_by_person,
+    person_index,
     service_sale,
     terminate_member,
 )
@@ -165,6 +167,94 @@ def test_3_the_key_discriminates(hub: Hub, cash: str) -> None:
     hub.check_true("but she is off the commission sheet", leaver not in rates, f"{leaver} is still there")
 
 
+def test_4_one_person_is_not_two(hub: Hub, cash: str) -> None:
+    """staff#46 — the same human being reaches `sales.by_staff` under TWO ids and gets paid ONE day.
+
+    Since sales#179 no sale is left unattributed: the server puts `payload.staff_id` on the sale
+    when somebody was named (a cita, a chosen professional) and `context.current_user_id` — the
+    HUB USER of the till — on every counter sale. A stylist who takes an appointment in the morning
+    and charges at the counter in the afternoon therefore shows up twice, under her `staff_member.id`
+    and under her `hub_user.id`, and the day close crossing on `staff_id` alone paid her only the
+    half that carried a staff record. Her record already says which user she is (`user_id`,
+    ADR-0192); the sheet just did not publish it.
+    """
+    print("\n4 · one person, two ids: the counter half of the day is hers too (staff#46)")
+    tag = uuid.uuid4().hex[:6]
+    # Vera IS the user this run is logged in as: her record hangs from that hub user, which is what
+    # every counter sale of this session will be attributed to.
+    vera = create_member(hub, f"Vera-{tag}", "Pro", 15.0, user_id=hub.user)
+
+    price_appointment, price_counter = 2000, 3000
+    expected_gross = price_appointment + price_counter   # 20,00 € + 30,00 € = 50,00 €
+    expected_commission = 750                            # 15 % of 50,00 €, worked out by hand
+    service_sale(hub, cash, vera, price_appointment, "vera-appointment")
+    # No `staff_id` in the payload: this is the counter, and the runtime attributes it to the user
+    # with the session. Nothing here names Vera — that is the whole point.
+    service_sale(hub, cash, None, price_counter, "vera-counter")
+
+    gross = by_staff(hub)
+    hub.check(
+        "the appointment landed under her staff id",
+        cents((gross.get(vera) or {}).get("gross_total", 0)),
+        price_appointment,
+    )
+    hub.check(
+        "and the counter sale landed under the hub user, not under her record",
+        cents((gross.get(hub.user) or {}).get("gross_total", 0)),
+        price_counter,
+    )
+
+    sheet = commissions(hub)
+    rate_side = next((r for r in sheet if r["staff_id"] == vera), None)
+    hub.check_true(
+        "the sheet carries her record",
+        rate_side is not None,
+        f"{vera} is not in staff.commissions.summary",
+    )
+    if rate_side is None:
+        return
+    # The fix: the sheet publishes the second id, so the close can recognise the till as her.
+    hub.check("the sheet says which hub user she is", rate_side.get("user_id"), hub.user)
+    hub.check_true(
+        "so both of her ids resolve to the same professional",
+        person_index(sheet).get(hub.user, {}).get("staff_id") == vera,
+        f"the till id {hub.user} does not resolve to {vera}",
+    )
+
+    day = day_gross_by_person(sheet, gross)
+    hub.check("her day is added up once, whole", day.get(vera), expected_gross)
+    hub.check(
+        "and her commission is the whole day's, not the half with a staff record",
+        commission_cents(day[vera], rate_side["commission_rate"]),
+        expected_commission,
+    )
+    hub.check_true(
+        "the till stops being a professional of its own on the sheet",
+        hub.user not in {r["staff_id"] for r in sheet},
+        "the hub user is listed as if it were a staff record",
+    )
+
+
+def test_5_a_till_with_no_record_earns_nothing_still(hub: Hub, cash: str) -> None:
+    """The other half of staff#46: a hub user with NO staff record is not folded into anybody.
+
+    This is not a regression to fix, it is the behaviour to keep: before sales#179 that sale did not
+    even appear in the report (the query filtered `staff_id IS NULL`). Now it appears, and it must
+    stay unpaid — folding it into someone would invent a commission.
+    """
+    print("\n5 · a till nobody claimed is folded into nobody")
+    sheet = commissions(hub)
+    # A brand-new session id: no staff record in this hub hangs from it.
+    orphan_till = f"u-{uuid.uuid4().hex[:8]}"
+    gross_rows = {orphan_till: {"gross_total": 9900}}
+    hub.check("an unclaimed till adds to no professional", day_gross_by_person(sheet, gross_rows), {})
+    hub.check_true(
+        "and it is not on the commission sheet either",
+        orphan_till not in {r["staff_id"] for r in sheet},
+        f"{orphan_till} appeared as a professional",
+    )
+
+
 def main() -> int:
     hub = Hub("commissions.hub")
     print(
@@ -175,8 +265,11 @@ def main() -> int:
     test_1_the_rate_side_is_every_member_who_can_earn_one(hub)
     test_2_the_close_crosses_gross_with_rate(hub, cash)
     test_3_the_key_discriminates(hub, cash)
+    test_4_one_person_is_not_two(hub, cash)
+    test_5_a_till_with_no_record_earns_nothing_still(hub, cash)
     return hub.finish(
-        "the day close crosses a real gross with a real rate on the staff_id, against the real kernel"
+        "the day close crosses a real gross with a real rate on the staff_id, against the real "
+        "kernel — and a professional who sells both ways is paid one day, not two halves"
     )
 
 

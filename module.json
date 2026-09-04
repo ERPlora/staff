@@ -318,7 +318,7 @@
       "expose_api": true,
       "sql": "queries/commissions_summary.sql",
       "ai": {
-        "description": "Returns each active staff member's id, full name and commission_rate (percent). The commission side of the per-professional day close: combine with sales.by_staff by staff_id to compute commission = gross_total x commission_rate/100."
+        "description": "Returns each active staff member's staff_id, the hub user_id their record hangs from (null when none), full name and commission_rate (percent). The commission side of the per-professional day close: combine with sales.by_staff to compute commission = gross_total x commission_rate/100. Since sales#179 a sale is attributed either to a staff_id or to the hub user of the till, so BOTH ids of a row name the same person and their grosses are added together before applying the rate."
       }
     },
     "staff.settings.get": {
