@@ -157,6 +157,9 @@ export class ErpStaffMembers extends LitElement {
     .services .assign { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
     .services .assign ion-select { flex:1 1 100%; }
     .services .assign ion-input { flex:1 1 40%; }
+    /* pm#392: color= is a document-level rule Ionic cannot apply inside this shadow root; the
+       tone is read from the theme token here instead. */
+    ion-button.tone-medium[fill] { --color: var(--ion-color-medium, #636469); }
     .hint { font-size:.8rem; opacity:.75; }
   `;
 
@@ -504,7 +507,7 @@ export class ErpStaffMembers extends LitElement {
           <ion-icon name=${s.is_primary ? 'star' : 'star-outline'} title=${t('ui.servicePrimary')} aria-label=${t('ui.servicePrimary')} role="button" tabindex="0" @click=${() => (s.is_primary ? undefined : this.setPrimaryService(s))}></ion-icon>
           <span class="name">${s.service_name}</span>
           <span class="meta">${s.custom_duration ? `${s.custom_duration} min` : ''}${s.custom_duration && s.custom_price != null ? ' · ' : ''}${s.custom_price != null ? erplora().formatMoney(Number(s.custom_price)) : ''}</span>
-          <ion-button fill="clear" size="small" color="medium" aria-label=${t('ui.serviceRemove')} @click=${() => this.removeService(s.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+          <ion-button fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t('ui.serviceRemove')} @click=${() => this.removeService(s.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
         </li>`)}
       </ul>
       ${this.catalogUnavailable
