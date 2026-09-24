@@ -1,5 +1,6 @@
 -- Ausencias `pending|approved` de UN miembro que aún no han terminado (end_date >= hoy).
--- Runtime inyecta :hub_id y :now; erp_date normaliza a la parte fecha (ADR-0007 §4a).
+-- Runtime inyecta :hub_id, :now y :timezone; «today» is `:now` on the business clock (staff#58,
+-- hub#1022), the same expression `_deactivate_member.sql` uses so the read and the write agree.
 --
 -- Lectura AUTORITATIVA del handler `deactivate_staff_member` (staff#1): con filas, el handler
 -- rechaza con `staff.active_time_off` — desactivar a alguien con una ausencia viva la dejaría
@@ -9,5 +10,5 @@ FROM staff_time_off t
 WHERE t.hub_id = :hub_id AND t.is_deleted = 0
   AND t.staff_id = :staff_id
   AND t.status IN ('pending', 'approved')
-  AND erp_date(t.end_date) >= erp_date(:now)
+  AND erp_date(t.end_date) >= CAST(CAST(CAST(:now AS TEXT) AS timestamptz) AT TIME ZONE COALESCE(NULLIF(TRIM(CAST(:timezone AS TEXT)), ''), 'UTC') AS date)
 ORDER BY t.start_date ASC;

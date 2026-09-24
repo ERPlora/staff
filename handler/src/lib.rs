@@ -175,11 +175,6 @@ fn refuse(code: &str, message: &str) -> Output {
 const MEMBER_NOT_FOUND: (&str, &str) =
     ("staff.member_not_found", "That staff member does not exist in this business.");
 
-/// `2026-06-10T22:00:00+00:00` → `2026-06-10` (la fecha de hoy es capacidad del host).
-fn today_from_now(now: &str) -> String {
-    now.split('T').next().unwrap_or("").to_string()
-}
-
 /// Valida forma ISO `YYYY-MM-DD` (suficiente para comparar lexicográficamente).
 fn is_iso_date(s: &str) -> bool {
     let b = s.as_bytes();
@@ -223,7 +218,7 @@ fn norm_time(s: &str) -> Option<String> {
 /// domain error (staff#1) — `_deactivate_member` keeps the same conditions in SQL only as defence
 /// in depth against a race between the read and the write.
 pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
-    let (payload, _ids, now) = payload_context(&input);
+    let (payload, _ids, _now) = payload_context(&input);
     let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
     if staff_id.is_empty() {
         return Err("staff_id requerido".into());
@@ -246,7 +241,8 @@ pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
     }
     let mut p = Map::new();
     p.insert("staff_id".into(), json!(staff_id));
-    p.insert("today".into(), json!(today_from_now(&now)));
+    // No `:today` from here: «today» is the BUSINESS day, and the intention reads it from
+    // `:now` + `:timezone` in SQL — the same expression as the read above (staff#58).
     // `..Default::default()` so the literal compiles against BOTH shapes of `Output`: the one
     // before hub#139 and the one that gained `error` (structured domain rejection). Without it the
     // handler stops compiling as soon as the hub checkout moves on, and then nobody can rebuild
