@@ -90,7 +90,12 @@
       {
         "file": "migrations/postgres/004_worktime_hhmm_backfill.sql",
         "kind": "backfill"
-      }
+      },
+      {
+        "file": "migrations/postgres/005_member_user_link_dedupe.sql",
+        "kind": "backfill"
+      },
+      "migrations/postgres/006_member_user_link_unique.sql"
     ]
   },
   "queries": {
@@ -175,6 +180,10 @@
         "description": "Returns the details of a single staff member by their identifier."
       },
       "expose_api": true
+    },
+    "staff.members.by_user": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/member_by_user.sql"
     },
     "staff.members.compensation": {
       "permission": "staff.view_compensation",
@@ -394,17 +403,21 @@
   "commands": {
     "staff.members.create": {
       "permission": "staff.add_staff_member",
-      "transaction": true,
-      "sql": [
-        "commands/member_create.sql"
-      ],
-      "schema": "schemas/member_create.json",
-      "expect_rows": {
-        "op": "min",
-        "n": 1,
-        "error": "staff.role_not_found",
-        "message": "That role is not available: it does not exist in this business, or it has been deleted or retired."
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "create_staff_member"
       },
+      "schema": "schemas/member_create.json",
+      "reads": [
+        {
+          "query": "staff.members.by_user",
+          "params": {
+            "user_id": "payload.user_id"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.member.created"
       ],
@@ -415,17 +428,21 @@
     },
     "staff.members.update": {
       "permission": "staff.change_staff_member",
-      "transaction": true,
-      "sql": [
-        "commands/member_update.sql"
-      ],
-      "schema": "schemas/member_update.json",
-      "expect_rows": {
-        "op": "min",
-        "n": 1,
-        "error": "staff.member_update_rejected",
-        "message": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
+      "handler": {
+        "type": "wasm",
+        "file": "dist/handler.wasm",
+        "function": "update_staff_member"
       },
+      "schema": "schemas/member_update.json",
+      "reads": [
+        {
+          "query": "staff.members.by_user",
+          "params": {
+            "user_id": "payload.user_id"
+          },
+          "required": true
+        }
+      ],
       "emit": [
         "staff.member.updated"
       ],
@@ -631,6 +648,34 @@
       "sql": [
         "commands/_deactivate_member.sql"
       ]
+    },
+    "staff._insert_member": {
+      "permission": "staff.add_staff_member",
+      "transaction": true,
+      "sql": [
+        "commands/member_create.sql"
+      ],
+      "schema": "schemas/member_create.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.role_not_found",
+        "message": "That role is not available: it does not exist in this business, or it has been deleted or retired."
+      }
+    },
+    "staff._update_member": {
+      "permission": "staff.change_staff_member",
+      "transaction": true,
+      "sql": [
+        "commands/member_update.sql"
+      ],
+      "schema": "schemas/member_update.json",
+      "expect_rows": {
+        "op": "min",
+        "n": 1,
+        "error": "staff.member_update_rejected",
+        "message": "The staff member could not be updated: they do not exist in this business, or the role you picked does not."
+      }
     },
     "staff._unset_default_schedules": {
       "permission": "staff.manage_settings",

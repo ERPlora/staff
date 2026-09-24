@@ -210,6 +210,7 @@
     "staff.invalid_transition": "That time-off request cannot change to that status from its current one.",
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
     "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
+    "staff.user_already_linked": "That Hub user is already linked to {name}. A Hub user can belong to only one staff member: unlink it there first, or pick another user.",
     "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
     "staff.service_not_found": "That service assignment does not exist in this business.",
     "staff.schedule_not_found": "That schedule does not exist in this business.",

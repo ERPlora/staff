@@ -54,7 +54,7 @@ def seed(db: ScratchDb) -> None:
         f"SELECT id FROM staff_role WHERE hub_id = '{HUB}' AND name = 'Stylist'"
     )
     db.run_command(
-        "staff.members.create",
+        "staff._insert_member",
         {
             "first_name": "Ana",
             "last_name": "Ruiz",

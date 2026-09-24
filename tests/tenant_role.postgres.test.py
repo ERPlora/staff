@@ -62,7 +62,7 @@ def try_create(db: ScratchDb, hub: str, first: str, role_id) -> str | None:
     """Returns the domain code when rejected, None when it commits."""
     try:
         db.run_command(
-            "staff.members.create",
+            "staff._insert_member",
             {
                 # The runtime binder does not apply schema defaults: the UI sends the full snapshot.
                 "first_name": first,
@@ -92,7 +92,7 @@ def try_create(db: ScratchDb, hub: str, first: str, role_id) -> str | None:
 def try_update(db: ScratchDb, hub: str, staff_id: str, role_id) -> str | None:
     try:
         db.run_command(
-            "staff.members.update", {"staff_id": staff_id, "role_id": role_id}, hub=hub
+            "staff._update_member", {"staff_id": staff_id, "role_id": role_id}, hub=hub
         )
         return None
     except DomainError as exc:

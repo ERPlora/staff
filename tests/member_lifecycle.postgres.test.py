@@ -38,7 +38,7 @@ def seed_role(db: ScratchDb, hub: str, name: str) -> str:
 
 def seed_member(db: ScratchDb, hub: str, first: str, role_id=None) -> str:
     db.run_command(
-        "staff.members.create",
+        "staff._insert_member",
         {
             "first_name": first, "last_name": "Test", "email": "", "phone": "", "employee_id": "",
             "role_id": role_id, "user_id": None, "hire_date": None, "status": "active", "bio": "",
@@ -70,16 +70,16 @@ def main() -> int:
         nora = seed_member(db, OTHER_HUB, "Nora")
 
         print("1. update: every operable field, explicit clearing")
-        check("update fields", None, try_cmd(db, "staff.members.update", {
+        check("update fields", None, try_cmd(db, "staff._update_member", {
             "staff_id": ana, "employee_id": "E-7", "color": "#ff0000", "booking_buffer": 15,
             "phone": "600", "hire_date": "2026-01-15", "role_id": None,
         }))
         row = db.run_query("staff.members.get", {"staff_id": ana})[0]
         check("fields stored", ("E-7", "#ff0000", 15, "600", "2026-01-15"), (row["employee_id"], row["color"], row["booking_buffer"], row["phone"], row["hire_date"]))
         check("null keeps the role", role, row["role_id"])
-        check("'' clears the role", None, try_cmd(db, "staff.members.update", {"staff_id": ana, "role_id": ""}))
+        check("'' clears the role", None, try_cmd(db, "staff._update_member", {"staff_id": ana, "role_id": ""}))
         check("role is NULL now", None, db.run_query("staff.members.get", {"staff_id": ana})[0]["role_id"])
-        check("status is an explicit control (inactive/active)", None, try_cmd(db, "staff.members.update", {"staff_id": ana, "status": "inactive", "is_bookable": 0}))
+        check("status is an explicit control (inactive/active)", None, try_cmd(db, "staff._update_member", {"staff_id": ana, "status": "inactive", "is_bookable": 0}))
         check("stored", ("inactive", 0), tuple(db.run_query("staff.members.get", {"staff_id": ana})[0][k] for k in ("status", "is_bookable")))
 
         print("2. terminate: date + reason, refused for foreign / repeated")

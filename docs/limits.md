@@ -9,7 +9,11 @@
   creation, schedule creation and time-off status changes check the current state first and answer
   with a code (`staff.member_not_found`, `staff.already_inactive`, `staff.active_time_off`,
   `staff.overlapping_time_off`, `staff.time_off_not_found`, `staff.invalid_transition`,
-  `staff.role_not_found`). Nothing is written and no event is emitted on a refusal.
+  `staff.role_not_found`, `staff.user_already_linked`). Nothing is written and no event is emitted
+  on a refusal.
+- **One Hub user, one staff member.** A Hub user can be linked to only one live staff member of the
+  business: the day close adds what that user charges at the counter to their record, and two
+  records sharing the user would split it at random. A deleted member frees the user.
 
 ## Refusals you will actually see
 
@@ -22,6 +26,8 @@
 | Approving an absence when another APPROVED one of the same person overlaps | Refused: `staff.overlapping_time_off` | Cancel one of them first |
 | Approving or rejecting an absence that is already rejected/cancelled, approving twice, or moving anything back to pending | Refused: `staff.invalid_transition` | Only `pending → approved/rejected/cancelled` and `approved → cancelled` exist |
 | Creating or editing a member with a role that is not this business's, or is deleted/retired | Refused: `staff.role_not_found` / `staff.member_update_rejected` | Pick a role from Roles |
+| Linking a Hub user that another live member already has (create or edit) | Refused: `staff.user_already_linked`, naming that member | Unlink the user from that member first, or pick another user |
+| Updating a business that already had two members on the same Hub user | The update keeps the link on one of them — the active one, then the one created first — and leaves the others without a Hub user | Re-link the others to their own users from the member form |
 | A bulk import row without a name, with a bad hire date or a foreign role | That row is skipped and listed in the answer (`result.skipped[]` with its reason) | Fix the row and import it again |
 | A schedule with a repeated weekday, `start >= end`, or a break outside the interval | Rejected | Fix the hours |
 | A schedule with only one end of the break set | Rejected | Give both ends or neither |

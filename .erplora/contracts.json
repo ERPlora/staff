@@ -4,6 +4,7 @@
   "consumes": {
     "queries": [
       "hub.users.list",
+      "staff.members.by_user",
       "staff.members.compensation",
       "staff.members.get",
       "staff.members.list",

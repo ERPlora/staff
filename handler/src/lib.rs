@@ -26,6 +26,9 @@
 //!   `approved → cancelled`, terminal states stay put (`staff.invalid_transition`); approving
 //!   re-checks conflicts against APPROVED leave (`staff.overlapping_time_off`); missing row →
 //!   `staff.time_off_not_found`; then `_set_time_off_status`.
+//! * `create_staff_member` / `update_staff_member` (staff#55) → `staff.user_already_linked` when
+//!   the Hub user is already held by ANOTHER live member (read `staff.members.by_user`); then
+//!   `_insert_member` / `_update_member`.
 //! * `bulk_create_staff_members` → rows are skipped, never silently: a role that is not this
 //!   hub's, or a row without a name, is listed in `result.skipped` with its reason.
 //!
@@ -45,6 +48,18 @@ use extism_pdk::*;
 #[plugin_fn]
 pub fn deactivate_staff_member(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
     to_fn_result(deactivate_staff_member_pure(input.into_inner().into_value()))
+}
+
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn create_staff_member(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(create_staff_member_pure(input.into_inner().into_value()))
+}
+
+#[cfg(feature = "guest")]
+#[plugin_fn]
+pub fn update_staff_member(input: Json<erplora_guest_sdk::Input>) -> FnResult<Json<Output>> {
+    to_fn_result(update_staff_member_pure(input.into_inner().into_value()))
 }
 
 #[cfg(feature = "guest")]
@@ -254,19 +269,102 @@ pub fn deactivate_staff_member_pure(input: Value) -> Result<Output, String> {
     })
 }
 
+// ── §1b create_staff_member / update_staff_member (staff#55) ────────────────
+
+/// The member (other than `self_id`) that already holds the Hub user this payload links, if any.
+///
+/// Only a NON-EMPTY `user_id` links someone: NULL keeps the current link (update) or means «no
+/// Hub access» (create), and `''` unlinks — none of them can produce a second holder, so they
+/// never look at the read. When a user IS being linked, a missing read is a host error: without
+/// it there is no verdict, and inserting unchecked is exactly the hole this guard closes.
+fn other_holder(input: &Value, payload: &Value, self_id: &str) -> Result<Option<Value>, String> {
+    let user_id = as_str(payload.get("user_id").unwrap_or(&Value::Null));
+    if user_id.is_empty() {
+        return Ok(None);
+    }
+    let rows = read_rows(input, "staff.members.by_user")
+        .ok_or("read staff.members.by_user missing: cannot check the Hub user link")?;
+    Ok(rows
+        .iter()
+        .find(|r| as_str(r.get("id").unwrap_or(&Value::Null)) != self_id)
+        .cloned())
+}
+
+/// `staff.user_already_linked`, naming the member that already holds the user so the person
+/// knows which record to fix. The UI translates the code; the name travels in this English text.
+fn already_linked(holder: &Value) -> Output {
+    let name = format!(
+        "{} {}",
+        as_str(holder.get("first_name").unwrap_or(&Value::Null)),
+        as_str(holder.get("last_name").unwrap_or(&Value::Null))
+    );
+    refuse(
+        USER_ALREADY_LINKED,
+        &format!(
+            "That Hub user is already linked to another staff member ({}). A user can belong to only one staff member.",
+            name.trim()
+        ),
+    )
+}
+
+const USER_ALREADY_LINKED: &str = "staff.user_already_linked";
+
+/// The payload as the intention's params: the form's full snapshot travels untouched to the
+/// internal SQL command, which keeps its own `expect_rows` gate (role of this hub, member of this
+/// hub — hub#1025 applies it to handler operations too).
+fn pass_through(payload: &Value) -> Map<String, Value> {
+    payload.as_object().cloned().unwrap_or_default()
+}
+
+/// Alta de miembro. One Hub user hangs from ONE live member of the business (staff#55): the day
+/// close indexes the commission sheet by `user_id` (staff#46), so a second holder would split the
+/// counter's takings at random. The unique index `uq_staff_member_hub_user` keeps the same rule
+/// against a race between this read and the write.
+pub fn create_staff_member_pure(input: Value) -> Result<Output, String> {
+    let (payload, ids, _now) = payload_context(&input);
+    if let Some(holder) = other_holder(&input, &payload, "")? {
+        return Ok(already_linked(&holder));
+    }
+    let mut p = pass_through(&payload);
+    // The id comes from the host's batch, never from the caller: it is how the runtime tells the
+    // caller which record was created (hub#776 only answers the batch ids an operation consumed).
+    p.insert("member_id".into(), ids.first().cloned().ok_or("context.new_ids empty")?);
+    Ok(Output {
+        operations: vec![Operation::sql("staff._insert_member", p)],
+        events: vec![],
+        ..Default::default()
+    })
+}
+
+/// Edición de miembro: the same rule as the create, except that the member being edited may of
+/// course keep the user it already holds.
+pub fn update_staff_member_pure(input: Value) -> Result<Output, String> {
+    let (payload, _ids, _now) = payload_context(&input);
+    let staff_id = as_str(payload.get("staff_id").unwrap_or(&Value::Null));
+    if let Some(holder) = other_holder(&input, &payload, &staff_id)? {
+        return Ok(already_linked(&holder));
+    }
+    Ok(Output {
+        operations: vec![Operation::sql("staff._update_member", pass_through(&payload))],
+        events: vec![],
+        ..Default::default()
+    })
+}
+
 // ── §2 bulk_create_staff_members ───────────────────────────────────────────
 
 /// Alta en lote tolerante a fallos por fila: las filas inválidas (sin first_name/
 /// last_name, con hire_date mal formada, o con un `role_id` que no es de este hub) se saltan y
-/// el resto se inserta reusando el command SQL público `staff.members.create` (el host inyecta
+/// el resto se inserta reusando el command SQL interno `staff._insert_member` (el host inyecta
 /// `:new_id` por op). Skipping is never silent (staff#1): the batch answers
 /// `result: {created, skipped: [{index, reason}]}`.
 ///
-/// The role check reads `context.reads["staff.roles.list"]` (this hub's roles). The WASM path of
-/// the runtime does not apply the `expect_rows` gate of `staff.members.create` (staff#12), so a
-/// foreign role would otherwise become a 0-row INSERT that the batch reported as done.
+/// The role check reads `context.reads["staff.roles.list"]` (this hub's roles), so a foreign role
+/// skips ITS row: left to the `expect_rows` gate of `staff._insert_member` (staff#12, applied to
+/// handler operations since hub#1025) it would roll back the whole batch instead. Bulk rows carry
+/// no `user_id`, so the one-user-one-member rule (staff#55) cannot be broken from here.
 pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
-    let (payload, _ids, _now) = payload_context(&input);
+    let (payload, ids, _now) = payload_context(&input);
     let empty: Vec<Value> = Vec::new();
     let members = payload.get("members").and_then(|v| v.as_array()).unwrap_or(&empty);
     let known_roles: Option<Vec<String>> = read_rows(&input, "staff.roles.list").map(|rows| {
@@ -329,7 +427,9 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
         p.insert("hourly_rate".into(), json!(hourly_rate.max(0))); // céntimos (INTEGER)
         p.insert("commission_rate".into(), json!(0));
         p.insert("notes".into(), json!(""));
-        ops.push(Operation::sql("staff.members.create", p));
+        // One batch id per created row (MAX_BULK < the host's batch), so the answer names them.
+        p.insert("member_id".into(), ids.get(ops.len()).cloned().ok_or("context.new_ids too short")?);
+        ops.push(Operation::sql("staff._insert_member", p));
     }
     let created = ops.len();
     Ok(Output { operations: ops, events: vec![], ..Default::default() }
@@ -990,5 +1090,136 @@ mod tests {
         )).unwrap();
         assert_eq!(out.operations[0].command, "staff._update_schedule");
         assert_eq!(out.operations[0].params["is_default"], json!(0));
+    }
+
+    // ── staff#55: one Hub user hangs from ONE live member of the business. The day close indexes
+    // the commission sheet by `user_id` (staff#46), so two members sharing a user split the
+    // counter's takings at random. The holder comes from `context.reads["staff.members.by_user"]`.
+
+    fn holder(id: &str) -> Value {
+        json!([{ "id": id, "first_name": "Ana", "last_name": "Ruiz", "status": "active" }])
+    }
+
+    fn create_payload(user_id: Value) -> Value {
+        json!({ "first_name": "Luz", "last_name": "Vega", "role_id": null, "user_id": user_id,
+                "status": "active", "is_bookable": 1, "hourly_rate": 1500 })
+    }
+
+    #[test]
+    fn creating_a_member_for_a_user_already_linked_is_refused() {
+        let out = create_staff_member_pure(input(
+            create_payload(json!("u9")),
+            json!({ "staff.members.by_user": holder("m2") }),
+        ))
+        .unwrap();
+        assert_eq!(code(&out), "staff.user_already_linked");
+        assert!(out.operations.is_empty(), "a refusal writes nothing");
+        let message = out.error.as_ref().unwrap().message.clone();
+        assert!(message.contains("Ana Ruiz"), "the refusal names the holder: {message}");
+    }
+
+    #[test]
+    fn creating_a_member_for_a_free_user_inserts_the_whole_payload() {
+        let out = create_staff_member_pure(input(
+            create_payload(json!("u9")),
+            json!({ "staff.members.by_user": [] }),
+        ))
+        .unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert_eq!(out.operations.len(), 1);
+        assert_eq!(out.operations[0].command, "staff._insert_member");
+        let p = &out.operations[0].params;
+        assert_eq!(p["user_id"], json!("u9"));
+        assert_eq!(p["first_name"], json!("Luz"));
+        assert_eq!(p["role_id"], json!(null), "absent/NULL binds survive the pass-through");
+        assert_eq!(p["hourly_rate"], json!(1500), "money stays integer cents");
+        // The runtime answers the caller with the batch ids an operation CONSUMED (hub#776) and
+        // rewrites `:new_id` per operation: without taking the id from `context.new_ids`, the
+        // create would answer `new_ids: []` and nobody could touch the record it just made.
+        assert_eq!(p["member_id"], json!("id-0"), "the member's id is the batch's first id");
+    }
+
+    #[test]
+    fn a_caller_cannot_choose_the_new_members_id() {
+        let mut payload = create_payload(json!(null));
+        payload["member_id"] = json!("chosen-by-caller");
+        let out = create_staff_member_pure(input(payload, json!({ "staff.members.by_user": [] })))
+            .unwrap();
+        assert_eq!(out.operations[0].params["member_id"], json!("id-0"));
+    }
+
+    #[test]
+    fn bulk_create_names_each_member_with_its_own_batch_id() {
+        let out = bulk_create_staff_members_pure(input(
+            json!({ "members": [
+                { "first_name": "Ana", "last_name": "Ruiz" },
+                { "first_name": "", "last_name": "Skipped" },
+                { "first_name": "Luz", "last_name": "Vega" }
+            ] }),
+            json!({ "staff.roles.list": [] }),
+        ))
+        .unwrap();
+        let ids: Vec<&Value> = out.operations.iter().map(|o| &o.params["member_id"]).collect();
+        assert_eq!(ids, vec![&json!("id-0"), &json!("id-1")], "one distinct id per created row");
+    }
+
+    #[test]
+    fn creating_a_member_without_a_user_never_checks_the_link() {
+        for user_id in [json!(null), json!("")] {
+            let out = create_staff_member_pure(input(
+                create_payload(user_id.clone()),
+                json!({ "staff.members.by_user": holder("m2") }),
+            ))
+            .unwrap();
+            assert!(out.error.is_none(), "user_id {user_id}: {:?}", out.error);
+            assert_eq!(out.operations[0].command, "staff._insert_member");
+        }
+    }
+
+    #[test]
+    fn linking_a_user_without_the_holder_read_is_a_host_error_not_a_pass() {
+        let err = create_staff_member_pure(input(create_payload(json!("u9")), json!({})));
+        assert!(err.is_err(), "no read = no verdict; never an unchecked insert");
+    }
+
+    #[test]
+    fn editing_a_member_to_a_user_held_by_another_member_is_refused() {
+        let out = update_staff_member_pure(input(
+            json!({ "staff_id": "m1", "first_name": "Luz", "user_id": "u9" }),
+            json!({ "staff.members.by_user": holder("m2") }),
+        ))
+        .unwrap();
+        assert_eq!(code(&out), "staff.user_already_linked");
+        assert!(out.operations.is_empty());
+    }
+
+    #[test]
+    fn editing_a_member_that_already_holds_the_user_is_not_a_conflict() {
+        let out = update_staff_member_pure(input(
+            json!({ "staff_id": "m1", "first_name": "Luz", "user_id": "u9", "role_id": "" }),
+            json!({ "staff.members.by_user": holder("m1") }),
+        ))
+        .unwrap();
+        assert!(out.error.is_none(), "{:?}", out.error);
+        assert_eq!(out.operations.len(), 1);
+        assert_eq!(out.operations[0].command, "staff._update_member");
+        let p = &out.operations[0].params;
+        assert_eq!(p["staff_id"], json!("m1"));
+        assert_eq!(p["role_id"], json!(""), "'' still means CLEAR the role");
+        assert_eq!(p["user_id"], json!("u9"));
+    }
+
+    #[test]
+    fn editing_that_keeps_or_clears_the_user_never_checks_the_link() {
+        // NULL = keep the current link, '' = unlink: neither can create a second holder.
+        for user_id in [json!(null), json!("")] {
+            let out = update_staff_member_pure(input(
+                json!({ "staff_id": "m1", "user_id": user_id.clone() }),
+                json!({ "staff.members.by_user": holder("m2") }),
+            ))
+            .unwrap();
+            assert!(out.error.is_none(), "user_id {user_id}: {:?}", out.error);
+            assert_eq!(out.operations[0].command, "staff._update_member");
+        }
     }
 }

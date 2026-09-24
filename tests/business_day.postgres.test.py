@@ -44,7 +44,7 @@ def check(label: str, expected, actual) -> None:
 
 def seed_member(db: ScratchDb, first: str) -> str:
     db.run_command(
-        "staff.members.create",
+        "staff._insert_member",
         {
             "first_name": first,
             "last_name": "Test",

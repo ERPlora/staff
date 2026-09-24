@@ -602,6 +602,23 @@ export class ErpStaffMembers extends LitElement {
     return Number.isFinite(n) ? Math.round(n * 100) : null;
   }
 
+  /** staff#55: a Hub user hangs from ONE record, and the refusal has to name the record that holds
+   *  it. The error carries only the code, so the holder is read here; if that read fails, the
+   *  message falls back to the runtime's sentence (which names it too, in English). */
+  private async linkHolderVars(e: unknown, userId: string): Promise<Record<string, string>> {
+    if ((e as { code?: unknown })?.code !== 'staff.user_already_linked' || !userId) return {};
+    try {
+      const rows = await erplora().query<{ first_name: string; last_name: string }[]>(
+        'staff.members.by_user',
+        { user_id: userId },
+      );
+      const holder = rows[0];
+      return holder ? { name: `${holder.first_name} ${holder.last_name}`.trim() } : {};
+    } catch {
+      return {};
+    }
+  }
+
   /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). The update
    *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in cents,
    *  commission as %; compensation only travels when the session could read it (otherwise it would
@@ -653,7 +670,8 @@ export class ErpStaffMembers extends LitElement {
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
     } catch (e) {
-      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errCreateMember'));
+      const vars = await this.linkHolderVars(e, f.user_id);
+      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errCreateMember'), vars);
     } finally {
       this.saving = false;
     }

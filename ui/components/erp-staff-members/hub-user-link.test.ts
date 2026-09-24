@@ -100,3 +100,59 @@ describe('staff#46 · the link to the Hub user is asked for, not guessed', () =>
     expect(es.ui.hubUserWhyLink).not.toBe(en.ui.hubUserWhyLink);
   });
 });
+
+// staff#55 — one Hub user hangs from ONE record. Linking a user that another record already holds is
+// refused by the command (`staff.user_already_linked`), and the form has to say WHO holds it: «that
+// user is taken» without a name sends the manager hunting through the whole team.
+describe('staff#55 · a user already linked to another record is refused, naming the holder', () => {
+  class FakeErploraError extends Error {
+    constructor(public readonly code: string, message: string) {
+      super(message);
+      this.name = 'ErploraError';
+    }
+  }
+
+  const refuseLink = (holder: Record<string, unknown>[] | Error) => {
+    const api = (globalThis as Record<string, any>).erplora;
+    const asked: Array<[string, unknown]> = [];
+    api.command = async () => {
+      throw new FakeErploraError('staff.user_already_linked', 'That Hub user is already linked (Ana Ruiz).');
+    };
+    const baseQuery = api.query;
+    api.query = async (name: string, params: unknown) => {
+      asked.push([name, params]);
+      if (name === 'staff.members.by_user') {
+        if (holder instanceof Error) throw holder;
+        return holder;
+      }
+      return baseQuery(name, params);
+    };
+    return asked;
+  };
+
+  const submit = async (el: Wc) => {
+    el.patch({ first_name: 'Luz', last_name: 'Vega', user_id: 'u-ana' });
+    await (el as unknown as { createMember: (e: Event) => Promise<void> }).createMember(new Event('submit'));
+    await el.updateComplete;
+    return el.shadowRoot.querySelector('ok-inline-feedback')?.textContent?.trim() ?? '';
+  };
+
+  it('the refusal is shown in Spanish with the name of the record that holds the user', async () => {
+    const asked = refuseLink([{ id: 'm9', first_name: 'Ana', last_name: 'Ruiz' }]);
+    const el = await mount();
+    const shown = await submit(el);
+    expect(asked).toContainEqual(['staff.members.by_user', { user_id: 'u-ana' }]);
+    expect(shown, 'the holder is named').toContain('Ana Ruiz');
+    expect(shown, 'in the manager\'s language, not the runtime\'s English').not.toContain('already linked');
+    expect(shown, 'no placeholder leaks to the screen').not.toContain('{');
+  });
+
+  it('if the holder cannot be read, it still says why (never a bare «could not create»)', async () => {
+    refuseLink(new Error('offline'));
+    const el = await mount();
+    const shown = await submit(el);
+    expect(shown).not.toBe('ui.errCreateMember');
+    expect(shown).not.toContain('{');
+    expect(shown.length).toBeGreaterThan(0);
+  });
+});
