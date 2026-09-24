@@ -44,6 +44,9 @@
     "employee": [
       "staff.view_staff_member",
       "staff.view_time_off"
+    ],
+    "cashier": [
+      "staff.view_staff_member"
     ]
   },
   "navigation": [

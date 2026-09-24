@@ -119,6 +119,28 @@ describe('the directory stays readable — hiding it all would break the day', (
   });
 });
 
+// staff#59: a CASHIER is part of the team too. The till («Serves», sales#318) and the kitchen
+// screen (kitchen#82) name who served / fired an order from `staff.members.list`; without the
+// directory the cashier's till showed only hub users and the KDS header came out blank. The
+// cashier gets exactly the directory — never the payroll, the leave detail, or any write.
+describe('a cashier sees who the team is, and nothing more', () => {
+  it('the cashier reaches the directory the till and the kitchen read', () => {
+    const reachable = queriesFor('cashier').map(([name]) => name);
+    expect(reachable).toContain('staff.members.list');
+  });
+
+  it.each(COMPENSATION)('no query a cashier can reach returns somebody else\'s %s', (column) => {
+    const leaking = queriesFor('cashier')
+      .filter(([name]) => !isSelfScoped(name) && selectsColumn(name, column))
+      .map(([name]) => name);
+    expect(leaking, `a cashier reaches ${column} through: ${leaking.join(', ')}`).toEqual([]);
+  });
+
+  it('the cashier is granted reading the directory only: no payroll, no leave, no writes', () => {
+    expect(manifest.role_permissions.cashier ?? []).toEqual(['staff.view_staff_member']);
+  });
+});
+
 describe('compensation and leave detail live behind their own permission', () => {
   it('both permissions are declared by the module', () => {
     expect(manifest.permissions).toContain('staff.view_compensation');
