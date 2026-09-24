@@ -26,7 +26,7 @@ versión instalada y cita la de TU versión, no la de la última publicada. En i
 
 ## Privacidad por query (staff#10)
 
-`employee` tiene `view_staff_member` y `view_time_off` por defecto, así que **la compensación y el
+`employee` tiene `view_staff_member` y `view_time_off` por defecto —y `cashier` solo `view_staff_member`, para ver los nombres del equipo en «Atiende» del TPV y en cocina (staff#59)—, así que **la compensación y el
 motivo de una ausencia se sacaron de las listas** y viven detrás de sus propios permisos:
 
 | Dato | Query | Permiso |
