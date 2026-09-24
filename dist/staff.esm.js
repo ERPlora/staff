@@ -4199,6 +4199,9 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     .services .assign { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
     .services .assign ion-select { flex:1 1 100%; }
     .services .assign ion-input { flex:1 1 40%; }
+    /* pm#392: color= is a document-level rule Ionic cannot apply inside this shadow root; the
+       tone is read from the theme token here instead. */
+    ion-button.tone-medium[fill] { --color: var(--ion-color-medium, #636469); }
     .hint { font-size:.8rem; opacity:.75; }
   `;
   }
@@ -4490,7 +4493,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
           <ion-icon name=${s5.is_primary ? "star" : "star-outline"} title=${t5("ui.servicePrimary")} aria-label=${t5("ui.servicePrimary")} role="button" tabindex="0" @click=${() => s5.is_primary ? void 0 : this.setPrimaryService(s5)}></ion-icon>
           <span class="name">${s5.service_name}</span>
           <span class="meta">${s5.custom_duration ? `${s5.custom_duration} min` : ""}${s5.custom_duration && s5.custom_price != null ? " \xB7 " : ""}${s5.custom_price != null ? erplora2().formatMoney(Number(s5.custom_price)) : ""}</span>
-          <ion-button fill="clear" size="small" color="medium" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+          <ion-button fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
         </li>`)}
       </ul>
       ${this.catalogUnavailable ? b2`<div class="hint" data-hint="no-catalog">${t5("ui.servicesNoCatalog")}</div>` : b2`<div class="assign">

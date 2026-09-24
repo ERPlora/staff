@@ -144,6 +144,20 @@ describe('la ficha muestra los servicios que realiza el profesional (staff#9)', 
     expect(comandos.find((c) => c.name === 'staff.services.update')!.payload).toMatchObject({ id: 'ss1', is_primary: 1 });
   });
 
+  it('paints the clear «✕» that removes a service in the medium tone from its own styles, not through color= (pm#392)', async () => {
+    const el = await montar();
+    await editar(el);
+    const btn = el.shadowRoot.querySelector('[data-section="services"] [data-action="remove-service"]');
+    expect(btn, 'each assigned service offers «✕»').not.toBeNull();
+    expect(btn!.hasAttribute('color'), 'color= does not reach inside a shadow root').toBe(false);
+    expect(btn!.getAttribute('fill')).toBe('clear');
+    expect(btn!.classList.contains('tone-medium')).toBe(true);
+    const css = (el.constructor as unknown as { elementStyles: { cssText: string }[] }).elementStyles
+      .map((s) => s.cssText).join('\n').replace(/\s+/g, ' ');
+    expect(css).toContain('ion-button.tone-medium[fill] {');
+    expect(css).toContain('--color: var(--ion-color-medium, #636469)');
+  });
+
   it('sin el módulo services instalado la sección degrada a un aviso y la ficha sigue editable', async () => {
     servicesInstalled = false;
     const el = await montar();
