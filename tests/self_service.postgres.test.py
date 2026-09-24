@@ -38,7 +38,7 @@ def seed_member(
     db: ScratchDb, hub: str, first: str, user_id, rate: int, commission: float
 ) -> str:
     db.run_command(
-        "staff.members.create",
+        "staff._insert_member",
         {
             "first_name": first,
             "last_name": "Test",

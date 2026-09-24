@@ -30,10 +30,11 @@ describe('domainMessage', () => {
     for (const code of [
       'staff.member_not_found', 'staff.already_inactive', 'staff.active_time_off',
       'staff.overlapping_time_off', 'staff.time_off_not_found', 'staff.invalid_transition',
-      'staff.role_not_found', 'staff.member_update_rejected',
+      'staff.role_not_found', 'staff.member_update_rejected', 'staff.user_already_linked',
     ]) {
       for (const lang of ['es', 'en']) {
-        const msg = domainMessage(new FakeErploraError(code, 'raw'), lang, 'fallback');
+        // `name` feeds the codes that carry a `{name}` placeholder (staff#55); the rest ignore it.
+        const msg = domainMessage(new FakeErploraError(code, 'raw'), lang, 'fallback', { name: 'Ana' });
         expect(msg, `${code}/${lang}`).not.toBe('raw');
         expect(msg, `${code}/${lang}`).not.toBe('fallback');
         expect(msg, `${code}/${lang}`).not.toContain('staff.');
@@ -45,5 +46,19 @@ describe('domainMessage', () => {
     expect(domainMessage(new FakeErploraError('hub.elevation.required', 'Ask a manager'), 'es', 'fb')).toBe('Ask a manager');
     expect(domainMessage(new Error('boom'), 'es', 'fb')).toBe('boom');
     expect(domainMessage('not an error', 'es', 'fb')).toBe('fb');
+  });
+
+  it('fills the placeholders of a translated code (staff#55), in both languages', () => {
+    const e = new FakeErploraError('staff.user_already_linked', 'raw');
+    for (const lang of ['es', 'en']) {
+      const msg = domainMessage(e, lang, 'fb', { name: 'Ana Ruiz' });
+      expect(msg, lang).toContain('Ana Ruiz');
+      expect(msg, lang).not.toContain('{name}');
+    }
+  });
+
+  it('without the value a placeholder needs, it keeps the runtime message (never a raw «{name}»)', () => {
+    const e = new FakeErploraError('staff.user_already_linked', 'That Hub user is already linked (Ana Ruiz).');
+    expect(domainMessage(e, 'es', 'fb')).toBe('That Hub user is already linked (Ana Ruiz).');
   });
 });

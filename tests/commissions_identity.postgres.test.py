@@ -51,7 +51,7 @@ def seed_member(
     """A member through the module's own door, and the id the command minted for them — which is
     the `staff_id` half of the seam's key."""
     db.run_command(
-        "staff.members.create",
+        "staff._insert_member",
         {
             "first_name": first,
             "last_name": "Pro",

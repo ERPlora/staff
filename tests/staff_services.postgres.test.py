@@ -62,7 +62,7 @@ def seed_member(db: ScratchDb, hub: str, first: str, **over) -> str:
         "notes": "",
     }
     payload.update(over)
-    db.run_command("staff.members.create", payload, hub=hub)
+    db.run_command("staff._insert_member", payload, hub=hub)
     return db.scalar(
         f"SELECT id FROM staff_member WHERE hub_id = '{hub}' AND first_name = '{first}'"
     )

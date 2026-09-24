@@ -8,7 +8,8 @@
 //     born red instead of re-opening the leak.
 //   * WRITE — a relation is only written against a parent of the SAME hub, and when it does not
 //     resolve the command FAILS (`expect_rows`, hub#139) instead of writing nothing and reporting
-//     success. That is `staff.members.create` / `staff.members.update` for the role, and the
+//     success. That is `staff._insert_member` / `staff._update_member` (the SQL behind the public
+//     `staff.members.create` / `staff.members.update` handlers, staff#55) for the role, and the
 //     WASM intentions `_insert_schedule` / `_insert_working_hours` / `_insert_time_off` for the
 //     member and the schedule.
 //
@@ -76,7 +77,7 @@ describe('a relation is only written against a parent of the same hub', () => {
   };
 
   it('creating a member resolves the role against staff_role of THIS hub (or takes none)', () => {
-    const { sql } = guarded('staff.members.create');
+    const { sql } = guarded('staff._insert_member');
     expect(sql, 'a bare INSERT … VALUES takes any role_id, including another hub\'s').not.toMatch(
       /INSERT\s+INTO\s+staff_member[\s\S]*VALUES/i,
     );
@@ -86,15 +87,15 @@ describe('a relation is only written against a parent of the same hub', () => {
   });
 
   it('updating a member checks the same thing, and NULL means "do not touch the role"', () => {
-    const { sql } = guarded('staff.members.update');
+    const { sql } = guarded('staff._update_member');
     expect(sql).toMatch(/FROM\s+staff_role\s+r[\s\S]*r\.hub_id\s*=\s*:hub_id/i);
     expect(sql).toMatch(/COALESCE\(\s*:role_id\s*,\s*''\s*\)\s*=\s*''/i);
     expect(sql).toMatch(/WHERE\s+id\s*=\s*:staff_id\s+AND\s+hub_id\s*=\s*:hub_id/i);
   });
 
   it.each([
-    ['staff.members.create', 'staff.role_not_found'],
-    ['staff.members.update', 'staff.member_update_rejected'],
+    ['staff._insert_member', 'staff.role_not_found'],
+    ['staff._update_member', 'staff.member_update_rejected'],
   ])('%s fails instead of writing nothing and reporting success', (name, code) => {
     const { gate } = guarded(name);
     expect(gate, `${name} declares no expect_rows: 0 rows would still emit its event`).toBeDefined();

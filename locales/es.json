@@ -231,6 +231,7 @@
     "staff.invalid_transition": "Esa solicitud de ausencia no puede pasar a ese estado desde el actual.",
     "staff.role_not_found": "Ese rol no está disponible: no existe en este negocio, o se ha eliminado o retirado.",
     "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.",
+    "staff.user_already_linked": "Ese usuario del Hub ya está vinculado a {name}. Un usuario del Hub solo puede pertenecer a un miembro del equipo: desvincúlalo allí primero o elige otro usuario.",
     "staff.service_assign_rejected": "No se pudo asignar el servicio: ese profesional no existe en este negocio.",
     "staff.service_not_found": "Esa asignación de servicio no existe en este negocio.",
     "staff.schedule_not_found": "Ese horario no existe en este negocio.",

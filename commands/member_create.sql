@@ -1,5 +1,9 @@
--- Alta de miembro del staff. Runtime inyecta :new_id, :hub_id, :current_user_id, :now.
--- Portado de StaffService.create_staff_member. role_id/hire_date pueden venir NULL.
+-- Staff member insert, behind `staff._insert_member` (staff#55): the public `staff.members.create`
+-- and `staff.members.bulk_create` are WASM handlers that check the Hub user link first and then
+-- emit this intention. `:member_id` is the id the handler took from the host's `context.new_ids`
+-- (the only ids the runtime answers the caller with, hub#776); `:new_id` is only the fallback of a
+-- direct run (test harness). The runtime injects :hub_id, :current_user_id, :now.
+-- Ported from StaffService.create_staff_member. role_id/hire_date may come NULL.
 -- `user_id` = el usuario del Hub (`hub_user`) del que cuelga esta ficha (ADR-0192). NULL o '' =
 -- ficha sin acceso al Hub (un profesional que solo aparece en la agenda). Se normaliza a NULL
 -- para que la ausencia sea UNA sola cosa en la BD.
@@ -22,7 +26,7 @@ INSERT INTO staff_member
    color, hourly_rate, commission_rate, notes,
    is_deleted, created_by, updated_by, created_at, updated_at)
 SELECT
-   :new_id, :hub_id, :first_name, :last_name, :email, :phone, :employee_id,
+   COALESCE(:member_id, :new_id), :hub_id, :first_name, :last_name, :email, :phone, :employee_id,
    NULLIF(:role_id, ''), NULLIF(:user_id, ''), :hire_date, :status, :bio, :specialties, :is_bookable,
    :color, :hourly_rate, :commission_rate, :notes,
    0, :current_user_id, :current_user_id, :now, :now

@@ -4071,6 +4071,7 @@ var es_default = {
     "staff.invalid_transition": "Esa solicitud de ausencia no puede pasar a ese estado desde el actual.",
     "staff.role_not_found": "Ese rol no est\xE1 disponible: no existe en este negocio, o se ha eliminado o retirado.",
     "staff.member_update_rejected": "No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.",
+    "staff.user_already_linked": "Ese usuario del Hub ya est\xE1 vinculado a {name}. Un usuario del Hub solo puede pertenecer a un miembro del equipo: desvinc\xFAlalo all\xED primero o elige otro usuario.",
     "staff.service_assign_rejected": "No se pudo asignar el servicio: ese profesional no existe en este negocio.",
     "staff.service_not_found": "Esa asignaci\xF3n de servicio no existe en este negocio.",
     "staff.schedule_not_found": "Ese horario no existe en este negocio.",
@@ -4292,6 +4293,7 @@ var en_default = {
     "staff.invalid_transition": "That time-off request cannot change to that status from its current one.",
     "staff.role_not_found": "That role is not available: it does not exist in this business, or it has been deleted or retired.",
     "staff.member_update_rejected": "The staff member could not be updated: they do not exist in this business, or the role you picked does not.",
+    "staff.user_already_linked": "That Hub user is already linked to {name}. A Hub user can belong to only one staff member: unlink it there first, or pick another user.",
     "staff.service_assign_rejected": "The service could not be assigned: that staff member does not exist in this business.",
     "staff.service_not_found": "That service assignment does not exist in this business.",
     "staff.schedule_not_found": "That schedule does not exist in this business.",
@@ -4305,12 +4307,14 @@ var ERRORS = {
   es: es_default.errors ?? {},
   en: en_default.errors ?? {}
 };
-function domainMessage(e5, lang, fallback) {
+var PLACEHOLDER = /\{(\w+)\}/g;
+function domainMessage(e5, lang, fallback, vars = {}) {
   if (!(e5 instanceof Error)) return fallback;
   const code = e5.code;
   if (typeof code === "string") {
     const translated = ERRORS[lang]?.[code] ?? ERRORS.en[code];
-    if (translated) return translated;
+    const missing = translated ? [...translated.matchAll(PLACEHOLDER)].some(([, k2]) => !vars[k2]) : true;
+    if (translated && !missing) return translated.replace(PLACEHOLDER, (_2, k2) => vars[k2]);
   }
   return e5.message || fallback;
 }
@@ -4816,6 +4820,22 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     const n6 = parseFloat(String(euros).replace(",", "."));
     return Number.isFinite(n6) ? Math.round(n6 * 100) : null;
   }
+  /** staff#55: a Hub user hangs from ONE record, and the refusal has to name the record that holds
+   *  it. The error carries only the code, so the holder is read here; if that read fails, the
+   *  message falls back to the runtime's sentence (which names it too, in English). */
+  async linkHolderVars(e5, userId) {
+    if (e5?.code !== "staff.user_already_linked" || !userId) return {};
+    try {
+      const rows = await erplora2().query(
+        "staff.members.by_user",
+        { user_id: userId }
+      );
+      const holder = rows[0];
+      return holder ? { name: `${holder.first_name} ${holder.last_name}`.trim() } : {};
+    } catch {
+      return {};
+    }
+  }
   /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). The update
    *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in cents,
    *  commission as %; compensation only travels when the session could read it (otherwise it would
@@ -4867,7 +4887,8 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errCreateMember"));
+      const vars = await this.linkHolderVars(e5, f3.user_id);
+      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errCreateMember"), vars);
     } finally {
       this.saving = false;
     }
