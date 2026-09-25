@@ -3836,6 +3836,13 @@ function createListController(client, queryName, onChange = () => {
 }, opts = {}) {
   return new ListController(client, queryName, onChange, opts);
 }
+function majorToMinor(amount, decimals) {
+  const n6 = Number(amount);
+  return Number.isFinite(n6) ? Math.round(n6 * 10 ** decimals) : 0;
+}
+function minorToMajor(amount, decimals) {
+  return (amount ?? 0) / 10 ** decimals;
+}
 
 // locales/es.json
 var es_default = {
@@ -3906,7 +3913,7 @@ var es_default = {
     colEmail: "Email",
     colPhone: "Tel\xE9fono",
     colStatus: "Estado",
-    colHourlyRate: "\u20AC/h",
+    colHourlyRate: "Tarifa/h",
     phFirstName: "Nombre",
     phLastName: "Apellidos",
     phEmail: "Email",
@@ -4029,7 +4036,7 @@ var es_default = {
     hireDate: "Fecha de alta",
     specialties: "Especialidades",
     bio: "Bio",
-    hourlyRateEuros: "Tarifa por hora (\u20AC)",
+    hourlyRate: "Tarifa por hora",
     commissionPct: "Comisi\xF3n (%)",
     actionDeactivate: "Desactivar",
     actionTerminate: "Dar de baja",
@@ -4148,7 +4155,7 @@ var en_default = {
     colEmail: "Email",
     colPhone: "Phone",
     colStatus: "Status",
-    colHourlyRate: "\u20AC/h",
+    colHourlyRate: "Rate/h",
     phFirstName: "First name",
     phLastName: "Last name",
     phEmail: "Email",
@@ -4271,7 +4278,7 @@ var en_default = {
     hireDate: "Hire date",
     specialties: "Specialties",
     bio: "Bio",
-    hourlyRateEuros: "Hourly rate (\u20AC)",
+    hourlyRate: "Hourly rate",
     commissionPct: "Commission (%)",
     actionDeactivate: "Deactivate",
     actionTerminate: "Terminate",
@@ -4371,6 +4378,24 @@ function formatDate(value) {
   }
 }
 
+// ui/lib/hub-currency.ts
+function hubDecimals() {
+  const d3 = globalThis.erplora?.currencyDecimals;
+  return typeof d3 === "number" && Number.isInteger(d3) && d3 >= 0 ? d3 : 2;
+}
+function majorToMinor2(major) {
+  return majorToMinor(major, hubDecimals());
+}
+function minorToInput(minor) {
+  if (minor == null) return "";
+  const d3 = hubDecimals();
+  return minorToMajor(minor, d3).toFixed(d3);
+}
+function moneyStep() {
+  const d3 = hubDecimals();
+  return d3 === 0 ? "1" : `0.${"0".repeat(d3 - 1)}1`;
+}
+
 // ui/components/erp-staff-members/erp-staff-members.ts
 var CATALOG2 = { es: es_default, en: en_default };
 var EMPTY_FORM = {
@@ -4397,7 +4422,7 @@ function erplora2() {
   if (!c5) throw new Error("erplora SDK no inicializado por el shell");
   return c5;
 }
-var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
+var ErpStaffMembers = class extends i3 {
   constructor() {
     super(...arguments);
     this.roles = [];
@@ -4492,7 +4517,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         sortable: true,
         // Not server-filterable any more: the value no longer travels in the directory query.
         filterable: false,
-        // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
+        // Minor units per hour of the hub currency (ADR-0123) → formatMoney applies its scale.
         format: (r6) => erplora2().formatMoney(Number(this.rates[String(r6.id)] ?? 0))
       }] : []
     ];
@@ -4588,7 +4613,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       if (c5) {
         this.form = {
           ...this.form,
-          hourly_rate: (Number(c5.hourly_rate || 0) / 100).toFixed(2),
+          hourly_rate: minorToInput(Number(c5.hourly_rate || 0)),
           commission_rate: String(Number(c5.commission_rate || 0))
         };
       }
@@ -4678,7 +4703,8 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     const svc = this.catalog.find((c5) => c5.id === this.newServiceId);
     if (!this.editingId || !svc) return;
     const minutes = parseInt(this.newServiceDuration, 10);
-    const euros = parseFloat(String(this.newServicePrice).replace(",", "."));
+    const price = String(this.newServicePrice).replace(",", ".");
+    const major = parseFloat(price);
     this.servicesError = "";
     try {
       await erplora2().command("staff.services.assign", {
@@ -4686,7 +4712,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
         service_id: svc.id,
         service_name: svc.name,
         custom_duration: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
-        custom_price: Number.isFinite(euros) && euros >= 0 && this.newServicePrice !== "" ? Math.round(euros * 100) : null,
+        custom_price: Number.isFinite(major) && major >= 0 && this.newServicePrice !== "" ? majorToMinor2(price) : null,
         is_primary: 0
       });
       this.newServiceId = "";
@@ -4743,7 +4769,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
               ${this.assignableServices.map((c5) => b2`<ion-select-option .value=${c5.id}>${c5.name}</ion-select-option>`)}
             </ion-select>
             <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
             <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e5) => this.assignService(e5)}>${t5("ui.serviceAssign")}</ion-button>
           </div>`}
     </section>`;
@@ -4814,12 +4840,6 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     } catch {
     }
   }
-  /** Money typed in euros → integer cents; '' → null (not sent / keep). */
-  static cents(euros) {
-    if (euros === "" || euros == null) return null;
-    const n6 = parseFloat(String(euros).replace(",", "."));
-    return Number.isFinite(n6) ? Math.round(n6 * 100) : null;
-  }
   /** staff#55: a Hub user hangs from ONE record, and the refusal has to name the record that holds
    *  it. The error carries only the code, so the holder is read here; if that read fails, the
    *  message falls back to the runtime's sentence (which names it too, in English). */
@@ -4837,7 +4857,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
     }
   }
   /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). The update
-   *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in cents,
+   *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in the hub currency's minor unit,
    *  commission as %; compensation only travels when the session could read it (otherwise it would
    *  overwrite what it never saw). */
   async createMember(ev) {
@@ -4862,7 +4882,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
       specialties: f3.specialties
     };
     if (this.canSeeCompensation) {
-      common.hourly_rate = _ErpStaffMembers.cents(f3.hourly_rate) ?? 0;
+      common.hourly_rate = majorToMinor2(String(f3.hourly_rate).replace(",", "."));
       common.commission_rate = Number.isFinite(commission) ? commission : 0;
     }
     try {
@@ -4927,7 +4947,7 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
             </section>
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation ? b2`<section data-section="compensation" class="grid2">
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t5("ui.hourlyRateEuros")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.hourlyRate")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
                   <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
                 </section>` : A}
             ${this.renderServices()}
@@ -4953,50 +4973,49 @@ var _ErpStaffMembers = class _ErpStaffMembers extends i3 {
 };
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "roles", 2);
+], ErpStaffMembers.prototype, "roles", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "hubUsers", 2);
+], ErpStaffMembers.prototype, "hubUsers", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "formError", 2);
+], ErpStaffMembers.prototype, "formError", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "form", 2);
+], ErpStaffMembers.prototype, "form", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "editingId", 2);
+], ErpStaffMembers.prototype, "editingId", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "pendingAction", 2);
+], ErpStaffMembers.prototype, "pendingAction", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "saving", 2);
+], ErpStaffMembers.prototype, "saving", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "memberServices", 2);
+], ErpStaffMembers.prototype, "memberServices", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "catalog", 2);
+], ErpStaffMembers.prototype, "catalog", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "catalogUnavailable", 2);
+], ErpStaffMembers.prototype, "catalogUnavailable", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "newServiceId", 2);
+], ErpStaffMembers.prototype, "newServiceId", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "newServiceDuration", 2);
+], ErpStaffMembers.prototype, "newServiceDuration", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "newServicePrice", 2);
+], ErpStaffMembers.prototype, "newServicePrice", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "servicesError", 2);
+], ErpStaffMembers.prototype, "servicesError", 2);
 __decorateClass([
   r5()
-], _ErpStaffMembers.prototype, "rates", 2);
-var ErpStaffMembers = _ErpStaffMembers;
+], ErpStaffMembers.prototype, "rates", 2);
 define("erp-staff-members", ErpStaffMembers);
 
 // ui/components/erp-staff-roles/erp-staff-roles.ts
