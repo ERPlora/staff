@@ -78,7 +78,8 @@ export function handFormattedMoney(src: string): string[] {
 const NOT_DISPLAY: Record<string, string> = {
   'components/erp-staff-members/erp-staff-members.ts: hourly_rate: (Number(c.hourly_rate || 0) / 100).toFixed(2),':
     'value of the hourly-rate ion-input (type=number, step 0.01, labelled in €): a plain-dot string ' +
-    'that must round-trip through cents(); a locale-formatted amount would not parse back.',
+    'that must round-trip through cents(); a locale-formatted amount would not parse back. ' +
+    'Its fixed euro scale is staff#64 (update this entry when it moves).',
 };
 
 describe('money display goes through the shared formatter (pm#289)', () => {
