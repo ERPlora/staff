@@ -76,10 +76,10 @@ export function handFormattedMoney(src: string): string[] {
  *  Every amount on screen (the hourly-rate column of the directory) already goes through
  *  `erplora().formatMoney(minor)`. Add an entry only with the reason it is not a screen amount. */
 const NOT_DISPLAY: Record<string, string> = {
-  'components/erp-staff-members/erp-staff-members.ts: hourly_rate: (Number(c.hourly_rate || 0) / 100).toFixed(2),':
-    'value of the hourly-rate ion-input (type=number, step 0.01, labelled in €): a plain-dot string ' +
-    'that must round-trip through cents(); a locale-formatted amount would not parse back. ' +
-    'Its fixed euro scale is staff#64 (update this entry when it moves).',
+  'lib/hub-currency.ts: return sdkMinorToMajor(minor, d).toFixed(d);':
+    'minorToInput: the value of the money ion-inputs (hourly rate; type=number, step=moneyStep()), ' +
+    'a plain-dot string in the hub scale (JPY «1500», KWD «1.234») that must round-trip through ' +
+    'majorToMinor; a locale-formatted amount would not parse back (staff#64).',
 };
 
 describe('money display goes through the shared formatter (pm#289)', () => {

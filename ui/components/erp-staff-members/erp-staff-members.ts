@@ -8,6 +8,7 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { MEMBER_STATUS_KEY, enumLabel } from '../../lib/enums';
+import { majorToMinor, minorToInput, moneyStep } from '../../lib/hub-currency';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -193,7 +194,7 @@ export class ErpStaffMembers extends LitElement {
 
   @state() newServiceId = '';
 
-  /** Optional overrides typed by the user: minutes and PRICE IN EUROS (converted to cents on send). */
+  /** Optional overrides typed by the user: minutes and PRICE in the hub currency (converted to its minor unit on send, staff#64). */
   @state() newServiceDuration = '';
 
   @state() newServicePrice = '';
@@ -256,7 +257,7 @@ export class ErpStaffMembers extends LitElement {
         sortable: true,
         // Not server-filterable any more: the value no longer travels in the directory query.
         filterable: false,
-        // Céntimos/hora (ADR-0123) → formatMoney divide. toFixed(2) pintaba 1500 → «1500.00».
+        // Minor units per hour of the hub currency (ADR-0123) → formatMoney applies its scale.
         format: (r) => erplora().formatMoney(Number(this.rates[String(r.id)] ?? 0)),
       }]
       : []),
@@ -348,7 +349,7 @@ export class ErpStaffMembers extends LitElement {
       if (c) {
         this.form = {
           ...this.form,
-          hourly_rate: (Number(c.hourly_rate || 0) / 100).toFixed(2),
+          hourly_rate: minorToInput(Number(c.hourly_rate || 0)),
           commission_rate: String(Number(c.commission_rate || 0)),
         };
       }
@@ -447,7 +448,8 @@ export class ErpStaffMembers extends LitElement {
     const svc = this.catalog.find((c) => c.id === this.newServiceId);
     if (!this.editingId || !svc) return;
     const minutes = parseInt(this.newServiceDuration, 10);
-    const euros = parseFloat(String(this.newServicePrice).replace(',', '.'));
+    const price = String(this.newServicePrice).replace(',', '.');
+    const major = parseFloat(price);
     this.servicesError = '';
     try {
       await erplora().command('staff.services.assign', {
@@ -455,7 +457,7 @@ export class ErpStaffMembers extends LitElement {
         service_id: svc.id,
         service_name: svc.name,
         custom_duration: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
-        custom_price: Number.isFinite(euros) && euros >= 0 && this.newServicePrice !== '' ? Math.round(euros * 100) : null,
+        custom_price: Number.isFinite(major) && major >= 0 && this.newServicePrice !== '' ? majorToMinor(price) : null,
         is_primary: 0,
       });
       this.newServiceId = '';
@@ -517,7 +519,7 @@ export class ErpStaffMembers extends LitElement {
               ${this.assignableServices.map((c) => html`<ion-select-option .value=${c.id}>${c.name}</ion-select-option>`)}
             </ion-select>
             <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
+            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
             <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
           </div>`}
     </section>`;
@@ -595,13 +597,6 @@ export class ErpStaffMembers extends LitElement {
     } catch { /* sin core (preview) → alta sin vínculo */ }
   }
 
-  /** Money typed in euros → integer cents; '' → null (not sent / keep). */
-  private static cents(euros: string): number | null {
-    if (euros === '' || euros == null) return null;
-    const n = parseFloat(String(euros).replace(',', '.'));
-    return Number.isFinite(n) ? Math.round(n * 100) : null;
-  }
-
   /** staff#55: a Hub user hangs from ONE record, and the refusal has to name the record that holds
    *  it. The error carries only the code, so the holder is read here; if that read fails, the
    *  message falls back to the runtime's sentence (which names it too, in English). */
@@ -620,7 +615,7 @@ export class ErpStaffMembers extends LitElement {
   }
 
   /** Alta y edición comparten panel: `editingId` decide el comando (create ↔ update). The update
-   *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in cents,
+   *  is a FULL snapshot of what the form shows (staff#4): `''` clears role/user, money in the hub currency's minor unit,
    *  commission as %; compensation only travels when the session could read it (otherwise it would
    *  overwrite what it never saw). */
   async createMember(ev: Event) {
@@ -645,7 +640,7 @@ export class ErpStaffMembers extends LitElement {
       specialties: f.specialties,
     };
     if (this.canSeeCompensation) {
-      common.hourly_rate = ErpStaffMembers.cents(f.hourly_rate) ?? 0;
+      common.hourly_rate = majorToMinor(String(f.hourly_rate).replace(',', '.'));
       common.commission_rate = Number.isFinite(commission) ? commission : 0;
     }
     try {
@@ -716,7 +711,7 @@ export class ErpStaffMembers extends LitElement {
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation
               ? html`<section data-section="compensation" class="grid2">
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step="0.01" label=${t('ui.hourlyRateEuros')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
+                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.hourlyRate')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
                   <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
                 </section>`
               : nothing}
