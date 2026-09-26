@@ -578,7 +578,7 @@ var ElementShim = class Element extends NodeShim {
     return value ?? null;
   }
 };
-var HTMLElementShim = class HTMLElement extends ElementShim {
+var HTMLElementShim = class HTMLElement2 extends ElementShim {
 };
 var HTMLElementShimWithRealType = HTMLElementShim;
 var ShadowRootShim = class ShadowRoot extends NodeShim {
@@ -4537,12 +4537,12 @@ var ErpStaffMembers = class extends i3 {
     return out;
   }
   /**
-   * Rótulo de la cabecera del panel (staff#38). El panel es UNO con dos modos, y `ok-data-table`
-   * titula su drawer con `newRecord`; sin este override la edición se anunciaba como «Nuevo» y
-   * guardar parecía que iba a DUPLICAR la ficha (con su tarifa y su comisión dentro).
+   * Panel header label (pm#450, outfitkit#150): the header now comes from `open('edit', { title })`.
+   * This `newRecord` override is kept as the FALLBACK for shells running OutfitKit < 0.1.94, which
+   * ignore that `title` and paint `newRecord` for the edit panel too (staff#38).
    *
-   * En edición lleva además el nombre, como Odoo, Dynamics 365 BC, Square Team y Fresha: la
-   * cabecera identifica el registro que se está tocando, para no editar a la persona equivocada.
+   * In edit mode it carries the member's name, as Odoo, Dynamics 365 BC, Square Team and Fresha do:
+   * the header identifies the record being touched, so nobody edits the wrong person.
    */
   get panelLabels() {
     const t5 = (k2, p4) => erplora2().t(CATALOG2, k2, p4);
@@ -4580,7 +4580,8 @@ var ErpStaffMembers = class extends i3 {
       status: m4.status ?? "active",
       is_bookable: m4.is_bookable === void 0 ? true : Number(m4.is_bookable) === 1
     };
-    this.dataTable()?.open("create");
+    const name = `${this.form.first_name} ${this.form.last_name}`.trim();
+    this.dataTable()?.open("edit", { title: erplora2().t(CATALOG2, "ui.panelEdit", { name }) });
     this.rememberLink(m4.id);
     void this.loadMemberServices();
     try {
@@ -4669,6 +4670,19 @@ var ErpStaffMembers = class extends i3 {
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
     this.rememberLink("");
+  }
+  /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
+   *  show the edited member under a «New» header, and the submit would UPDATE it. */
+  onTableClick(e5) {
+    if (!this.editingId) return;
+    const addId = "staff-members-table-add";
+    if (e5.composedPath().some((n6) => n6 instanceof HTMLElement && n6.dataset.testid === addId)) this.resetForm();
+  }
+  /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
+   *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
+   *  demands one. */
+  firstUpdated() {
+    this.renderRoot.querySelector("ok-data-table")?.addEventListener("click", (e5) => this.onTableClick(e5));
   }
   /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
    *  query of `services`; a failure there (module not installed, no permission) is NOT an error
@@ -5329,7 +5343,7 @@ var ErpStaffSchedules = class extends i3 {
         const h4 = mine.find((x2) => x2.day_of_week === day && Number(x2.is_working) === 1);
         return h4 ? { day, working: true, start: hhmm(h4.start_time), end: hhmm(h4.end_time), breakStart: hhmm(h4.break_start), breakEnd: hhmm(h4.break_end) } : { day, working: false, start: "09:00", end: "18:00", breakStart: "", breakEnd: "" };
       });
-      this.dataTable()?.open("create");
+      this.dataTable()?.open("edit", { title: erplora4().t(CATALOG4, "ui.panelEdit", { name: this.newName }) });
       return;
     }
     if (ev.detail.actionId === "toggle") {
@@ -5364,6 +5378,27 @@ var ErpStaffSchedules = class extends i3 {
     this.effectiveFrom = "";
     this.effectiveUntil = "";
     this.week = defaultWeek();
+  }
+  /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
+   *  show the edited schedule under a «New» header, and the submit would UPDATE it. */
+  onTableClick(e5) {
+    if (!this.editingId) return;
+    const addId = "staff-schedules-table-add";
+    if (e5.composedPath().some((n6) => n6 instanceof HTMLElement && n6.dataset.testid === addId)) this.resetForm();
+  }
+  /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
+   *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
+   *  demands one. */
+  firstUpdated() {
+    this.renderRoot.querySelector("ok-data-table")?.addEventListener("click", (e5) => this.onTableClick(e5));
+  }
+  /** Header of the table panel. The title comes from open('edit', { title }) (pm#450,
+   *  outfitkit#150); this `newRecord` override is the fallback for OutfitKit < 0.1.94, which
+   *  ignores the title and paints `newRecord` for the edit panel too — without it, editing a
+   *  schedule reads «New» and saving looks like it creates another one. */
+  get panelLabels() {
+    const t5 = (k2, p4) => erplora4().t(CATALOG4, k2, p4);
+    return { newRecord: this.editingId ? t5("ui.panelEdit", { name: this.newName }) : t5("ui.panelNew") };
   }
   /** Referencia al panel lateral de la tabla: guardar lo cierra. */
   dataTable() {
@@ -5426,7 +5461,7 @@ var ErpStaffSchedules = class extends i3 {
         ${!this.members.length ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
+        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->

@@ -290,7 +290,7 @@ export class ErpStaffSchedules extends LitElement {
           ? { day, working: true, start: hhmm(h.start_time), end: hhmm(h.end_time), breakStart: hhmm(h.break_start), breakEnd: hhmm(h.break_end) }
           : { day, working: false, start: '09:00', end: '18:00', breakStart: '', breakEnd: '' };
       });
-      this.dataTable()?.open('create');
+      this.dataTable()?.open('edit', { title: erplora().t(CATALOG, 'ui.panelEdit', { name: this.newName }) });
       return;
     }
     if (ev.detail.actionId === 'toggle') {
@@ -329,10 +329,34 @@ export class ErpStaffSchedules extends LitElement {
     this.week = defaultWeek();
   }
 
+  /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
+   *  show the edited schedule under a «New» header, and the submit would UPDATE it. */
+  private onTableClick(e: Event): void {
+    if (!this.editingId) return;
+    const addId = 'staff-schedules-table-add';
+    if (e.composedPath().some((n) => n instanceof HTMLElement && n.dataset.testid === addId)) this.resetForm();
+  }
+
+  /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
+   *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
+   *  demands one. */
+  firstUpdated(): void {
+    this.renderRoot.querySelector('ok-data-table')?.addEventListener('click', (e) => this.onTableClick(e));
+  }
+
+  /** Header of the table panel. The title comes from open('edit', { title }) (pm#450,
+   *  outfitkit#150); this `newRecord` override is the fallback for OutfitKit < 0.1.94, which
+   *  ignores the title and paints `newRecord` for the edit panel too — without it, editing a
+   *  schedule reads «New» and saving looks like it creates another one. */
+  private get panelLabels(): { newRecord: string } {
+    const t = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
+    return { newRecord: this.editingId ? t('ui.panelEdit', { name: this.newName }) : t('ui.panelNew') };
+  }
+
   /** Referencia al panel lateral de la tabla: guardar lo cierra. */
-  private dataTable(): { open(p?: 'filters' | 'create'): void; close(): void } | null {
+  private dataTable(): { open(p?: 'filters' | 'create' | 'edit', opts?: { title?: string }): void; close(): void } | null {
     return this.renderRoot.querySelector('ok-data-table') as
-      | { open(p?: 'filters' | 'create'): void; close(): void }
+      | { open(p?: 'filters' | 'create' | 'edit', opts?: { title?: string }): void; close(): void }
       | null;
   }
 
@@ -396,7 +420,7 @@ export class ErpStaffSchedules extends LitElement {
         ${!this.members.length ? html`<p data-testid="staff-schedules-no-members" class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
+        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->

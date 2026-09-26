@@ -110,3 +110,50 @@ describe('el rótulo está traducido en las dos lenguas del módulo (staff#38)',
     expect(cat.ui.panelEdit, 'el rótulo de edición tiene que poder nombrar al empleado').toContain('{name}');
   });
 });
+
+// pm#450 (outfitkit#150): the table now has an «edit» mode and takes the whole header title. The
+// screen asks for it with open('edit', { title }) instead of opening an ALTA and relabelling it.
+// The `.labels.newRecord` override above STAYS as the fallback: a shell with OutfitKit < 0.1.94
+// (hub:stable 1.1.29 ships 0.1.73) ignores the title and paints `newRecord` for the «edit» panel.
+describe('editing opens the table in «edit» mode with the member in the header (pm#450)', () => {
+  type Table = HTMLElement & { open: (panel?: unknown, opts?: { title?: string }) => void; shadowRoot: ShadowRoot };
+  type WithForm = Wc & { form: { first_name: string; last_name: string } };
+  const table = (el: Wc) => el.shadowRoot.querySelector('ok-data-table') as Table;
+  const addButton = (el: Wc) => table(el).shadowRoot.querySelector('[data-testid="staff-members-table-add"]') as HTMLElement;
+
+  it("opens the panel with open('edit', { title }) — «Edit · <name>» in the header", async () => {
+    const el = await montar();
+    const calls: unknown[][] = [];
+    table(el).open = (...args: unknown[]) => void calls.push(args);
+    await editar(el);
+    expect(calls).toEqual([['edit', { title: 'ui.panelEdit(name=Lucía Márquez)' }]]);
+  });
+
+  it('«Add» after an edit opens a CLEAN create form (the header says «New»: the form must agree)', async () => {
+    const el = (await montar()) as WithForm;
+    await editar(el);
+    expect(addButton(el), 'the table paints its «Add» button').toBeTruthy();
+    addButton(el).click();
+    await el.updateComplete;
+    expect(el.editingId, 'a submit here would UPDATE the edited member under a «New» header').toBe('');
+    expect(el.form.first_name).toBe('');
+    expect(rotulo(el)).toBe('ui.panelNew');
+  });
+
+  it('a click INSIDE the edit form (a field, the table) does not drop the edit — only «Add» does', async () => {
+    const el = await montar();
+    await editar(el);
+    (el.shadowRoot.querySelector('[data-testid="staff-members-first-name"]') as HTMLElement).click();
+    table(el).click();
+    await el.updateComplete;
+    expect(el.editingId, 'the table host hears every click of the projected form').toBe('m1');
+  });
+
+  it('«Add» with no edit in progress keeps what was typed', async () => {
+    const el = (await montar()) as WithForm;
+    el.form = { ...el.form, first_name: 'Nuria' };
+    addButton(el).click();
+    await el.updateComplete;
+    expect(el.form.first_name).toBe('Nuria');
+  });
+});

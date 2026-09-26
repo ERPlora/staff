@@ -124,7 +124,7 @@ interface HubUser {
 
 /** Panel lateral de la tabla (drawer): el «+» de la barra y la acción «editar» abren el MISMO. */
 interface DataTablePanel {
-  open(panel?: 'filters' | 'create'): void;
+  open(panel?: 'filters' | 'create' | 'edit', opts?: { title?: string }): void;
   close(): void;
 }
 
@@ -282,12 +282,12 @@ export class ErpStaffMembers extends LitElement {
   }
 
   /**
-   * Rótulo de la cabecera del panel (staff#38). El panel es UNO con dos modos, y `ok-data-table`
-   * titula su drawer con `newRecord`; sin este override la edición se anunciaba como «Nuevo» y
-   * guardar parecía que iba a DUPLICAR la ficha (con su tarifa y su comisión dentro).
+   * Panel header label (pm#450, outfitkit#150): the header now comes from `open('edit', { title })`.
+   * This `newRecord` override is kept as the FALLBACK for shells running OutfitKit < 0.1.94, which
+   * ignore that `title` and paint `newRecord` for the edit panel too (staff#38).
    *
-   * En edición lleva además el nombre, como Odoo, Dynamics 365 BC, Square Team y Fresha: la
-   * cabecera identifica el registro que se está tocando, para no editar a la persona equivocada.
+   * In edit mode it carries the member's name, as Odoo, Dynamics 365 BC, Square Team and Fresha do:
+   * the header identifies the record being touched, so nobody edits the wrong person.
    */
   private get panelLabels(): { newRecord: string } {
     const t = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
@@ -323,7 +323,8 @@ export class ErpStaffMembers extends LitElement {
       role_id: m.role_id ?? '', user_id: m.user_id ?? '', status: m.status ?? 'active',
       is_bookable: m.is_bookable === undefined ? true : Number(m.is_bookable) === 1,
     };
-    this.dataTable()?.open('create');
+    const name = `${this.form.first_name} ${this.form.last_name}`.trim();
+    this.dataTable()?.open('edit', { title: erplora().t(CATALOG, 'ui.panelEdit', { name }) });
     this.rememberLink(m.id);
     void this.loadMemberServices();
     try {
@@ -409,6 +410,21 @@ export class ErpStaffMembers extends LitElement {
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
     this.rememberLink('');
+  }
+
+  /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
+   *  show the edited member under a «New» header, and the submit would UPDATE it. */
+  private onTableClick(e: Event): void {
+    if (!this.editingId) return;
+    const addId = 'staff-members-table-add';
+    if (e.composedPath().some((n) => n instanceof HTMLElement && n.dataset.testid === addId)) this.resetForm();
+  }
+
+  /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
+   *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
+   *  demands one. */
+  firstUpdated(): void {
+    this.renderRoot.querySelector('ok-data-table')?.addEventListener('click', (e) => this.onTableClick(e));
   }
 
   /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
