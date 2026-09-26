@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import type { PropertyValues } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
@@ -119,7 +120,10 @@ export class ErpStaffSchedules extends LitElement {
 
   @state() loading = false;
 
+  /** What went wrong saving the form: painted INSIDE the form (staff#72). */
   @state() formError = '';
+  /** What went wrong loading the list or in a row action (no panel open): painted on the page. */
+  @state() pageError = '';
 
   @state() saving = false;
 
@@ -219,7 +223,7 @@ export class ErpStaffSchedules extends LitElement {
         await this.loadSchedules();
       }
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
+      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
     }
   }
 
@@ -237,7 +241,7 @@ export class ErpStaffSchedules extends LitElement {
       this.schedules = schedules ?? [];
       this.hours = hours ?? [];
     } catch (e) {
-      this.formError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadSchedules');
+      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadSchedules');
     } finally {
       this.loading = false;
     }
@@ -245,7 +249,7 @@ export class ErpStaffSchedules extends LitElement {
 
   private async onMemberChange(id: string) {
     this.staffId = id;
-    this.formError = '';
+    this.pageError = '';
     await this.loadSchedules();
   }
 
@@ -277,6 +281,7 @@ export class ErpStaffSchedules extends LitElement {
   async onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>): Promise<void> {
     const row = ev.detail.row as unknown as Schedule;
     this.formError = '';
+    this.pageError = '';
     if (ev.detail.actionId === 'edit') {
       this.editingId = row.id;
       this.newName = row.name ?? '';
@@ -298,7 +303,7 @@ export class ErpStaffSchedules extends LitElement {
         await erplora().command('staff.schedules.set_active', { schedule_id: row.id, is_active: Number(row.is_active) ? 0 : 1 });
         await this.loadSchedules();
       } catch (e) {
-        this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errUpdateSchedule'));
+        this.pageError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errUpdateSchedule'));
       }
       return;
     }
@@ -316,7 +321,7 @@ export class ErpStaffSchedules extends LitElement {
       if (this.editingId === pending.id) this.resetForm();
       await this.loadSchedules();
     } catch (e) {
-      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errUpdateSchedule'));
+      this.pageError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errUpdateSchedule'));
     }
   }
 
@@ -398,6 +403,8 @@ export class ErpStaffSchedules extends LitElement {
       } else {
         await erplora().command('staff.schedules.create', { staff_id: this.staffId, ...body });
       }
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();
@@ -408,6 +415,22 @@ export class ErpStaffSchedules extends LitElement {
     }
   }
 
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (changed.has('formError') && this.formError) void this.revealFormError();
+  }
+
+  private async revealFormError(): Promise<void> {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]') as
+      | (HTMLElement & { updateComplete?: Promise<unknown> })
+      | null;
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: 'center' });
+  }
+
   render() {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div class="page">
@@ -416,7 +439,7 @@ export class ErpStaffSchedules extends LitElement {
         <header>
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
-        ${this.formError ? html`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.pageError ? html`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
         ${!this.members.length ? html`<p data-testid="staff-schedules-no-members" class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
@@ -445,6 +468,9 @@ export class ErpStaffSchedules extends LitElement {
                 </div>`,
               )}
             </div>
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+                 and a banner on the page underneath it is never seen. -->
+            ${this.formError ? html`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
             <ion-button data-testid="staff-schedules-submit" type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionCreateSchedule')}</ion-button>
           </form>
         </ok-data-table>

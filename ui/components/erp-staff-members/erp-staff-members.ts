@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import type { PropertyValues } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
@@ -169,7 +170,10 @@ export class ErpStaffMembers extends LitElement {
   /** Usuarios ACTIVOS del Hub, para elegir de quién es esta ficha. */
   @state() hubUsers: HubUser[] = [];
 
+  /** What went wrong saving or loading the form: painted INSIDE the form (staff#72). */
   @state() formError = '';
+  /** What went wrong in a row action (no panel open): painted on the page (staff#72). */
+  @state() pageError = '';
 
   /** The record being typed (create) or edited. */
   @state() form: MemberForm = { ...EMPTY_FORM };
@@ -392,7 +396,7 @@ export class ErpStaffMembers extends LitElement {
     const pending = this.pendingAction;
     this.pendingAction = null;
     if (ev.detail?.role !== 'confirm' || !pending) return;
-    this.formError = '';
+    this.pageError = '';
     try {
       if (pending.kind === 'deactivate') {
         await erplora().command('staff.members.deactivate', { staff_id: pending.id });
@@ -407,7 +411,7 @@ export class ErpStaffMembers extends LitElement {
       if (this.editingId === pending.id) this.resetForm();
       await this.ctrl.load();
     } catch (e) {
-      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errLifecycle'));
+      this.pageError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errLifecycle'));
     }
   }
 
@@ -701,6 +705,8 @@ export class ErpStaffMembers extends LitElement {
           notes: '',
         });
       }
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.resetForm();
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
@@ -712,10 +718,26 @@ export class ErpStaffMembers extends LitElement {
     }
   }
 
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (changed.has('formError') && this.formError) void this.revealFormError();
+  }
+
+  private async revealFormError(): Promise<void> {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-members-form-error"]') as
+      | (HTMLElement & { updateComplete?: Promise<unknown> })
+      | null;
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: 'center' });
+  }
+
   render() {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div class="page">
-        ${this.formError ? html`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.pageError ? html`<ok-inline-feedback data-testid="staff-members-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="staff-members-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same record panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
@@ -756,6 +778,9 @@ export class ErpStaffMembers extends LitElement {
                 </section>`
               : nothing}
             ${this.renderServices()}
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen
+                 sheet and a banner on the page underneath it is never seen. -->
+            ${this.formError ? html`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
             <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>

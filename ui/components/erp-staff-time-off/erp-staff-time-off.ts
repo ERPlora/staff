@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import type { PropertyValues } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
@@ -85,7 +86,10 @@ export class ErpStaffTimeOff extends LitElement {
     .err { color:#d9480f; font-weight:600; }
   `;
 
+  /** What went wrong saving the form: painted INSIDE the form (staff#72). */
   @state() formError = '';
+  /** What went wrong in a row action (approve/reject, no panel open): painted on the page. */
+  @state() pageError = '';
 
   @state() busyId = '';
 
@@ -235,6 +239,8 @@ export class ErpStaffTimeOff extends LitElement {
         end_time: d.is_full_day ? null : d.end_time,
         reason: d.reason,
       });
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.draft = { ...EMPTY_DRAFT };
       this.dataTable()?.close();
       await this.ctrl.load();
@@ -250,15 +256,31 @@ export class ErpStaffTimeOff extends LitElement {
     const status = actionId === 'approve' ? 'approved' : 'rejected';
     const id = row.id as string;
     this.busyId = id;
-    this.formError = '';
+    this.pageError = '';
     try {
       await erplora().command('staff.time_off.set_status', { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e) {
-      this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errSetStatus'));
+      this.pageError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errSetStatus'));
     } finally {
       this.busyId = '';
     }
+  }
+
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (changed.has('formError') && this.formError) void this.revealFormError();
+  }
+
+  private async revealFormError(): Promise<void> {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-time-off-form-error"]') as
+      | (HTMLElement & { updateComplete?: Promise<unknown> })
+      | null;
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: 'center' });
   }
 
   render() {
@@ -267,7 +289,7 @@ export class ErpStaffTimeOff extends LitElement {
         <header>
           <h2>${t('ui.timeOffTitle')}</h2>
         </header>
-        ${this.formError ? html`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.pageError ? html`<ok-inline-feedback data-testid="staff-time-off-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="staff-time-off-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <ok-data-table testid="staff-time-off-table" .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
             this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
@@ -302,6 +324,9 @@ export class ErpStaffTimeOff extends LitElement {
             <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeTo')} .value=${this.draft.end_time} @ionInput=${(e: any) => this.patch({ end_time: e.target.value })}></ion-input>
           </div>`}
       <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.reason')} .value=${this.draft.reason} @ionInput=${(e: any) => this.patch({ reason: e.target.value })}></ion-textarea>
+      <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+           and a banner on the page underneath it is never seen. -->
+      ${this.formError ? html`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
       <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
     </form>`;
   }

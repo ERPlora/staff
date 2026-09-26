@@ -4428,6 +4428,7 @@ var ErpStaffMembers = class extends i3 {
     this.roles = [];
     this.hubUsers = [];
     this.formError = "";
+    this.pageError = "";
     this.form = { ...EMPTY_FORM };
     this.editingId = "";
     this.pendingAction = null;
@@ -4652,7 +4653,7 @@ var ErpStaffMembers = class extends i3 {
     const pending = this.pendingAction;
     this.pendingAction = null;
     if (ev.detail?.role !== "confirm" || !pending) return;
-    this.formError = "";
+    this.pageError = "";
     try {
       if (pending.kind === "deactivate") {
         await erplora2().command("staff.members.deactivate", { staff_id: pending.id });
@@ -4667,7 +4668,7 @@ var ErpStaffMembers = class extends i3 {
       if (this.editingId === pending.id) this.resetForm();
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errLifecycle"));
+      this.pageError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errLifecycle"));
     }
   }
   resetForm() {
@@ -4933,6 +4934,7 @@ var ErpStaffMembers = class extends i3 {
           notes: ""
         });
       }
+      this.pageError = "";
       this.resetForm();
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
@@ -4943,10 +4945,22 @@ var ErpStaffMembers = class extends i3 {
       this.saving = false;
     }
   }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-members-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
+  }
   render() {
     const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div class="page">
-        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.pageError ? b2`<ok-inline-feedback data-testid="staff-members-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-members-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same record panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
@@ -4981,6 +4995,9 @@ var ErpStaffMembers = class extends i3 {
                   <ion-input data-testid="staff-members-commission-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
                 </section>` : A}
             ${this.renderServices()}
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen
+                 sheet and a banner on the page underneath it is never seen. -->
+            ${this.formError ? b2`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
             <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
@@ -5011,6 +5028,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "formError", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "pageError", 2);
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "form", 2);
@@ -5135,10 +5155,21 @@ var ErpStaffRoles = class extends i3 {
       this.saving = false;
     }
   }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-roles-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
+  }
   render() {
     const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div class="page">
-        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-roles-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <ok-data-table testid="staff-roles-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "shield-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchRole")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyRoles")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
@@ -5147,6 +5178,9 @@ var ErpStaffRoles = class extends i3 {
             <ion-input data-testid="staff-roles-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
             <ion-input data-testid="staff-roles-description" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
             <ion-input data-testid="staff-roles-color" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+                 and a banner on the page underneath it is never seen. -->
+            ${this.formError ? b2`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
             <ion-button data-testid="staff-roles-submit" type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
@@ -5198,6 +5232,7 @@ var ErpStaffSchedules = class extends i3 {
     this.schedules = [];
     this.loading = false;
     this.formError = "";
+    this.pageError = "";
     this.saving = false;
     this.newName = "";
     this.newDefault = true;
@@ -5295,7 +5330,7 @@ var ErpStaffSchedules = class extends i3 {
         await this.loadSchedules();
       }
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
+      this.pageError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
     }
   }
   async loadSchedules() {
@@ -5312,14 +5347,14 @@ var ErpStaffSchedules = class extends i3 {
       this.schedules = schedules ?? [];
       this.hours = hours ?? [];
     } catch (e5) {
-      this.formError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadSchedules");
+      this.pageError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadSchedules");
     } finally {
       this.loading = false;
     }
   }
   async onMemberChange(id) {
     this.staffId = id;
-    this.formError = "";
+    this.pageError = "";
     await this.loadSchedules();
   }
   patchDay(day, patch) {
@@ -5348,6 +5383,7 @@ var ErpStaffSchedules = class extends i3 {
   async onRowAction(ev) {
     const row = ev.detail.row;
     this.formError = "";
+    this.pageError = "";
     if (ev.detail.actionId === "edit") {
       this.editingId = row.id;
       this.newName = row.name ?? "";
@@ -5367,7 +5403,7 @@ var ErpStaffSchedules = class extends i3 {
         await erplora4().command("staff.schedules.set_active", { schedule_id: row.id, is_active: Number(row.is_active) ? 0 : 1 });
         await this.loadSchedules();
       } catch (e5) {
-        this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
+        this.pageError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
       }
       return;
     }
@@ -5384,7 +5420,7 @@ var ErpStaffSchedules = class extends i3 {
       if (this.editingId === pending.id) this.resetForm();
       await this.loadSchedules();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
+      this.pageError = domainMessage(e5, erplora4().locale, erplora4().t(CATALOG4, "ui.errUpdateSchedule"));
     }
   }
   resetForm() {
@@ -5456,6 +5492,7 @@ var ErpStaffSchedules = class extends i3 {
       } else {
         await erplora4().command("staff.schedules.create", { staff_id: this.staffId, ...body });
       }
+      this.pageError = "";
       this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();
@@ -5465,6 +5502,18 @@ var ErpStaffSchedules = class extends i3 {
       this.saving = false;
     }
   }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
+  }
   render() {
     const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return b2`<div class="page">
@@ -5473,7 +5522,7 @@ var ErpStaffSchedules = class extends i3 {
         <header>
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
-        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.pageError ? b2`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${!this.members.length ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
@@ -5500,6 +5549,9 @@ var ErpStaffSchedules = class extends i3 {
                 </div>`
     )}
             </div>
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+                 and a banner on the page underneath it is never seen. -->
+            ${this.formError ? b2`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
             <ion-button data-testid="staff-schedules-submit" type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionCreateSchedule")}</ion-button>
           </form>
         </ok-data-table>
@@ -5532,6 +5584,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "formError", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "pageError", 2);
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "saving", 2);
@@ -5582,6 +5637,7 @@ var ErpStaffTimeOff = class extends i3 {
   constructor() {
     super(...arguments);
     this.formError = "";
+    this.pageError = "";
     this.busyId = "";
     this.tick = 0;
     this.members = [];
@@ -5723,6 +5779,7 @@ var ErpStaffTimeOff = class extends i3 {
         end_time: d3.is_full_day ? null : d3.end_time,
         reason: d3.reason
       });
+      this.pageError = "";
       this.draft = { ...EMPTY_DRAFT };
       this.dataTable()?.close();
       await this.ctrl.load();
@@ -5737,15 +5794,27 @@ var ErpStaffTimeOff = class extends i3 {
     const status = actionId === "approve" ? "approved" : "rejected";
     const id = row.id;
     this.busyId = id;
-    this.formError = "";
+    this.pageError = "";
     try {
       await erplora5().command("staff.time_off.set_status", { time_off_id: id, status });
       await this.ctrl.load();
     } catch (e5) {
-      this.formError = domainMessage(e5, erplora5().locale, erplora5().t(CATALOG5, "ui.errSetStatus"));
+      this.pageError = domainMessage(e5, erplora5().locale, erplora5().t(CATALOG5, "ui.errSetStatus"));
     } finally {
       this.busyId = "";
     }
+  }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-time-off-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   render() {
     const t5 = (k2) => erplora5().t(CATALOG5, k2);
@@ -5753,7 +5822,7 @@ var ErpStaffTimeOff = class extends i3 {
         <header>
           <h2>${t5("ui.timeOffTitle")}</h2>
         </header>
-        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.pageError ? b2`<ok-inline-feedback data-testid="staff-time-off-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-time-off-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <ok-data-table testid="staff-time-off-table" .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.staff_name ?? "\u2014")} .cardIcon=${() => "airplane-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El alta se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
@@ -5784,6 +5853,9 @@ var ErpStaffTimeOff = class extends i3 {
             <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeTo")} .value=${this.draft.end_time} @ionInput=${(e5) => this.patch({ end_time: e5.target.value })}></ion-input>
           </div>`}
       <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.reason")} .value=${this.draft.reason} @ionInput=${(e5) => this.patch({ reason: e5.target.value })}></ion-textarea>
+      <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+           and a banner on the page underneath it is never seen. -->
+      ${this.formError ? b2`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
       <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
     </form>`;
   }
@@ -5791,6 +5863,9 @@ var ErpStaffTimeOff = class extends i3 {
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "formError", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "pageError", 2);
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "busyId", 2);
