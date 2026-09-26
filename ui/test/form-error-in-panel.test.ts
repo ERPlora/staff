@@ -96,7 +96,7 @@ const onPage = (el: Wc, surface: string): Element | null => {
 };
 
 describe('staff#72 · a refused save is shown INSIDE the form, where the phone can see it', () => {
-  it('members: the refusal of «Add» lands in the form, translated', async () => {
+  it('members: the refusal of «Save» lands in the form, translated', async () => {
     const el = await mount('erp-staff-members', '../components/erp-staff-members/erp-staff-members');
     el.patch({ first_name: 'Ana', last_name: 'Ruiz', user_id: 'u-1' });
     refusal = new DomainError('staff.user_already_linked', 'That Hub user is already linked (Lucía Márquez).');
@@ -141,7 +141,7 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     expect(inForm(el, 'staff-members')).toBeNull();
   });
 
-  it('roles: the refusal of «Add» lands in the form', async () => {
+  it('roles: the refusal of «Save» lands in the form', async () => {
     const el = await mount('erp-staff-roles', '../components/erp-staff-roles/erp-staff-roles');
     el.newName = 'Estilista';
     refusal = new DomainError('staff.role_exists', 'role exists');
@@ -221,7 +221,7 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
 // page banner on its own, a successful save has to clear it too — otherwise «Cannot deactivate…»
 // stays red on the page above a list where everything since then went fine.
 describe('staff#72 · a page error of a row action goes away once a later save succeeds', () => {
-  it('members: a refused deactivate, then a successful «Add»', async () => {
+  it('members: a refused deactivate, then a successful «Save» of a new member', async () => {
     const el = await mount('erp-staff-members', '../components/erp-staff-members/erp-staff-members');
     el.pendingAction = { kind: 'deactivate', id: 'm1', label: 'Lucía Márquez' };
     refusal = new DomainError('staff.has_pending_time_off', 'has pending time off');
@@ -249,7 +249,7 @@ describe('staff#72 · a page error of a row action goes away once a later save s
     expect(onPage(el, 'staff-schedules'), 'the save went fine: the old refusal is no longer news').toBeNull();
   });
 
-  it('time off: a refused approval, then a successful «Add»', async () => {
+  it('time off: a refused approval, then a successful «Save» of a new absence', async () => {
     const el = await mount('erp-staff-time-off', '../components/erp-staff-time-off/erp-staff-time-off');
     refusal = new DomainError('staff.time_off_bad_transition', 'bad transition');
     await el.onRowAction('approve', { id: 't1', status: 'pending' });
