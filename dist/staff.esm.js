@@ -4691,7 +4691,9 @@ var ErpStaffMembers = class extends i3 {
    *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
    *  demands one. */
   firstUpdated() {
-    this.renderRoot.querySelector("ok-data-table")?.addEventListener("click", (e5) => this.onTableClick(e5));
+    const table = this.renderRoot.querySelector("ok-data-table");
+    table?.addEventListener("click", (e5) => this.onTableClick(e5));
+    table?.addEventListener("panelClose", () => this.editSeq++);
   }
   /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
    *  query of `services`; a failure there (module not installed, no permission) is NOT an error

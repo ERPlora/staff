@@ -436,7 +436,12 @@ export class ErpStaffMembers extends LitElement {
    *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
    *  demands one. */
   firstUpdated(): void {
-    this.renderRoot.querySelector('ok-data-table')?.addEventListener('click', (e) => this.onTableClick(e));
+    const table = this.renderRoot.querySelector('ok-data-table');
+    table?.addEventListener('click', (e) => this.onTableClick(e));
+    // staff#70: closing the panel (X, backdrop, Escape — outfitkit#195, ≥0.1.97) retires the edit
+    // still loading, so its late reply neither fills the closed form nor paints an error. Older
+    // shells never emit it and keep today's behaviour.
+    table?.addEventListener('panelClose', () => this.editSeq++);
   }
 
   /** Competencies + catalogue for the member being edited. The catalogue comes from the PUBLIC
