@@ -4440,6 +4440,9 @@ var ErpStaffMembers = class extends i3 {
     this.newServicePrice = "";
     this.servicesError = "";
     this.rates = {};
+    /** pm#459: ticket of the latest «edit» opening; anything that bumps it (a new edit, «Add»,
+     *  reset) retires the replies still in flight. */
+    this.editSeq = 0;
     this.onLocaleChange = () => this.requestUpdate();
   }
   static {
@@ -4567,6 +4570,7 @@ var ErpStaffMembers = class extends i3 {
   /** Open the record in the panel: what the row carries first (instant), then the FULL record
    *  (`staff.members.get`) and, for a session that may read it, its compensation (staff#4). */
   async openRecord(m4) {
+    const seq = ++this.editSeq;
     this.editingId = m4.id;
     this.formError = "";
     this.form = {
@@ -4589,7 +4593,7 @@ var ErpStaffMembers = class extends i3 {
         erplora2().query("staff.members.get", { staff_id: m4.id }),
         this.canSeeCompensation ? erplora2().query("staff.members.compensation", { staff_id: m4.id }) : Promise.resolve([])
       ]);
-      if (this.editingId !== m4.id) return;
+      if (seq !== this.editSeq || this.editingId !== m4.id) return;
       const d3 = detail?.[0];
       const c5 = comp?.[0];
       if (d3) {
@@ -4619,6 +4623,7 @@ var ErpStaffMembers = class extends i3 {
         };
       }
     } catch (e5) {
+      if (seq !== this.editSeq) return;
       this.formError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errLoadMember"));
     }
   }
@@ -4666,7 +4671,10 @@ var ErpStaffMembers = class extends i3 {
     }
   }
   resetForm() {
+    this.editSeq++;
     this.editingId = "";
+    this.formError = "";
+    this.servicesError = "";
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
     this.rememberLink("");
@@ -4674,9 +4682,10 @@ var ErpStaffMembers = class extends i3 {
   /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
    *  show the edited member under a «New» header, and the submit would UPDATE it. */
   onTableClick(e5) {
-    if (!this.editingId) return;
     const addId = "staff-members-table-add";
-    if (e5.composedPath().some((n6) => n6 instanceof HTMLElement && n6.dataset.testid === addId)) this.resetForm();
+    if (!e5.composedPath().some((n6) => n6 instanceof HTMLElement && n6.dataset.testid === addId)) return;
+    if (this.editingId) this.resetForm();
+    else this.editSeq++;
   }
   /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
    *  `data-testid` (outfitkit#143), and a template binding would read as an action element that
@@ -4691,17 +4700,22 @@ var ErpStaffMembers = class extends i3 {
     if (!this.editingId) return;
     this.servicesError = "";
     const staffId = this.editingId;
+    const seq = this.editSeq;
     let own = [];
     let cat = [];
+    let failure = null;
     try {
       [own, cat] = await Promise.all([
         erplora2().query("staff.services.list_for_member", { staff_id: staffId }),
         erplora2().queryOptional("services.services.list", { limit: 500 })
       ]);
     } catch (e5) {
-      this.servicesError = domainMessage(e5, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
+      failure = e5;
     }
-    if (this.editingId !== staffId) return;
+    if (seq !== this.editSeq || this.editingId !== staffId) return;
+    if (failure) {
+      this.servicesError = domainMessage(failure, erplora2().locale, erplora2().t(CATALOG2, "ui.errAssignService"));
+    }
     this.memberServices = own ?? [];
     this.catalog = cat ?? [];
     this.catalogUnavailable = cat === void 0;
