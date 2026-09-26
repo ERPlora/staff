@@ -129,7 +129,6 @@ export class ErpStaffRoles extends LitElement {
   render() {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div class="page">
-        ${this.formError ? html`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
         ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="staff-roles-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <ok-data-table testid="staff-roles-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'shield-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchRole')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyRoles')} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
@@ -138,6 +137,9 @@ export class ErpStaffRoles extends LitElement {
             <ion-input data-testid="staff-roles-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.phRoleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
             <ion-input data-testid="staff-roles-description" mode="md" fill="outline" label-placement="floating" label=${t('ui.phDescription')} .value=${this.newDesc} @ionInput=${(e: any) => (this.newDesc = e.target.value)}></ion-input>
             <ion-input data-testid="staff-roles-color" mode="md" fill="outline" label-placement="floating" label=${t('ui.colColor')} placeholder=${t('ui.phColor')} .value=${this.newColor} @ionInput=${(e: any) => (this.newColor = e.target.value)}></ion-input>
+            <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
+                 and a banner on the page underneath it is never seen. -->
+            ${this.formError ? html`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
             <ion-button data-testid="staff-roles-submit" type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>

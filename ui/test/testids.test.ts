@@ -83,6 +83,7 @@ const COVERED: Record<
       'staff-members-hub-user-hint',
       'staff-members-last-name',
       'staff-members-load-error',
+      'staff-members-page-error',
       'staff-members-phone',
       'staff-members-role',
       'staff-members-service-add',
@@ -138,6 +139,7 @@ const COVERED: Record<
       'staff-schedules-member',
       'staff-schedules-name',
       'staff-schedules-no-members',
+      'staff-schedules-page-error',
       'staff-schedules-submit',
     ],
     computed: [
@@ -164,6 +166,7 @@ const COVERED: Record<
       'staff-time-off-leave-type',
       'staff-time-off-load-error',
       'staff-time-off-member',
+      'staff-time-off-page-error',
       'staff-time-off-reason',
       'staff-time-off-start-date',
       'staff-time-off-start-time',
