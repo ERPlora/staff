@@ -210,6 +210,10 @@ export class ErpStaffMembers extends LitElement {
     return erplora().hasPermission?.('staff.view_compensation') === true;
   }
 
+  /** pm#459: ticket of the latest «edit» opening; anything that bumps it (a new edit, «Add»,
+   *  reset) retires the replies still in flight. */
+  private editSeq = 0;
+
   private ctrl!: ListController<StaffMember>;
 
   private unsub?: () => void;
@@ -315,6 +319,7 @@ export class ErpStaffMembers extends LitElement {
   /** Open the record in the panel: what the row carries first (instant), then the FULL record
    *  (`staff.members.get`) and, for a session that may read it, its compensation (staff#4). */
   private async openRecord(m: Partial<StaffMember> & { id: string }): Promise<void> {
+    const seq = ++this.editSeq;
     this.editingId = m.id;
     this.formError = '';
     this.form = {
@@ -334,7 +339,7 @@ export class ErpStaffMembers extends LitElement {
           ? erplora().query<{ id: string; hourly_rate: number; commission_rate: number }[]>('staff.members.compensation', { staff_id: m.id })
           : Promise.resolve([]),
       ]);
-      if (this.editingId !== m.id) return;
+      if (seq !== this.editSeq || this.editingId !== m.id) return;
       const d = detail?.[0];
       const c = comp?.[0];
       if (d) {
@@ -355,6 +360,7 @@ export class ErpStaffMembers extends LitElement {
         };
       }
     } catch (e) {
+      if (seq !== this.editSeq) return;
       this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errLoadMember'));
     }
   }
@@ -406,6 +412,7 @@ export class ErpStaffMembers extends LitElement {
   }
 
   private resetForm(): void {
+    this.editSeq++;
     this.editingId = '';
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
@@ -415,9 +422,11 @@ export class ErpStaffMembers extends LitElement {
   /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
    *  show the edited member under a «New» header, and the submit would UPDATE it. */
   private onTableClick(e: Event): void {
-    if (!this.editingId) return;
     const addId = 'staff-members-table-add';
-    if (e.composedPath().some((n) => n instanceof HTMLElement && n.dataset.testid === addId)) this.resetForm();
+    if (!e.composedPath().some((n) => n instanceof HTMLElement && n.dataset.testid === addId)) return;
+    // pm#459: retire an edit still loading too, so its late replies do not land on the fresh «Add».
+    if (this.editingId) this.resetForm();
+    else this.editSeq++;
   }
 
   /** Wired natively, not with a Lit `@click` on the tag: `<ok-data-table>` carries `testid`, not
@@ -434,8 +443,10 @@ export class ErpStaffMembers extends LitElement {
     if (!this.editingId) return;
     this.servicesError = '';
     const staffId = this.editingId;
+    const seq = this.editSeq;
     let own: MemberService[] = [];
     let cat: CatalogService[] | undefined = [];
+    let failure: unknown = null;
     try {
       // `queryOptional` (ADR-0127): `services` may NOT be installed in this hub — that is an absence
       // (hint), not an error. Anything else (permission, broken contract) IS an error and is shown.
@@ -444,9 +455,14 @@ export class ErpStaffMembers extends LitElement {
         erplora().queryOptional<CatalogService[]>('services.services.list', { limit: 500 }),
       ]);
     } catch (e) {
-      this.servicesError = domainMessage(e, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+      failure = e;
     }
-    if (this.editingId !== staffId) return; // the panel moved on while we were loading
+    // pm#459: a retired load (a later «edit»/«Add»/reset already bumped editSeq) drops here — its
+    // data AND its error, so a late reply cannot land on a panel the user already left.
+    if (seq !== this.editSeq || this.editingId !== staffId) return; // the panel moved on while we were loading
+    if (failure) {
+      this.servicesError = domainMessage(failure, erplora().locale, erplora().t(CATALOG, 'ui.errAssignService'));
+    }
     this.memberServices = own ?? [];
     this.catalog = cat ?? [];
     this.catalogUnavailable = cat === undefined;
