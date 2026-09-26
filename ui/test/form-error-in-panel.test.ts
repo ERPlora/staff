@@ -17,7 +17,7 @@
 //
 // It is what Square, Shopify and Odoo do in their side/sheet forms: the error of a submit lives in
 // the form that was submitted.
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 class DomainError extends Error {
   code: string;
@@ -30,9 +30,15 @@ class DomainError extends Error {
 
 const MEMBERS = [{ id: 'm1', first_name: 'Lucía', last_name: 'Márquez', full_name: 'Lucía Márquez', status: 'active' }];
 let refusal: Error | null = null;
+/** Every element the component scrolled into view, in order. */
+let revealed: Element[] = [];
 
 beforeEach(() => {
   refusal = null;
+  revealed = [];
+  vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(function (this: HTMLElement) {
+    revealed.push(this);
+  });
   (globalThis as Record<string, unknown>).erplora = {
     query: async (name: string) => (name === 'staff.members.list' ? MEMBERS : []),
     queryOptional: async () => undefined,
@@ -74,6 +80,13 @@ const submitEvent = (): Event => new Event('submit', { cancelable: true });
 const inForm = (el: Wc, surface: string): Element | null =>
   el.shadowRoot.querySelector(`form[slot="create"] [data-testid="${surface}-form-error"]`);
 
+/** The banner inside the form AND scrolled into view: pressing the button at the foot of a long
+ *  form, the banner that appears above it is pushed half off a phone screen otherwise. */
+const inFormAndRevealed = (el: Wc, surface: string): Element | null => {
+  const banner = inForm(el, surface);
+  return banner && revealed.includes(banner) ? banner : null;
+};
+
 /** The error banner on the PAGE (outside the panel), or null. */
 const onPage = (el: Wc, surface: string): Element | null => {
   const banner = el.shadowRoot.querySelector(`[data-testid="${surface}-page-error"]`);
@@ -89,6 +102,7 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     await settle(el);
     const banner = inForm(el, 'staff-members');
     expect(banner, 'on a phone the panel covers the page: the refusal has to travel with the form').not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-members'), 'and it is scrolled into view, not left half below the fold').not.toBeNull();
     expect(banner?.textContent?.trim()).toBe('That Hub user is already linked (Lucía Márquez).');
   });
 
@@ -131,7 +145,7 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     refusal = new DomainError('staff.role_exists', 'role exists');
     await el.createRole(submitEvent());
     await settle(el);
-    expect(inForm(el, 'staff-roles')).not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-roles')).not.toBeNull();
   });
 
   it('schedules: a client-side validation AND a server refusal land in the form', async () => {
@@ -140,13 +154,14 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     el.week = el.week.map((d: Record<string, unknown>) => ({ ...d, working: false }));
     await el.createSchedule(submitEvent());
     await settle(el);
-    expect(inForm(el, 'staff-schedules'), 'a week with no working day is refused in the form').not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-schedules'), 'a week with no working day is refused in the form').not.toBeNull();
 
     el.week = el.week.map((d: Record<string, unknown>) => ({ ...d, working: d.day === 1 }));
     refusal = new DomainError('staff.schedule_overlap', 'overlap');
+    revealed = []; // Lit reuses the banner node: only a reveal of THIS refusal counts
     await el.createSchedule(submitEvent());
     await settle(el);
-    expect(inForm(el, 'staff-schedules'), 'the server refusal is shown in the form').not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-schedules'), 'the server refusal is shown in the form').not.toBeNull();
     expect(onPage(el, 'staff-schedules')).toBeNull();
   });
 
@@ -183,13 +198,14 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     const el = await mount('erp-staff-time-off', '../components/erp-staff-time-off/erp-staff-time-off');
     await el.createTimeOff(submitEvent());
     await settle(el);
-    expect(inForm(el, 'staff-time-off'), 'an incomplete absence is refused in the form').not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-time-off'), 'an incomplete absence is refused in the form').not.toBeNull();
 
     el.patch({ staff_id: 'm1', start_date: '2026-10-01', end_date: '2026-10-02' });
     refusal = new DomainError('staff.time_off_overlap', 'overlap');
+    revealed = []; // Lit reuses the banner node: only a reveal of THIS refusal counts
     await el.createTimeOff(submitEvent());
     await settle(el);
-    expect(inForm(el, 'staff-time-off'), 'the server refusal is shown in the form').not.toBeNull();
+    expect(inFormAndRevealed(el, 'staff-time-off'), 'the server refusal is shown in the form').not.toBeNull();
 
     refusal = new DomainError('staff.time_off_bad_transition', 'bad transition');
     await el.onRowAction('approve', { id: 't1', status: 'pending' });

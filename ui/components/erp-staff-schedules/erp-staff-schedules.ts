@@ -1,4 +1,5 @@
 import { LitElement, html, css, nothing } from 'lit';
+import type { PropertyValues } from 'lit';
 import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
@@ -409,6 +410,15 @@ export class ErpStaffSchedules extends LitElement {
       this.formError = domainMessage(e, erplora().locale, erplora().t(CATALOG, this.editingId ? 'ui.errUpdateSchedule' : 'ui.errCreateSchedule'));
     } finally {
       this.saving = false;
+    }
+  }
+
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+  updated(changed: PropertyValues<this>): void {
+    super.updated(changed);
+    if (changed.has('formError') && this.formError) {
+      this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]')?.scrollIntoView?.({ block: 'center' });
     }
   }
 
