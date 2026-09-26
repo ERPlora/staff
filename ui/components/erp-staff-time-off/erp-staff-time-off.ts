@@ -267,9 +267,9 @@ export class ErpStaffTimeOff extends LitElement {
         <header>
           <h2>${t('ui.timeOffTitle')}</h2>
         </header>
-        ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
-        ${this.ctrl?.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
-        <ok-data-table .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
+        ${this.formError ? html`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="staff-time-off-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
+        <ok-data-table testid="staff-time-off-table" .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.staff_name ?? '—')} .cardIcon=${() => 'airplane-outline'} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyTimeOff')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) =>
             this.onRowAction(e.detail.actionId, e.detail.row)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- El alta se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
@@ -283,26 +283,26 @@ export class ErpStaffTimeOff extends LitElement {
    *  control con `fill`: el shell pinea Ionic en `ios` y ahí `fill` no pinta caja (staff#39/hub#760). */
   private renderCreateForm() {
     const t = (k: string): string => erplora().t(CATALOG, k);
-    return html`<form slot="create" class="form" @submit=${(e: Event) => this.createTimeOff(e)}>
-      <ion-select data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.draft.staff_id} @ionChange=${(e: any) => this.patch({ staff_id: e.target.value ?? '' })}>
+    return html`<form data-testid="staff-time-off-form" slot="create" class="form" @submit=${(e: Event) => this.createTimeOff(e)}>
+      <ion-select data-testid="staff-time-off-member" data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.draft.staff_id} @ionChange=${(e: any) => this.patch({ staff_id: e.target.value ?? '' })}>
         ${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}
       </ion-select>
-      <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.draft.leave_type} @ionChange=${(e: any) => this.patch({ leave_type: e.target.value ?? 'vacation' })}>
+      <ion-select data-testid="staff-time-off-leave-type" data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t('ui.colType')} .value=${this.draft.leave_type} @ionChange=${(e: any) => this.patch({ leave_type: e.target.value ?? 'vacation' })}>
         ${enumOptions(LEAVE_TYPE_KEY).map((o) => html`<ion-select-option .value=${o.value}>${o.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
-        <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colFrom')} .value=${this.draft.start_date} @ionInput=${(e: any) => this.patch({ start_date: e.target.value })}></ion-input>
-        <ion-input data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colTo')} .value=${this.draft.end_date} @ionInput=${(e: any) => this.patch({ end_date: e.target.value })}></ion-input>
+        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colFrom')} .value=${this.draft.start_date} @ionInput=${(e: any) => this.patch({ start_date: e.target.value })}></ion-input>
+        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colTo')} .value=${this.draft.end_date} @ionInput=${(e: any) => this.patch({ end_date: e.target.value })}></ion-input>
       </div>
-      <ion-toggle data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e: any) => this.patch({ is_full_day: !!e.detail.checked })}>${t('ui.fullDay')}</ion-toggle>
+      <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e: any) => this.patch({ is_full_day: !!e.detail.checked })}>${t('ui.fullDay')}</ion-toggle>
       ${this.draft.is_full_day
         ? nothing
         : html`<div class="grid2" data-section="hours">
-            <ion-input data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeFrom')} .value=${this.draft.start_time} @ionInput=${(e: any) => this.patch({ start_time: e.target.value })}></ion-input>
-            <ion-input data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeTo')} .value=${this.draft.end_time} @ionInput=${(e: any) => this.patch({ end_time: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeFrom')} .value=${this.draft.start_time} @ionInput=${(e: any) => this.patch({ start_time: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeTo')} .value=${this.draft.end_time} @ionInput=${(e: any) => this.patch({ end_time: e.target.value })}></ion-input>
           </div>`}
-      <ion-textarea data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.reason')} .value=${this.draft.reason} @ionInput=${(e: any) => this.patch({ reason: e.target.value })}></ion-textarea>
-      <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
+      <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.reason')} .value=${this.draft.reason} @ionInput=${(e: any) => this.patch({ reason: e.target.value })}></ion-textarea>
+      <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t('ui.actionSaving') : t('ui.actionAdd')}</ion-button>
     </form>`;
   }
 }

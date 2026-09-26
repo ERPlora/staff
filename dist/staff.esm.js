@@ -4754,23 +4754,23 @@ var ErpStaffMembers = class extends i3 {
     if (!this.editingId) return A;
     return b2`<section class="services" data-section="services">
       <h4>${t5("ui.servicesTitle")}</h4>
-      ${this.servicesError ? b2`<div class="err">${this.servicesError}</div>` : A}
-      ${this.memberServices.length === 0 ? b2`<div class="hint">${t5("ui.servicesEmpty")}</div>` : A}
+      ${this.servicesError ? b2`<div data-testid="staff-members-services-error" class="err">${this.servicesError}</div>` : A}
+      ${this.memberServices.length === 0 ? b2`<div data-testid="staff-members-services-empty" class="hint">${t5("ui.servicesEmpty")}</div>` : A}
       <ul>
         ${this.memberServices.map((s5) => b2`<li>
-          <ion-icon name=${s5.is_primary ? "star" : "star-outline"} title=${t5("ui.servicePrimary")} aria-label=${t5("ui.servicePrimary")} role="button" tabindex="0" @click=${() => s5.is_primary ? void 0 : this.setPrimaryService(s5)}></ion-icon>
+          <ion-icon data-testid=${`staff-members-service-primary-${s5.service_id}`} name=${s5.is_primary ? "star" : "star-outline"} title=${t5("ui.servicePrimary")} aria-label=${t5("ui.servicePrimary")} role="button" tabindex="0" @click=${() => s5.is_primary ? void 0 : this.setPrimaryService(s5)}></ion-icon>
           <span class="name">${s5.service_name}</span>
           <span class="meta">${s5.custom_duration ? `${s5.custom_duration} min` : ""}${s5.custom_duration && s5.custom_price != null ? " \xB7 " : ""}${s5.custom_price != null ? erplora2().formatMoney(Number(s5.custom_price)) : ""}</span>
-          <ion-button fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+          <ion-button data-testid=${`staff-members-service-remove-${s5.service_id}`} fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t5("ui.serviceRemove")} @click=${() => this.removeService(s5.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
         </li>`)}
       </ul>
-      ${this.catalogUnavailable ? b2`<div class="hint" data-hint="no-catalog">${t5("ui.servicesNoCatalog")}</div>` : b2`<div class="assign">
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.serviceAdd")} .value=${this.newServiceId} @ionChange=${(e5) => this.newServiceId = e5.target.value}>
+      ${this.catalogUnavailable ? b2`<div data-testid="staff-members-services-no-catalog" class="hint" data-hint="no-catalog">${t5("ui.servicesNoCatalog")}</div>` : b2`<div class="assign">
+            <ion-select data-testid="staff-members-service-add" mode="md" fill="outline" label-placement="floating" label=${t5("ui.serviceAdd")} .value=${this.newServiceId} @ionChange=${(e5) => this.newServiceId = e5.target.value}>
               ${this.assignableServices.map((c5) => b2`<ion-select-option .value=${c5.id}>${c5.name}</ion-select-option>`)}
             </ion-select>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
-            <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e5) => this.assignService(e5)}>${t5("ui.serviceAssign")}</ion-button>
+            <ion-input data-testid="staff-members-service-duration" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t5("ui.serviceDuration")} .value=${this.newServiceDuration} @ionInput=${(e5) => this.newServiceDuration = e5.target.value}></ion-input>
+            <ion-input data-testid="staff-members-service-price" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.servicePrice")} .value=${this.newServicePrice} @ionInput=${(e5) => this.newServicePrice = e5.target.value}></ion-input>
+            <ion-button data-testid="staff-members-service-assign" size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e5) => this.assignService(e5)}>${t5("ui.serviceAssign")}</ion-button>
           </div>`}
     </section>`;
   }
@@ -4916,55 +4916,56 @@ var ErpStaffMembers = class extends i3 {
   render() {
     const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div class="page">
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-members-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same record panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        <ok-data-table testid="staff-members-table" .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.full_name ?? "\u2014")} .cardIcon=${() => "person-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyMembers")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
-          <form slot="create" class="form" @submit=${(e5) => this.createMember(e5)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phFirstName")} .value=${this.form.first_name} @ionInput=${(e5) => this.patch({ first_name: e5.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phLastName")} .value=${this.form.last_name} @ionInput=${(e5) => this.patch({ last_name: e5.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.form.email} @ionInput=${(e5) => this.patch({ email: e5.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="tel" label=${t5("ui.colPhone")} .value=${this.form.phone} @ionInput=${(e5) => this.patch({ phone: e5.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.employeeId")} .value=${this.form.employee_id} @ionInput=${(e5) => this.patch({ employee_id: e5.target.value })}></ion-input>
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.form.role_id} @ionChange=${(e5) => this.patch({ role_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.roleNone")}</ion-select-option>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.form.user_id} @ionChange=${(e5) => this.patch({ user_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
+          <form data-testid="staff-members-form" slot="create" class="form" @submit=${(e5) => this.createMember(e5)}>
+            <ion-input data-testid="staff-members-first-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phFirstName")} .value=${this.form.first_name} @ionInput=${(e5) => this.patch({ first_name: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-last-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phLastName")} .value=${this.form.last_name} @ionInput=${(e5) => this.patch({ last_name: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-email" mode="md" fill="outline" label-placement="floating" type="email" label=${t5("ui.phEmail")} .value=${this.form.email} @ionInput=${(e5) => this.patch({ email: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-phone" mode="md" fill="outline" label-placement="floating" type="tel" label=${t5("ui.colPhone")} .value=${this.form.phone} @ionInput=${(e5) => this.patch({ phone: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-employee-id" mode="md" fill="outline" label-placement="floating" label=${t5("ui.employeeId")} .value=${this.form.employee_id} @ionInput=${(e5) => this.patch({ employee_id: e5.target.value })}></ion-input>
+            <ion-select data-testid="staff-members-role" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colRole")} .value=${this.form.role_id} @ionChange=${(e5) => this.patch({ role_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.roleNone")}</ion-select-option>${this.roles.map((r6) => b2`<ion-select-option .value=${r6.id}>${r6.name}</ion-select-option>`)}</ion-select>
+            <ion-select data-testid="staff-members-hub-user" mode="md" fill="outline" label-placement="floating" label=${t5("ui.hubUser")} .value=${this.form.user_id} @ionChange=${(e5) => this.patch({ user_id: e5.target.value ?? "" })}><ion-select-option .value=${""}>${t5("ui.hubUserNone")}</ion-select-option>${this.hubUsers.map((u5) => b2`<ion-select-option .value=${u5.id}>${u5.name}</ion-select-option>`)}</ion-select>
             <!-- staff#46: without a link, what this person charges at the COUNTER is attributed to
                  the session user, not to their record, and does not count towards their commission.
                  Nobody is preselected: guessing the user ties one person's payroll to another's session. -->
-            ${this.form.user_id ? A : b2`<p class="hint" data-hint="hub-user">${t5("ui.hubUserWhyLink")}</p>`}
+            ${this.form.user_id ? A : b2`<p data-testid="staff-members-hub-user-hint" class="hint" data-hint="hub-user">${t5("ui.hubUserWhyLink")}</p>`}
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
-              ${this.editingId ? b2`<ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>` : A}
-              <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e5) => this.patch({ is_bookable: !!e5.detail.checked })}>${t5("ui.bookable")}</ion-toggle>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="color" label=${t5("ui.colColor")} .value=${this.form.color || "#000000"} @ionInput=${(e5) => this.patch({ color: e5.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.specialties")} .value=${this.form.specialties} @ionInput=${(e5) => this.patch({ specialties: e5.target.value })}></ion-input>
-              <ion-textarea mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.bio")} .value=${this.form.bio} @ionInput=${(e5) => this.patch({ bio: e5.target.value })}></ion-textarea>
+              ${this.editingId ? b2`<ion-select data-testid="staff-members-status" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>` : A}
+              <ion-toggle data-testid="staff-members-bookable" label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e5) => this.patch({ is_bookable: !!e5.detail.checked })}>${t5("ui.bookable")}</ion-toggle>
+              <ion-input data-testid="staff-members-booking-buffer" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-color" mode="md" fill="outline" label-placement="floating" type="color" label=${t5("ui.colColor")} .value=${this.form.color || "#000000"} @ionInput=${(e5) => this.patch({ color: e5.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-specialties" mode="md" fill="outline" label-placement="floating" label=${t5("ui.specialties")} .value=${this.form.specialties} @ionInput=${(e5) => this.patch({ specialties: e5.target.value })}></ion-input>
+              <ion-textarea data-testid="staff-members-bio" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.bio")} .value=${this.form.bio} @ionInput=${(e5) => this.patch({ bio: e5.target.value })}></ion-textarea>
             </section>
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation ? b2`<section data-section="compensation" class="grid2">
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.hourlyRate")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
+                  <ion-input data-testid="staff-members-hourly-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t5("ui.hourlyRate")} .value=${this.form.hourly_rate} @ionInput=${(e5) => this.patch({ hourly_rate: e5.target.value })}></ion-input>
+                  <ion-input data-testid="staff-members-commission-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t5("ui.commissionPct")} .value=${this.form.commission_rate} @ionInput=${(e5) => this.patch({ commission_rate: e5.target.value })}></ion-input>
                 </section>` : A}
             ${this.renderServices()}
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
+            <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
         <ion-alert
+          data-testid="staff-members-action-alert"
           .isOpen=${this.pendingAction !== null}
           header=${this.pendingAction?.kind === "terminate" ? t5("ui.terminateTitle") : t5("ui.deactivateTitle")}
           message=${erplora2().t(CATALOG2, this.pendingAction?.kind === "terminate" ? "ui.terminateMessage" : "ui.deactivateMessage", { name: this.pendingAction?.label ?? "" })}
           .inputs=${this.pendingAction?.kind === "terminate" ? [
-      { name: "termination_date", type: "date", label: t5("ui.terminationDate") },
-      { name: "reason", type: "text", placeholder: t5("ui.terminationReason") }
+      { name: "termination_date", type: "date", label: t5("ui.terminationDate"), attributes: { "data-testid": "staff-members-terminate-date" } },
+      { name: "reason", type: "text", placeholder: t5("ui.terminationReason"), attributes: { "data-testid": "staff-members-terminate-reason" } }
     ] : []}
           .buttons=${[
-      { text: t5("ui.cancel"), role: "cancel" },
-      { text: this.pendingAction?.kind === "terminate" ? t5("ui.actionTerminate") : t5("ui.actionDeactivate"), role: "confirm", cssClass: "alert-button-danger" }
+      { text: t5("ui.cancel"), role: "cancel", htmlAttributes: { "data-testid": "staff-members-action-cancel" } },
+      { text: this.pendingAction?.kind === "terminate" ? t5("ui.actionTerminate") : t5("ui.actionDeactivate"), role: "confirm", cssClass: "alert-button-danger", htmlAttributes: { "data-testid": "staff-members-action-confirm" } }
     ]}
           @ionAlertDidDismiss=${(e5) => this.onActionDismiss(e5)}
         ></ion-alert>
@@ -5107,16 +5108,16 @@ var ErpStaffRoles = class extends i3 {
   render() {
     const t5 = (k2) => erplora3().t(CATALOG3, k2);
     return b2`<div class="page">
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "shield-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchRole")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyRoles")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-roles-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <ok-data-table testid="staff-roles-table" .serverSide=${true} .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "shield-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .searchPlaceholder=${t5("ui.searchRole")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyRoles")} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
-          <form slot="create" class="form" @submit=${(e5) => this.createRole(e5)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
+          <form data-testid="staff-roles-form" slot="create" class="form" @submit=${(e5) => this.createRole(e5)}>
+            <ion-input data-testid="staff-roles-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phRoleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+            <ion-input data-testid="staff-roles-description" mode="md" fill="outline" label-placement="floating" label=${t5("ui.phDescription")} .value=${this.newDesc} @ionInput=${(e5) => this.newDesc = e5.target.value}></ion-input>
+            <ion-input data-testid="staff-roles-color" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colColor")} placeholder=${t5("ui.phColor")} .value=${this.newColor} @ionInput=${(e5) => this.newColor = e5.target.value}></ion-input>
+            <ion-button data-testid="staff-roles-submit" type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
           </form>
         </ok-data-table>
       </div>`;
@@ -5419,45 +5420,46 @@ var ErpStaffSchedules = class extends i3 {
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
         <header>
-          <ion-select mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
+          <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${!this.members.length ? b2`<p class="hint">${t5("ui.hintNoMembers")}</p>` : A}
+        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${!this.members.length ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
+        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
-          <form slot="create" class="form" @submit=${(e5) => this.createSchedule(e5)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
-            <ion-input mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
-            <ion-checkbox label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
+          <form data-testid="staff-schedules-form" slot="create" class="form" @submit=${(e5) => this.createSchedule(e5)}>
+            <ion-input data-testid="staff-schedules-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
+            <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
+            <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
+            <ion-checkbox data-testid="staff-schedules-default" label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
             <div class="week">
               ${this.week.map(
       (d3) => b2`<div class="day">
-                  <ion-checkbox justify="start" label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}><span class="name">${this.dayLabel(d3.day)}</span></ion-checkbox>
-                  ${d3.working ? b2`<ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
+                  <ion-checkbox data-testid=${`staff-schedules-day-working-${d3.day}`} justify="start" label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}><span class="name">${this.dayLabel(d3.day)}</span></ion-checkbox>
+                  ${d3.working ? b2`<ion-input data-testid=${`staff-schedules-day-start-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-end-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepBreak")}</span>
-                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-break-start-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
+                        <ion-input data-testid=${`staff-schedules-day-break-end-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
                 </div>`
     )}
             </div>
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionCreateSchedule")}</ion-button>
+            <ion-button data-testid="staff-schedules-submit" type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionCreateSchedule")}</ion-button>
           </form>
         </ok-data-table>
         <ion-alert
+          data-testid="staff-schedules-delete-alert"
           .isOpen=${this.pendingDelete !== null}
           header=${t5("ui.deleteScheduleTitle")}
           message=${erplora4().t(CATALOG4, "ui.deleteScheduleMessage", { name: this.pendingDelete?.label ?? "" })}
           .buttons=${[
-      { text: t5("ui.cancel"), role: "cancel" },
-      { text: t5("ui.actionDelete"), role: "confirm", cssClass: "alert-button-danger" }
+      { text: t5("ui.cancel"), role: "cancel", htmlAttributes: { "data-testid": "staff-schedules-delete-cancel" } },
+      { text: t5("ui.actionDelete"), role: "confirm", cssClass: "alert-button-danger", htmlAttributes: { "data-testid": "staff-schedules-delete-submit" } }
     ]}
           @ionAlertDidDismiss=${(e5) => this.onDeleteDismiss(e5)}
         ></ion-alert>
@@ -5700,9 +5702,9 @@ var ErpStaffTimeOff = class extends i3 {
         <header>
           <h2>${t5("ui.timeOffTitle")}</h2>
         </header>
-        ${this.formError ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-        ${this.ctrl?.error ? b2`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
-        <ok-data-table .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.staff_name ?? "\u2014")} .cardIcon=${() => "airplane-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
+        ${this.formError ? b2`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
+        ${this.ctrl?.error ? b2`<ok-inline-feedback data-testid="staff-time-off-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : A}
+        <ok-data-table testid="staff-time-off-table" .serverSide=${true} .addable=${this.canManage} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.staff_name ?? "\u2014")} .cardIcon=${() => "airplane-outline"} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? "asc"} .searchable=${true} .actions=${this.actions} .searchPlaceholder=${t5("ui.searchMember")} .emptyMessage=${this.ctrl?.loading ? t5("ui.loading") : t5("ui.emptyTimeOff")} @rowAction=${(e5) => this.onRowAction(e5.detail.actionId, e5.detail.row)} @pageChange=${(e5) => this.ctrl.setPage(e5.detail)} @sortChange=${(e5) => this.ctrl.setSort(e5.detail.sort, e5.detail.dir)} @searchChange=${(e5) => this.ctrl.setSearch(e5.detail)} @filterChange=${(e5) => this.ctrl.setFilter(e5.detail.col, e5.detail.value)}>
           <!-- El alta se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
           ${this.renderCreateForm()}
@@ -5714,24 +5716,24 @@ var ErpStaffTimeOff = class extends i3 {
    *  control con `fill`: el shell pinea Ionic en `ios` y ahí `fill` no pinta caja (staff#39/hub#760). */
   renderCreateForm() {
     const t5 = (k2) => erplora5().t(CATALOG5, k2);
-    return b2`<form slot="create" class="form" @submit=${(e5) => this.createTimeOff(e5)}>
-      <ion-select data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.draft.staff_id} @ionChange=${(e5) => this.patch({ staff_id: e5.target.value ?? "" })}>
+    return b2`<form data-testid="staff-time-off-form" slot="create" class="form" @submit=${(e5) => this.createTimeOff(e5)}>
+      <ion-select data-testid="staff-time-off-member" data-field="staff_id" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.draft.staff_id} @ionChange=${(e5) => this.patch({ staff_id: e5.target.value ?? "" })}>
         ${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}
       </ion-select>
-      <ion-select data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colType")} .value=${this.draft.leave_type} @ionChange=${(e5) => this.patch({ leave_type: e5.target.value ?? "vacation" })}>
+      <ion-select data-testid="staff-time-off-leave-type" data-field="leave_type" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colType")} .value=${this.draft.leave_type} @ionChange=${(e5) => this.patch({ leave_type: e5.target.value ?? "vacation" })}>
         ${enumOptions(LEAVE_TYPE_KEY).map((o7) => b2`<ion-select-option .value=${o7.value}>${o7.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
-        <ion-input data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colFrom")} .value=${this.draft.start_date} @ionInput=${(e5) => this.patch({ start_date: e5.target.value })}></ion-input>
-        <ion-input data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colTo")} .value=${this.draft.end_date} @ionInput=${(e5) => this.patch({ end_date: e5.target.value })}></ion-input>
+        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colFrom")} .value=${this.draft.start_date} @ionInput=${(e5) => this.patch({ start_date: e5.target.value })}></ion-input>
+        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colTo")} .value=${this.draft.end_date} @ionInput=${(e5) => this.patch({ end_date: e5.target.value })}></ion-input>
       </div>
-      <ion-toggle data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e5) => this.patch({ is_full_day: !!e5.detail.checked })}>${t5("ui.fullDay")}</ion-toggle>
+      <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e5) => this.patch({ is_full_day: !!e5.detail.checked })}>${t5("ui.fullDay")}</ion-toggle>
       ${this.draft.is_full_day ? A : b2`<div class="grid2" data-section="hours">
-            <ion-input data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeFrom")} .value=${this.draft.start_time} @ionInput=${(e5) => this.patch({ start_time: e5.target.value })}></ion-input>
-            <ion-input data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeTo")} .value=${this.draft.end_time} @ionInput=${(e5) => this.patch({ end_time: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeFrom")} .value=${this.draft.start_time} @ionInput=${(e5) => this.patch({ start_time: e5.target.value })}></ion-input>
+            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeTo")} .value=${this.draft.end_time} @ionInput=${(e5) => this.patch({ end_time: e5.target.value })}></ion-input>
           </div>`}
-      <ion-textarea data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.reason")} .value=${this.draft.reason} @ionInput=${(e5) => this.patch({ reason: e5.target.value })}></ion-textarea>
-      <ion-button type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
+      <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.reason")} .value=${this.draft.reason} @ionInput=${(e5) => this.patch({ reason: e5.target.value })}></ion-textarea>
+      <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
     </form>`;
   }
 };
