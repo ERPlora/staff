@@ -3918,7 +3918,6 @@ var es_default = {
     phLastName: "Apellidos",
     phEmail: "Email",
     phRole: "Rol\u2026",
-    actionAdd: "A\xF1adir",
     actionEdit: "Editar",
     panelNew: "Nuevo",
     panelEdit: "Editar \xB7 {name}",
@@ -4160,7 +4159,6 @@ var en_default = {
     phLastName: "Last name",
     phEmail: "Email",
     phRole: "Role\u2026",
-    actionAdd: "Add",
     actionEdit: "Edit",
     panelNew: "New",
     panelEdit: "Edit \xB7 {name}",
@@ -4998,7 +4996,7 @@ var ErpStaffMembers = class extends i3 {
             <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen
                  sheet and a banner on the page underneath it is never seen. -->
             ${this.formError ? b2`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-            <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionAdd")}</ion-button>
+            <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionSave")}</ion-button>
           </form>
         </ok-data-table>
         <ion-alert
@@ -5181,7 +5179,7 @@ var ErpStaffRoles = class extends i3 {
             <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
                  and a banner on the page underneath it is never seen. -->
             ${this.formError ? b2`<ok-inline-feedback data-testid="staff-roles-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-            <ion-button data-testid="staff-roles-submit" type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
+            <ion-button data-testid="staff-roles-submit" type="submit" size="small" ?disabled=${this.saving || !this.newName}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionSave")}</ion-button>
           </form>
         </ok-data-table>
       </div>`;
@@ -5856,7 +5854,7 @@ var ErpStaffTimeOff = class extends i3 {
       <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
            and a banner on the page underneath it is never seen. -->
       ${this.formError ? b2`<ok-inline-feedback data-testid="staff-time-off-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
-      <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionAdd")}</ion-button>
+      <ion-button data-testid="staff-time-off-submit" type="submit" size="small" ?disabled=${this.saving}>${this.saving ? t5("ui.actionSaving") : t5("ui.actionSave")}</ion-button>
     </form>`;
   }
 };
