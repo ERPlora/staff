@@ -502,25 +502,25 @@ export class ErpStaffMembers extends LitElement {
     if (!this.editingId) return nothing;
     return html`<section class="services" data-section="services">
       <h4>${t('ui.servicesTitle')}</h4>
-      ${this.servicesError ? html`<div class="err">${this.servicesError}</div>` : nothing}
-      ${this.memberServices.length === 0 ? html`<div class="hint">${t('ui.servicesEmpty')}</div>` : nothing}
+      ${this.servicesError ? html`<div data-testid="staff-members-services-error" class="err">${this.servicesError}</div>` : nothing}
+      ${this.memberServices.length === 0 ? html`<div data-testid="staff-members-services-empty" class="hint">${t('ui.servicesEmpty')}</div>` : nothing}
       <ul>
         ${this.memberServices.map((s) => html`<li>
-          <ion-icon name=${s.is_primary ? 'star' : 'star-outline'} title=${t('ui.servicePrimary')} aria-label=${t('ui.servicePrimary')} role="button" tabindex="0" @click=${() => (s.is_primary ? undefined : this.setPrimaryService(s))}></ion-icon>
+          <ion-icon data-testid=${`staff-members-service-primary-${s.service_id}`} name=${s.is_primary ? 'star' : 'star-outline'} title=${t('ui.servicePrimary')} aria-label=${t('ui.servicePrimary')} role="button" tabindex="0" @click=${() => (s.is_primary ? undefined : this.setPrimaryService(s))}></ion-icon>
           <span class="name">${s.service_name}</span>
           <span class="meta">${s.custom_duration ? `${s.custom_duration} min` : ''}${s.custom_duration && s.custom_price != null ? ' · ' : ''}${s.custom_price != null ? erplora().formatMoney(Number(s.custom_price)) : ''}</span>
-          <ion-button fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t('ui.serviceRemove')} @click=${() => this.removeService(s.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
+          <ion-button data-testid=${`staff-members-service-remove-${s.service_id}`} fill="clear" size="small" class="tone-medium" data-action="remove-service" aria-label=${t('ui.serviceRemove')} @click=${() => this.removeService(s.id)}><ion-icon slot="icon-only" name="close-outline"></ion-icon></ion-button>
         </li>`)}
       </ul>
       ${this.catalogUnavailable
-        ? html`<div class="hint" data-hint="no-catalog">${t('ui.servicesNoCatalog')}</div>`
+        ? html`<div data-testid="staff-members-services-no-catalog" class="hint" data-hint="no-catalog">${t('ui.servicesNoCatalog')}</div>`
         : html`<div class="assign">
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.serviceAdd')} .value=${this.newServiceId} @ionChange=${(e: any) => (this.newServiceId = e.target.value)}>
+            <ion-select data-testid="staff-members-service-add" mode="md" fill="outline" label-placement="floating" label=${t('ui.serviceAdd')} .value=${this.newServiceId} @ionChange=${(e: any) => (this.newServiceId = e.target.value)}>
               ${this.assignableServices.map((c) => html`<ion-select-option .value=${c.id}>${c.name}</ion-select-option>`)}
             </ion-select>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
-            <ion-button size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
+            <ion-input data-testid="staff-members-service-duration" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
+            <ion-input data-testid="staff-members-service-price" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
+            <ion-button data-testid="staff-members-service-assign" size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
           </div>`}
     </section>`;
   }
@@ -675,63 +675,64 @@ export class ErpStaffMembers extends LitElement {
   render() {
     const t = (k: string): string => erplora().t(CATALOG, k);
     return html`<div class="page">
-        ${this.formError ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
-        ${this.ctrl?.error ? html`<ok-inline-feedback tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
+        ${this.formError ? html`<ok-inline-feedback data-testid="staff-members-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
+        ${this.ctrl?.error ? html`<ok-inline-feedback data-testid="staff-members-load-error" tone="danger" icon="alert-circle-outline">${this.ctrl.error}</ok-inline-feedback>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same record panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.full_name ?? '—')} .cardIcon=${() => 'person-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyMembers')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
+        <ok-data-table testid="staff-members-table" .serverSide=${true} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.full_name ?? '—')} .cardIcon=${() => 'person-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.ctrl?.rows ?? []} .total=${this.ctrl?.total ?? 0} .page=${this.ctrl?.state.page ?? 0} .pageSize=${this.ctrl?.state.pageSize ?? 50} .sort=${this.ctrl?.state.sort} .sortDir=${this.ctrl?.state.dir ?? 'asc'} .searchable=${true} .searchPlaceholder=${t('ui.searchMember')} .emptyMessage=${this.ctrl?.loading ? t('ui.loading') : t('ui.emptyMembers')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)} @pageChange=${(e: CustomEvent<number>) => this.ctrl.setPage(e.detail)} @sortChange=${(e: CustomEvent<{ sort: string; dir: 'asc' | 'desc' }>) => this.ctrl.setSort(e.detail.sort, e.detail.dir)} @searchChange=${(e: CustomEvent<string>) => this.ctrl.setSearch(e.detail)} @filterChange=${(e: CustomEvent<{ col: string; value: unknown }>) => this.ctrl.setFilter(e.detail.col, e.detail.value)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). -->
-          <form slot="create" class="form" @submit=${(e: Event) => this.createMember(e)}>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.form.first_name} @ionInput=${(e: any) => this.patch({ first_name: e.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.form.last_name} @ionInput=${(e: any) => this.patch({ last_name: e.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.form.email} @ionInput=${(e: any) => this.patch({ email: e.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" type="tel" label=${t('ui.colPhone')} .value=${this.form.phone} @ionInput=${(e: any) => this.patch({ phone: e.target.value })}></ion-input>
-            <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
-            <ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
+          <form data-testid="staff-members-form" slot="create" class="form" @submit=${(e: Event) => this.createMember(e)}>
+            <ion-input data-testid="staff-members-first-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.phFirstName')} .value=${this.form.first_name} @ionInput=${(e: any) => this.patch({ first_name: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-last-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.phLastName')} .value=${this.form.last_name} @ionInput=${(e: any) => this.patch({ last_name: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-email" mode="md" fill="outline" label-placement="floating" type="email" label=${t('ui.phEmail')} .value=${this.form.email} @ionInput=${(e: any) => this.patch({ email: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-phone" mode="md" fill="outline" label-placement="floating" type="tel" label=${t('ui.colPhone')} .value=${this.form.phone} @ionInput=${(e: any) => this.patch({ phone: e.target.value })}></ion-input>
+            <ion-input data-testid="staff-members-employee-id" mode="md" fill="outline" label-placement="floating" label=${t('ui.employeeId')} .value=${this.form.employee_id} @ionInput=${(e: any) => this.patch({ employee_id: e.target.value })}></ion-input>
+            <ion-select data-testid="staff-members-role" mode="md" fill="outline" label-placement="floating" label=${t('ui.colRole')} .value=${this.form.role_id} @ionChange=${(e: any) => this.patch({ role_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.roleNone')}</ion-select-option>${this.roles.map((r) => html`<ion-select-option .value=${r.id}>${r.name}</ion-select-option>`)}</ion-select>
+            <ion-select data-testid="staff-members-hub-user" mode="md" fill="outline" label-placement="floating" label=${t('ui.hubUser')} .value=${this.form.user_id} @ionChange=${(e: any) => this.patch({ user_id: e.target.value ?? '' })}><ion-select-option .value=${''}>${t('ui.hubUserNone')}</ion-select-option>${this.hubUsers.map((u) => html`<ion-select-option .value=${u.id}>${u.name}</ion-select-option>`)}</ion-select>
             <!-- staff#46: without a link, what this person charges at the COUNTER is attributed to
                  the session user, not to their record, and does not count towards their commission.
                  Nobody is preselected: guessing the user ties one person's payroll to another's session. -->
             ${this.form.user_id
               ? nothing
-              : html`<p class="hint" data-hint="hub-user">${t('ui.hubUserWhyLink')}</p>`}
+              : html`<p data-testid="staff-members-hub-user-hint" class="hint" data-hint="hub-user">${t('ui.hubUserWhyLink')}</p>`}
             <!-- Operation (staff#4): status and bookable are EXPLICIT controls; terminated is not an option. -->
             <section data-section="operation" class="grid2">
               ${this.editingId
-                ? html`<ion-select mode="md" fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>`
+                ? html`<ion-select data-testid="staff-members-status" mode="md" fill="outline" label-placement="floating" label=${t('ui.colStatus')} .value=${this.form.status} @ionChange=${(e: any) => this.patch({ status: e.target.value })}>${STATUS_OPTIONS.map((st) => html`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>`
                 : nothing}
-              <ion-toggle label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
-              <ion-input mode="md" fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
-              <ion-textarea mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>
+              <ion-toggle data-testid="staff-members-bookable" label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
+              <ion-input data-testid="staff-members-booking-buffer" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-color" mode="md" fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
+              <ion-input data-testid="staff-members-specialties" mode="md" fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
+              <ion-textarea data-testid="staff-members-bio" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>
             </section>
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation
               ? html`<section data-section="compensation" class="grid2">
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.hourlyRate')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
-                  <ion-input mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
+                  <ion-input data-testid="staff-members-hourly-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.hourlyRate')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
+                  <ion-input data-testid="staff-members-commission-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
                 </section>`
               : nothing}
             ${this.renderServices()}
-            <ion-button type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
+            <ion-button data-testid="staff-members-submit" type="submit" size="small" ?disabled=${this.saving || !this.form.first_name || !this.form.last_name}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionAdd')}</ion-button>
           </form>
         </ok-data-table>
         <ion-alert
+          data-testid="staff-members-action-alert"
           .isOpen=${this.pendingAction !== null}
           header=${this.pendingAction?.kind === 'terminate' ? t('ui.terminateTitle') : t('ui.deactivateTitle')}
           message=${erplora().t(CATALOG, this.pendingAction?.kind === 'terminate' ? 'ui.terminateMessage' : 'ui.deactivateMessage', { name: this.pendingAction?.label ?? '' })}
           .inputs=${this.pendingAction?.kind === 'terminate'
             ? [
-                { name: 'termination_date', type: 'date', label: t('ui.terminationDate') },
-                { name: 'reason', type: 'text', placeholder: t('ui.terminationReason') },
+                { name: 'termination_date', type: 'date', label: t('ui.terminationDate'), attributes: { 'data-testid': 'staff-members-terminate-date' } },
+                { name: 'reason', type: 'text', placeholder: t('ui.terminationReason'), attributes: { 'data-testid': 'staff-members-terminate-reason' } },
               ]
             : []}
           .buttons=${[
-            { text: t('ui.cancel'), role: 'cancel' },
-            { text: this.pendingAction?.kind === 'terminate' ? t('ui.actionTerminate') : t('ui.actionDeactivate'), role: 'confirm', cssClass: 'alert-button-danger' },
+            { text: t('ui.cancel'), role: 'cancel', htmlAttributes: { 'data-testid': 'staff-members-action-cancel' } },
+            { text: this.pendingAction?.kind === 'terminate' ? t('ui.actionTerminate') : t('ui.actionDeactivate'), role: 'confirm', cssClass: 'alert-button-danger', htmlAttributes: { 'data-testid': 'staff-members-action-confirm' } },
           ]}
           @ionAlertDidDismiss=${(e: CustomEvent<{ role?: string; data?: { values?: Record<string, string> } }>) => this.onActionDismiss(e)}
         ></ion-alert>
