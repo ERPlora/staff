@@ -30,14 +30,16 @@ class DomainError extends Error {
 
 const MEMBERS = [{ id: 'm1', first_name: 'Lucía', last_name: 'Márquez', full_name: 'Lucía Márquez', status: 'active' }];
 let refusal: Error | null = null;
-/** Every element the component scrolled into view, in order. */
+/** Every element the component scrolled into view AFTER it had painted itself, in order. Scrolling a
+ *  banner that has not rendered yet measures a 0-px box: in Chromium the sheet stops with the banner
+ *  still half under the tab bar (seen in the bench at 390 px). */
 let revealed: Element[] = [];
 
 beforeEach(() => {
   refusal = null;
   revealed = [];
   vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(function (this: HTMLElement) {
-    revealed.push(this);
+    if ((this as HTMLElement & { hasUpdated?: boolean }).hasUpdated !== false) revealed.push(this);
   });
   (globalThis as Record<string, unknown>).erplora = {
     query: async (name: string) => (name === 'staff.members.list' ? MEMBERS : []),

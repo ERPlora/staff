@@ -4945,12 +4945,16 @@ var ErpStaffMembers = class extends i3 {
     }
   }
   /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
-   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
   updated(changed) {
     super.updated(changed);
-    if (changed.has("formError") && this.formError) {
-      this.renderRoot.querySelector('[data-testid="staff-members-form-error"]')?.scrollIntoView?.({ block: "center" });
-    }
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-members-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   render() {
     const t5 = (k2) => erplora2().t(CATALOG2, k2);
@@ -5151,12 +5155,16 @@ var ErpStaffRoles = class extends i3 {
     }
   }
   /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
-   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
   updated(changed) {
     super.updated(changed);
-    if (changed.has("formError") && this.formError) {
-      this.renderRoot.querySelector('[data-testid="staff-roles-form-error"]')?.scrollIntoView?.({ block: "center" });
-    }
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-roles-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   render() {
     const t5 = (k2) => erplora3().t(CATALOG3, k2);
@@ -5493,12 +5501,16 @@ var ErpStaffSchedules = class extends i3 {
     }
   }
   /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
-   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
   updated(changed) {
     super.updated(changed);
-    if (changed.has("formError") && this.formError) {
-      this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]')?.scrollIntoView?.({ block: "center" });
-    }
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   render() {
     const t5 = (k2) => erplora4().t(CATALOG4, k2);
@@ -5790,12 +5802,16 @@ var ErpStaffTimeOff = class extends i3 {
     }
   }
   /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
-   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
   updated(changed) {
     super.updated(changed);
-    if (changed.has("formError") && this.formError) {
-      this.renderRoot.querySelector('[data-testid="staff-time-off-form-error"]')?.scrollIntoView?.({ block: "center" });
-    }
+    if (changed.has("formError") && this.formError) void this.revealFormError();
+  }
+  async revealFormError() {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-time-off-form-error"]');
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: "center" });
   }
   render() {
     const t5 = (k2) => erplora5().t(CATALOG5, k2);

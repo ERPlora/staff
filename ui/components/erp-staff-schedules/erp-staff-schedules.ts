@@ -414,12 +414,19 @@ export class ErpStaffSchedules extends LitElement {
   }
 
   /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
-   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+   *  on a phone that pushes it half off the sheet. Bring it into view once it has painted itself:
+   *  scrolled before, the banner still measures 0 px and ends up under the tab bar. */
   updated(changed: PropertyValues<this>): void {
     super.updated(changed);
-    if (changed.has('formError') && this.formError) {
-      this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]')?.scrollIntoView?.({ block: 'center' });
-    }
+    if (changed.has('formError') && this.formError) void this.revealFormError();
+  }
+
+  private async revealFormError(): Promise<void> {
+    const banner = this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]') as
+      | (HTMLElement & { updateComplete?: Promise<unknown> })
+      | null;
+    await banner?.updateComplete;
+    banner?.scrollIntoView?.({ block: 'center' });
   }
 
   render() {
