@@ -215,3 +215,50 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     expect(onPage(el, 'staff-time-off'), 'approving happens with the panel closed').not.toBeNull();
   });
 });
+
+// Review of staff#75: before the split there was ONE banner and every save cleared it, so the
+// refusal of a row action went away as soon as the person did something that worked. With the
+// page banner on its own, a successful save has to clear it too — otherwise «Cannot deactivate…»
+// stays red on the page above a list where everything since then went fine.
+describe('staff#72 · a page error of a row action goes away once a later save succeeds', () => {
+  it('members: a refused deactivate, then a successful «Add»', async () => {
+    const el = await mount('erp-staff-members', '../components/erp-staff-members/erp-staff-members');
+    el.pendingAction = { kind: 'deactivate', id: 'm1', label: 'Lucía Márquez' };
+    refusal = new DomainError('staff.has_pending_time_off', 'has pending time off');
+    await el.onActionDismiss(new CustomEvent('x', { detail: { role: 'confirm' } }));
+    await settle(el);
+    expect(onPage(el, 'staff-members')).not.toBeNull();
+    refusal = null;
+    el.patch({ first_name: 'Ana', last_name: 'Ruiz' });
+    await el.createMember(submitEvent());
+    await settle(el);
+    expect(onPage(el, 'staff-members'), 'the save went fine: the old refusal is no longer news').toBeNull();
+  });
+
+  it('schedules: a refused toggle, then a successful save', async () => {
+    const el = await mount('erp-staff-schedules', '../components/erp-staff-schedules/erp-staff-schedules');
+    refusal = new DomainError('staff.schedule_in_use', 'in use');
+    await el.onRowAction(new CustomEvent('rowAction', { detail: { actionId: 'toggle', row: { id: 's1', is_active: 1 } } }));
+    await settle(el);
+    expect(onPage(el, 'staff-schedules')).not.toBeNull();
+    refusal = null;
+    el.staffId = 'm1';
+    el.week = el.week.map((d: Record<string, unknown>) => ({ ...d, working: d.day === 1 }));
+    await el.createSchedule(submitEvent());
+    await settle(el);
+    expect(onPage(el, 'staff-schedules'), 'the save went fine: the old refusal is no longer news').toBeNull();
+  });
+
+  it('time off: a refused approval, then a successful «Add»', async () => {
+    const el = await mount('erp-staff-time-off', '../components/erp-staff-time-off/erp-staff-time-off');
+    refusal = new DomainError('staff.time_off_bad_transition', 'bad transition');
+    await el.onRowAction('approve', { id: 't1', status: 'pending' });
+    await settle(el);
+    expect(onPage(el, 'staff-time-off')).not.toBeNull();
+    refusal = null;
+    el.patch({ staff_id: 'm1', start_date: '2026-10-01', end_date: '2026-10-02' });
+    await el.createTimeOff(submitEvent());
+    await settle(el);
+    expect(onPage(el, 'staff-time-off'), 'the save went fine: the old refusal is no longer news').toBeNull();
+  });
+});

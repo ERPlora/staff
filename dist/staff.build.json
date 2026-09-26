@@ -1,7 +1,7 @@
 {
   "file": "dist/staff.esm.js",
-  "sources_sha256": "71bd71f14e116bcfe21759ad55cc90217f95cc3c86a0504df6f19ceeab74f7b7",
+  "sources_sha256": "bebe7b72633f8f9b03d85960aee01a6e61bc702d2aabed0b6a08333bb30ae392",
   "locales_sha256": "3183e4592f3a28e4bbf151486d248e9f0618ad6b35578391ad70f86ea4b78359",
-  "bundle_sha256": "c5048168dda3694c58ef003a533e6990892b0cb21c76769a9cb635eb5eaadeee",
-  "built_at": "2026-09-26T17:39:25.151Z"
+  "bundle_sha256": "b41773d4dbbcfcafc6497726d45a415252f30c9544e13b3b4cc27865204813c6",
+  "built_at": "2026-09-26T17:50:35.576Z"
 }

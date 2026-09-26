@@ -403,6 +403,8 @@ export class ErpStaffSchedules extends LitElement {
       } else {
         await erplora().command('staff.schedules.create', { staff_id: this.staffId, ...body });
       }
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();

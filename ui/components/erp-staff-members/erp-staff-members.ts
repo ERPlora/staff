@@ -705,6 +705,8 @@ export class ErpStaffMembers extends LitElement {
           notes: '',
         });
       }
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.resetForm();
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);

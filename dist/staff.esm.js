@@ -4934,6 +4934,7 @@ var ErpStaffMembers = class extends i3 {
           notes: ""
         });
       }
+      this.pageError = "";
       this.resetForm();
       this.dataTable()?.close();
       await Promise.all([this.ctrl.load(), this.loadRates()]);
@@ -5491,6 +5492,7 @@ var ErpStaffSchedules = class extends i3 {
       } else {
         await erplora4().command("staff.schedules.create", { staff_id: this.staffId, ...body });
       }
+      this.pageError = "";
       this.resetForm();
       this.dataTable()?.close();
       await this.loadSchedules();
@@ -5777,6 +5779,7 @@ var ErpStaffTimeOff = class extends i3 {
         end_time: d3.is_full_day ? null : d3.end_time,
         reason: d3.reason
       });
+      this.pageError = "";
       this.draft = { ...EMPTY_DRAFT };
       this.dataTable()?.close();
       await this.ctrl.load();

@@ -239,6 +239,8 @@ export class ErpStaffTimeOff extends LitElement {
         end_time: d.is_full_day ? null : d.end_time,
         reason: d.reason,
       });
+      // A save that went fine retires the refusal of an earlier row action (staff#72 review).
+      this.pageError = '';
       this.draft = { ...EMPTY_DRAFT };
       this.dataTable()?.close();
       await this.ctrl.load();
