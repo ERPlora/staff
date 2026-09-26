@@ -4673,6 +4673,8 @@ var ErpStaffMembers = class extends i3 {
   resetForm() {
     this.editSeq++;
     this.editingId = "";
+    this.formError = "";
+    this.servicesError = "";
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
     this.rememberLink("");

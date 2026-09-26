@@ -414,6 +414,9 @@ export class ErpStaffMembers extends LitElement {
   private resetForm(): void {
     this.editSeq++;
     this.editingId = '';
+    // pm#459 (review): an error already painted for the edit we leave is not the create form's.
+    this.formError = '';
+    this.servicesError = '';
     this.form = { ...EMPTY_FORM };
     this.memberServices = [];
     this.rememberLink('');

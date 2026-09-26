@@ -217,3 +217,53 @@ describe('two «edit» in a row: the last opening wins (pm#459)', () => {
     expect(el.servicesError, 'the second load of the same member succeeded').toBe('');
   });
 });
+
+describe('the same, through the REAL row and «Add» clicks (pm#459, review of staff#69)', () => {
+  const rowOf = (el: Mounted, index: number) =>
+    (el.shadowRoot.querySelector('ok-data-table') as HTMLElement).shadowRoot?.querySelectorAll('.grow-data.clickable')[index] as HTMLElement;
+
+  it('a double tap on the SAME row: a late FAILURE of the first read paints no error under a form that loaded fine', async () => {
+    const el = await mount();
+    const first = hold();
+    let reads = 0;
+    sdk.query = async (name) => {
+      if (name !== 'staff.members.get') return [];
+      const n = ++reads;
+      if (n === 1) {
+        await first.wait;
+        throw new Error('network');
+      }
+      return [detail(ROW_A)];
+    };
+    expect(rowOf(el, 0), 'the table paints a clickable row for the first member').toBeTruthy();
+    rowOf(el, 0).click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reads, 'the first tap started its read').toBe(1);
+    rowOf(el, 0).click();
+    await settle(el);
+    expect(reads, 'the second tap started its own read').toBe(2);
+    first.release();
+    await settle(el);
+    await settle(el);
+    expect(el.editingId).toBe('m1');
+    expect(el.form.first_name, 'the second read filled the form').toBe('Lucía');
+    expect(el.formError, 'the failure belongs to a read the second tap already superseded').toBe('');
+    expect(el.shadowRoot.querySelector('[data-testid="staff-members-form-error"]')).toBeNull();
+  });
+
+  it('«Add» after an edit whose read already FAILED shows no stale error under the create form', async () => {
+    const el = await mount();
+    sdk.query = async (name) => {
+      if (name === 'staff.members.get') throw new Error('network');
+      return [];
+    };
+    await editRow(el, ROW_A);
+    await settle(el);
+    expect(el.formError, 'positive control: the failed read IS reported while that member is being edited').not.toBe('');
+    addButton(el).click();
+    await settle(el);
+    expect(el.editingId).toBe('');
+    expect(el.formError, 'the create form is not the place for the previous edit’s error').toBe('');
+    expect(el.shadowRoot.querySelector('[data-testid="staff-members-form-error"]')).toBeNull();
+  });
+});
