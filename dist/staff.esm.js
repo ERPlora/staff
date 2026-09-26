@@ -4944,6 +4944,14 @@ var ErpStaffMembers = class extends i3 {
       this.saving = false;
     }
   }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) {
+      this.renderRoot.querySelector('[data-testid="staff-members-form-error"]')?.scrollIntoView?.({ block: "center" });
+    }
+  }
   render() {
     const t5 = (k2) => erplora2().t(CATALOG2, k2);
     return b2`<div class="page">
@@ -5140,6 +5148,14 @@ var ErpStaffRoles = class extends i3 {
       this.formError = e5 instanceof Error ? e5.message : erplora3().t(CATALOG3, "ui.errCreateRole");
     } finally {
       this.saving = false;
+    }
+  }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) {
+      this.renderRoot.querySelector('[data-testid="staff-roles-form-error"]')?.scrollIntoView?.({ block: "center" });
     }
   }
   render() {
@@ -5476,6 +5492,14 @@ var ErpStaffSchedules = class extends i3 {
       this.saving = false;
     }
   }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) {
+      this.renderRoot.querySelector('[data-testid="staff-schedules-form-error"]')?.scrollIntoView?.({ block: "center" });
+    }
+  }
   render() {
     const t5 = (k2) => erplora4().t(CATALOG4, k2);
     return b2`<div class="page">
@@ -5763,6 +5787,14 @@ var ErpStaffTimeOff = class extends i3 {
       this.pageError = domainMessage(e5, erplora5().locale, erplora5().t(CATALOG5, "ui.errSetStatus"));
     } finally {
       this.busyId = "";
+    }
+  }
+  /** staff#72: a refusal appears ABOVE the button that was pressed, at the foot of a long form —
+   *  on a phone that pushes it half off the sheet. Bring it into view the moment it is painted. */
+  updated(changed) {
+    super.updated(changed);
+    if (changed.has("formError") && this.formError) {
+      this.renderRoot.querySelector('[data-testid="staff-time-off-form-error"]')?.scrollIntoView?.({ block: "center" });
     }
   }
   render() {
