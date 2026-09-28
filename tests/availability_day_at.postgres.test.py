@@ -30,6 +30,7 @@ Usage: tests/availability_day_at.postgres.test.py   (exit 0 = green; SKIPPED wit
 import importlib.util
 import pathlib
 import sys
+import uuid
 
 from pg_harness import HUB, OTHER_HUB, ScratchDb, container_available
 
@@ -68,6 +69,16 @@ def day_at(
     if tz is not None:
         params["timezone"] = tz
     return db.run_query("staff.availability.day_at", params, hub=hub)
+
+
+def plant(db: ScratchDb, table: str, hub: str, **cols) -> None:
+    """Insert a row straight into `table`, bypassing the commands and their hub guards."""
+    row = {"id": str(uuid.uuid4()), "hub_id": hub, "is_deleted": 0,
+           "created_at": "2026-01-01T00:00:00Z", **cols}
+    lit = lambda v: "NULL" if v is None else (str(v) if isinstance(v, int) else f"'{v}'")
+    db.scalar(
+        f"INSERT INTO {table} ({', '.join(row)}) VALUES ({', '.join(lit(v) for v in row.values())})"
+    )
 
 
 def summary(rows: list[dict]) -> dict:
@@ -249,10 +260,37 @@ def main() -> int:
 
         print("6. tenancy")
         seed_time_off(db, OTHER_HUB, nora, "2026-08-17", "2026-08-17", "approved")
+        # Rows no command can write (every `_insert_*` guards its hub), planted by hand the way a
+        # bad import or a restore would: each JOIN must hold its own hub_id, not trust the writer.
+        #   · a hub A template carrying hub B's member id (Nora) — only the member join's hub_id
+        #     keeps it from governing hub A's answer about Nora;
+        plant(db, "staff_schedule", HUB, staff_id=nora, name="Foreign member", is_default=1,
+              effective_from=None, effective_until=None, is_active=1)
         check(
             "hub A asking about hub B's member: nothing governs, no absence",
             {"day": ["2026-08-17"], "governed": [False], "shifts": [], "off": []},
             summary(day_at(db, nora, "2026-08-17T09:00:00Z")),
+        )
+        #   · a hub B template carrying hub A's member id (Leo, who has none in A) — only the
+        #     template's own hub_id keeps it out;
+        plant(db, "staff_schedule", OTHER_HUB, staff_id=leo, name="Foreign template",
+              is_default=1, effective_from=None, effective_until=None, is_active=1)
+        check(
+            "hub B's template pointing at hub A's member does not govern hub A's day",
+            {"day": ["2026-08-17"], "governed": [False], "shifts": [], "off": []},
+            summary(day_at(db, leo, "2026-08-17T09:00:00Z")),
+        )
+        #   · a hub B working piece hung on hub A's template (Eva's, empty on mondays) — only the
+        #     piece's own hub_id keeps it off Eva's day.
+        eva = seed_member(db, HUB, "Eva")
+        eva_tpl = seed_schedule(db, HUB, eva, "Eva, no hours", 1)
+        plant(db, "staff_working_hours", OTHER_HUB, schedule_id=eva_tpl, day_of_week=0,
+              start_time="07:00:00", end_time="08:00:00", break_start="07:30:00", break_end="07:45:00",
+              is_working=1)
+        check(
+            "hub B's working piece on hub A's template is not hub A's shift",
+            {"day": ["2026-08-17"], "governed": [True], "shifts": [], "off": []},
+            summary(day_at(db, eva, "2026-08-17T09:00:00Z")),
         )
         check(
             "hub B sees its own",
