@@ -3,9 +3,9 @@
 // (ADR-0123): yen in JPY (0 decimals), cents in EUR, fils in KWD (3). A fixed `× 100` / `/ 100`
 // stored 1500 ¥ as 150000 and the directory column (already on `formatMoney`) showed 150.000 ¥.
 //
-// The step of the field is part of the fix, and it is read from the RENDERED attribute: a
-// `type=number` input with `step=0.01` makes the browser reject 1.234 KWD on submit, and a test
-// that calls createMember() directly never sees that (invoice#96).
+// The scale of the field is part of the fix. Since pm#521 the field is text (a `type=number` input
+// threw a pasted «1.250,50» away), so there is no `step` any more: the scale shows in what the
+// field is filled with and in what it is rewritten to when the person leaves it (KWD «2,300»).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -77,15 +77,18 @@ afterEach(() => {
 
 describe('hourly rate in the hub currency (staff#64)', () => {
   it.each([
-    { d: 0, stored: 1500, field: '1500', typed: '1500', sent: 1500, step: '1' },
-    { d: 2, stored: 1550, field: '15.50', typed: '15.75', sent: 1575, step: '0.01' },
-    { d: 3, stored: 1234, field: '1.234', typed: '2.345', sent: 2345, step: '0.001' },
-  ])('$d decimals: loads $stored → «$field», saves «$typed» → $sent, step $step', async ({ d, stored, field, typed, sent, step }) => {
+    { d: 0, stored: 1500, field: '1500', short: '1500', blur: '1500', typed: '1500', sent: 1500 },
+    { d: 2, stored: 1550, field: '15,50', short: '15,7', blur: '15,70', typed: '15,75', sent: 1575 },
+    { d: 3, stored: 1234, field: '1,234', short: '2,3', blur: '2,300', typed: '2,345', sent: 2345 },
+  ])('$d decimals: loads $stored → «$field», rewrites «$short» → «$blur» on blur, saves «$typed» → $sent', async ({ d, stored, field, short, blur, typed, sent }) => {
     hub(d);
     storedRate = stored;
     const el = await editMember();
     expect(el.form.hourly_rate).toBe(field);
-    expect(rateInput(el).getAttribute('step')).toBe(step);
+    el.form = { ...el.form, hourly_rate: short };
+    await el.updateComplete;
+    rateInput(el).dispatchEvent(new CustomEvent('ionBlur'));
+    expect(el.form.hourly_rate).toBe(blur);
     el.form = { ...el.form, hourly_rate: typed };
     await el.createMember(new Event('submit'));
     const upd = commands.find((c) => c.name === 'staff.members.update')!;
@@ -96,20 +99,26 @@ describe('hourly rate in the hub currency (staff#64)', () => {
     hub(undefined);
     storedRate = 1550;
     const el = await editMember();
-    expect(el.form.hourly_rate).toBe('15.50');
-    expect(rateInput(el).getAttribute('step')).toBe('0.01');
+    expect(el.form.hourly_rate).toBe('15,50');
+    el.form = { ...el.form, hourly_rate: '15,5' };
+    await el.updateComplete;
+    rateInput(el).dispatchEvent(new CustomEvent('ionBlur'));
+    expect(el.form.hourly_rate).toBe('15,50');
   });
 });
 
 describe("a service's custom price in the hub currency (staff#64)", () => {
   it.each([
-    { d: 0, typed: '1500', sent: 1500, step: '1' },
-    { d: 2, typed: '40', sent: 4000, step: '0.01' },
-    { d: 3, typed: '1.234', sent: 1234, step: '0.001' },
-  ])('$d decimals: «$typed» → $sent, step $step', async ({ d, typed, sent, step }) => {
+    { d: 0, typed: '1500', sent: 1500, blur: '1500' },
+    { d: 2, typed: '40', sent: 4000, blur: '40,00' },
+    { d: 3, typed: '1,234', sent: 1234, blur: '1,234' },
+  ])('$d decimals: «$typed» → $sent, rewritten «$blur» on blur', async ({ d, typed, sent, blur }) => {
     hub(d);
     const el = await editMember();
-    expect(servicePriceInput(el).getAttribute('step')).toBe(step);
+    el.newServicePrice = typed;
+    await el.updateComplete;
+    servicePriceInput(el).dispatchEvent(new CustomEvent('ionBlur'));
+    expect(el.newServicePrice).toBe(blur);
     el.newServiceId = 'svc-color';
     el.newServicePrice = typed;
     await el.assignService(new Event('submit'));

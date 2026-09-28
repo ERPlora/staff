@@ -9,7 +9,9 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { MEMBER_STATUS_KEY, enumLabel } from '../../lib/enums';
-import { majorToMinor, minorToInput, moneyStep } from '../../lib/hub-currency';
+import { hubDecimals } from '../../lib/hub-currency';
+// What a person types or pastes into a money field, read the one way every module reads it (pm#521).
+import { formatMoneyInput, normaliseMoneyInput, parseMoneyInput } from '@erplora/module-toolkit/money-input';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -133,6 +135,42 @@ function erplora(): ErploraClientLike {
   const c = (globalThis as { erplora?: ErploraClientLike }).erplora;
   if (!c) throw new Error('erplora SDK no inicializado por el shell');
   return c;
+}
+
+/**
+ * A money FIELD (hourly rate, a service's own price) → minor units of the hub currency, or the
+ * sentence that says why it cannot be read (pm#521). It used to go through `replace(',', '.')` +
+ * `majorToMinor`: «1.250,50» — verbatim what the screen prints — became 0, and «1.250» became 1,25.
+ * `minor: null` = nothing typed. Neither a wage nor a price is ever negative: money-input keeps the
+ * sign, and the schema's `minimum: 0` would only answer with a raw validation detail, so the form
+ * refuses it here, in the person's language.
+ */
+function readMoneyField(typed: string): { ok: true; minor: number | null } | { ok: false; message: string } {
+  const c = erplora();
+  const d = hubDecimals();
+  const read = parseMoneyInput(typed, d, { currency: c.currency || undefined, locale: c.locale });
+  if (read.ok) {
+    if (read.minor !== null && read.minor < 0) return { ok: false, message: c.t(CATALOG, 'ui.errNegativeAmount') };
+    return read;
+  }
+  if (read.code === 'ambiguous_amount') {
+    // Both readings, in the hub's format, so the person can copy the one they meant back.
+    return {
+      ok: false,
+      message: c.t(CATALOG, 'ui.errAmbiguousAmount', {
+        typed: typed.trim(),
+        grouped: formatMoneyInput(read.readings.grouped, d, c.locale),
+        decimal: formatMoneyInput(read.readings.decimal, d, c.locale),
+      }),
+    };
+  }
+  return { ok: false, message: c.t(CATALOG, 'ui.errNotAnAmount') };
+}
+
+/** A money field once the person leaves it: the hub format when readable, as typed when not. */
+function normaliseMoneyField(typed: string): string {
+  const c = erplora();
+  return normaliseMoneyInput(typed, hubDecimals(), c.locale, c.currency || undefined);
 }
 
 export class ErpStaffMembers extends LitElement {
@@ -359,7 +397,7 @@ export class ErpStaffMembers extends LitElement {
       if (c) {
         this.form = {
           ...this.form,
-          hourly_rate: minorToInput(Number(c.hourly_rate || 0)),
+          hourly_rate: formatMoneyInput(Number(c.hourly_rate || 0), hubDecimals(), erplora().locale),
           commission_rate: String(Number(c.commission_rate || 0)),
         };
       }
@@ -492,8 +530,11 @@ export class ErpStaffMembers extends LitElement {
     const svc = this.catalog.find((c) => c.id === this.newServiceId);
     if (!this.editingId || !svc) return;
     const minutes = parseInt(this.newServiceDuration, 10);
-    const price = String(this.newServicePrice).replace(',', '.');
-    const major = parseFloat(price);
+    const price = readMoneyField(String(this.newServicePrice));
+    if (!price.ok) {
+      this.servicesError = price.message;
+      return;
+    }
     this.servicesError = '';
     try {
       await erplora().command('staff.services.assign', {
@@ -501,7 +542,8 @@ export class ErpStaffMembers extends LitElement {
         service_id: svc.id,
         service_name: svc.name,
         custom_duration: Number.isFinite(minutes) && minutes > 0 ? minutes : null,
-        custom_price: Number.isFinite(major) && major >= 0 && this.newServicePrice !== '' ? majorToMinor(price) : null,
+        // Nothing typed = the catalogue price (null), never «free».
+        custom_price: price.minor,
         is_primary: 0,
       });
       this.newServiceId = '';
@@ -563,7 +605,7 @@ export class ErpStaffMembers extends LitElement {
               ${this.assignableServices.map((c) => html`<ion-select-option .value=${c.id}>${c.name}</ion-select-option>`)}
             </ion-select>
             <ion-input data-testid="staff-members-service-duration" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="1" label=${t('ui.serviceDuration')} .value=${this.newServiceDuration} @ionInput=${(e: any) => (this.newServiceDuration = e.target.value)}></ion-input>
-            <ion-input data-testid="staff-members-service-price" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)}></ion-input>
+            <ion-input data-testid="staff-members-service-price" mode="md" fill="outline" label-placement="floating" type="text" inputmode="decimal" label=${t('ui.servicePrice')} .value=${this.newServicePrice} @ionInput=${(e: any) => (this.newServicePrice = e.target.value)} @ionBlur=${() => (this.newServicePrice = normaliseMoneyField(this.newServicePrice))}></ion-input>
             <ion-button data-testid="staff-members-service-assign" size="small" fill="outline" ?disabled=${!this.newServiceId} @click=${(e: Event) => this.assignService(e)}>${t('ui.serviceAssign')}</ion-button>
           </div>`}
     </section>`;
@@ -666,6 +708,13 @@ export class ErpStaffMembers extends LitElement {
     ev.preventDefault();
     const f = this.form;
     if (!f.first_name.trim() || !f.last_name.trim()) return;
+    // The rate travels only when the session could read it (see below); a field it cannot read is
+    // refused before anything is sent. Empty = no rate (0): the column is NOT NULL.
+    const rate = this.canSeeCompensation ? readMoneyField(String(f.hourly_rate)) : null;
+    if (rate && !rate.ok) {
+      this.formError = rate.message;
+      return;
+    }
     this.saving = true;
     this.formError = '';
     const buffer = parseInt(f.booking_buffer, 10);
@@ -684,7 +733,7 @@ export class ErpStaffMembers extends LitElement {
       specialties: f.specialties,
     };
     if (this.canSeeCompensation) {
-      common.hourly_rate = majorToMinor(String(f.hourly_rate).replace(',', '.'));
+      common.hourly_rate = rate?.ok ? rate.minor ?? 0 : 0;
       common.commission_rate = Number.isFinite(commission) ? commission : 0;
     }
     try {
@@ -773,7 +822,7 @@ export class ErpStaffMembers extends LitElement {
             <!-- Compensation: PRIVATE — only for a session that may read it (staff#10 / staff#4). -->
             ${this.canSeeCompensation
               ? html`<section data-section="compensation" class="grid2">
-                  <ion-input data-testid="staff-members-hourly-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" step=${moneyStep()} label=${t('ui.hourlyRate')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })}></ion-input>
+                  <ion-input data-testid="staff-members-hourly-rate" mode="md" fill="outline" label-placement="floating" type="text" inputmode="decimal" label=${t('ui.hourlyRate')} .value=${this.form.hourly_rate} @ionInput=${(e: any) => this.patch({ hourly_rate: e.target.value })} @ionBlur=${() => this.patch({ hourly_rate: normaliseMoneyField(this.form.hourly_rate) })}></ion-input>
                   <ion-input data-testid="staff-members-commission-rate" mode="md" fill="outline" label-placement="floating" type="number" inputmode="decimal" min="0" max="100" step="0.1" label=${t('ui.commissionPct')} .value=${this.form.commission_rate} @ionInput=${(e: any) => this.patch({ commission_rate: e.target.value })}></ion-input>
                 </section>`
               : nothing}

@@ -103,7 +103,8 @@ describe('the record: edit loads everything and saves a full snapshot', () => {
     expect(el.form.hire_date).toBe('2026-01-15');
     expect(el.form.color).toBe('#ff0000');
     expect(el.form.bio).toBe('Bio');
-    expect(el.form.hourly_rate, 'cents → euros in the field').toBe('15.50');
+    // In the hub locale, without grouping (pm#521): what money-input reads back, not a plain-dot number.
+    expect(el.form.hourly_rate, 'cents → euros in the field').toBe('15,50');
     expect(el.form.commission_rate).toBe('12.5');
   });
 
