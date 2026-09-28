@@ -353,10 +353,10 @@ pub fn update_staff_member_pure(input: Value) -> Result<Output, String> {
 
 // ── §2 bulk_create_staff_members ───────────────────────────────────────────
 
-/// Alta en lote tolerante a fallos por fila: las filas inválidas (sin first_name/
-/// last_name, con hire_date mal formada, o con un `role_id` que no es de este hub) se saltan y
-/// el resto se inserta reusando el command SQL interno `staff._insert_member` (el host inyecta
-/// `:new_id` por op). Skipping is never silent (staff#1): the batch answers
+/// Bulk creation, tolerant per row: an invalid row (no first_name/last_name, a malformed
+/// hire_date, a negative hourly_rate, or a `role_id` that is not this hub's) is skipped and the
+/// rest is inserted through the internal SQL command `staff._insert_member` (the host injects
+/// `:new_id` per op). Skipping is never silent (staff#1): the batch answers
 /// `result: {created, skipped: [{index, reason}]}`.
 ///
 /// The role check reads `context.reads["staff.roles.list"]` (this hub's roles), so a foreign role
@@ -405,8 +405,13 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
                 continue;
             }
         }
-        // hourly_rate es DINERO (céntimos/hora, ADR-0123): entero i64 vía SDK, nunca f64.
+        // hourly_rate is MONEY (cents/hour, ADR-0123): i64 through the SDK, never f64. A negative
+        // wage skips its row with a code (staff#80): clamping it to 0 would save a guess in silence.
         let hourly_rate = item.get("hourly_rate").map(|v| money::from_json(v, 0)).unwrap_or(0);
+        if hourly_rate < 0 {
+            skipped.push(json!({ "index": index, "reason": "negative_hourly_rate" }));
+            continue;
+        }
 
         let mut p = Map::new();
         p.insert("first_name".into(), json!(first_name.trim()));
@@ -424,7 +429,7 @@ pub fn bulk_create_staff_members_pure(input: Value) -> Result<Output, String> {
             json!(item.get("is_bookable").map(|v| as_i01(v, 1)).unwrap_or(1)),
         );
         p.insert("color".into(), json!(""));
-        p.insert("hourly_rate".into(), json!(hourly_rate.max(0))); // céntimos (INTEGER)
+        p.insert("hourly_rate".into(), json!(hourly_rate)); // cents (INTEGER)
         p.insert("commission_rate".into(), json!(0));
         p.insert("notes".into(), json!(""));
         // One batch id per created row (MAX_BULK < the host's batch), so the answer names them.
@@ -1005,6 +1010,31 @@ mod tests {
         assert_eq!(skipped[0]["reason"], json!("role_not_found"));
         assert_eq!(skipped[1]["index"], json!(2));
         assert_eq!(skipped[1]["reason"], json!("name_required"));
+    }
+
+    // ── staff#80: a negative wage in the batch is refused, not rounded up to 0 in silence ───
+
+    #[test]
+    fn bulk_create_skips_a_negative_hourly_rate_instead_of_saving_it_as_zero() {
+        let inp = input(json!({ "members": [
+            { "first_name": "Ana", "last_name": "Ruiz", "hourly_rate": -1 },
+            { "first_name": "Luz", "last_name": "Vega", "hourly_rate": 0 },
+            { "first_name": "Eve", "last_name": "Cross", "hourly_rate": -125050 }
+        ] }), json!({}));
+        let out = bulk_create_staff_members_pure(inp).unwrap();
+        assert!(out.error.is_none());
+        assert_eq!(out.operations.len(), 1, "only Luz: 0 is a valid rate, a negative one is not");
+        assert_eq!(out.operations[0].params["first_name"], json!("Luz"));
+        assert_eq!(out.operations[0].params["hourly_rate"], json!(0));
+        let result = out.result.expect("the batch reports what it did");
+        assert_eq!(result["created"], json!(1));
+        assert_eq!(
+            result["skipped"],
+            json!([
+                { "index": 0, "reason": "negative_hourly_rate" },
+                { "index": 2, "reason": "negative_hourly_rate" }
+            ])
+        );
     }
 
     // ── staff#2: schedules are OPERABLE — update replaces the week, server-side validation ──

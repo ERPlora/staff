@@ -28,7 +28,7 @@
 | Creating or editing a member with a role that is not this business's, or is deleted/retired | Refused: `staff.role_not_found` / `staff.member_update_rejected` | Pick a role from Roles |
 | Linking a Hub user that another live member already has (create or edit) | Refused: `staff.user_already_linked`, naming that member | Unlink the user from that member first, or pick another user |
 | Updating a business that already had two members on the same Hub user | The update keeps the link on one of them — the active one, then the one created first — and leaves the others without a Hub user | Re-link the others to their own users from the member form |
-| A bulk import row without a name, with a bad hire date or a foreign role | That row is skipped and listed in the answer (`result.skipped[]` with its reason) | Fix the row and import it again |
+| A bulk import row without a name, with a bad hire date, a negative hourly rate or a foreign role | That row is skipped and listed in the answer (`result.skipped[]` with its reason) | Fix the row and import it again |
 | A schedule with a repeated weekday, `start >= end`, or a break outside the interval | Rejected | Fix the hours |
 | A schedule with only one end of the break set | Rejected | Give both ends or neither |
 | Saving settings on a hub that never had a settings row | Now creates it | Nothing — this used to silently show defaults as if saved |

@@ -374,6 +374,13 @@ REFUSED = [
         "an item carrying `status` (not part of the import surface)",
         {"members": [{"first_name": "A", "last_name": "B", "status": "active"}]},
     ),
+    # staff#80: the batch the assistant sends carries the same money as the single create, so
+    # the same backstop — without this row, dropping its `minimum` stayed green.
+    (
+        "staff.members.bulk_create",
+        "an item with a NEGATIVE hourly rate",
+        {"members": [{"first_name": "A", "last_name": "B", "hourly_rate": -100}]},
+    ),
     ("staff.roles.create", "no name", {"description": "x"}),
     ("staff.roles.create", "an empty name", {"name": ""}),
     ("staff.schedules.create", "no staff_id", {"name": "Default"}),
