@@ -383,6 +383,10 @@
       },
       "expose_api": true
     },
+    "staff.availability.day_at": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/availability_day_at.sql"
+    },
     "staff.members.mine": {
       "permission": "staff.view_staff_member",
       "sql": "queries/member_mine.sql",
