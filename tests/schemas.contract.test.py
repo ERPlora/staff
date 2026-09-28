@@ -350,6 +350,13 @@ REFUSED = [
         {"first_name": "A", "last_name": "B", "is_bookable": True},
     ),
     ("staff.members.update", "no staff_id", {**MEMBER_COMMON}),
+    # pm#521: money-input keeps the sign of a pasted «-1.250,50»; the form refuses it, and the
+    # schema is the backstop on EVERY command that carries the amount, the edit included.
+    (
+        "staff.members.update",
+        "a NEGATIVE hourly rate",
+        {"staff_id": "m-1", **MEMBER_COMMON, "hourly_rate": -100},
+    ),
     ("staff.members.deactivate", "an empty id", {"staff_id": ""}),
     ("staff.members.bulk_create", "an empty batch", {"members": []}),
     (
@@ -409,6 +416,11 @@ REFUSED = [
             "service_name": "Cut",
             "custom_price": -1,
         },
+    ),
+    (
+        "staff.services.update",
+        "a NEGATIVE custom price",
+        {"id": "ms-1", "custom_duration": None, "custom_price": -1, "is_primary": 0, "is_active": 1},
     ),
     (
         "staff.services.assign",
