@@ -1,7 +1,7 @@
 {
   "name": "@erplora/module-staff",
   "private": true,
-  "version": "2.2.36",
+  "version": "2.2.37",
   "type": "module",
   "description": "Módulo staff (manifest declarativo + Web Component Lit): perfiles de personal, roles, horarios, ausencias y servicios. Módulo HR base sin dependencias. Se compila con @erplora/module-cli.",
   "dependencies": {
