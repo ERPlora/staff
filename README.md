@@ -47,7 +47,7 @@ no un permiso más ancho.
 | ---- | ------ | ------- |
 | query | `staff.members.list` / `.get` / `.stats` / **`.mine`** (self-service) · `staff.roles.list` · `staff.schedules.list_for_member` · `staff.settings.get` | `view_staff_member` |
 | query | `staff.services.list_for_member` · `staff.services.eligible_for_service` (la que consume la agenda por `reads`) | `view_staff_member` |
-| query | `staff.schedules.hours_for_member` · `staff.schedules.get` · **`staff.availability.for_member`** (horario vigente − ausencias aprobadas; la autoridad de «cuándo puede trabajar», staff#2) · **`staff.availability.day_at`** (el día de negocio de un instante: turno que manda, tramos y ausencias aprobadas; la lee la puerta de Citas, appointments#98) | `view_staff_member` |
+| query | `staff.schedules.hours_for_member` · `staff.schedules.get` · **`staff.availability.for_member`** (horario vigente − ausencias aprobadas; la autoridad de «cuándo puede trabajar», staff#2) · **`staff.availability.day_at`** (el día de negocio de un instante: turno que manda, tramos y ausencias aprobadas; la lee la puerta de Citas, appointments#98) · **`staff.availability.days_ahead`** (ese mismo día repetido desde hoy durante `days` días, máx. dos años; lo leen el lote y la serie de Citas, appointments#229) · **`staff.availability.team_day_at`** (el `day_at` de todo el equipo a un instante, cada fila con su `staff_id`; lo lee mover una cita, que no nombra a la profesional, appointments#229) | `view_staff_member` |
 | query | `staff.members.compensation` · `staff.commissions.summary` | `view_compensation` |
 | query | `staff.time_off.list` / `.today` / **`.mine`** (self-service) | `view_time_off` |
 | query | `staff.time_off.detail` | `view_time_off_detail` |

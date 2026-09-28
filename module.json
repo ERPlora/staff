@@ -387,6 +387,14 @@
       "permission": "staff.view_staff_member",
       "sql": "queries/availability_day_at.sql"
     },
+    "staff.availability.days_ahead": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/availability_days_ahead.sql"
+    },
+    "staff.availability.team_day_at": {
+      "permission": "staff.view_staff_member",
+      "sql": "queries/availability_team_day_at.sql"
+    },
     "staff.members.mine": {
       "permission": "staff.view_staff_member",
       "sql": "queries/member_mine.sql",
