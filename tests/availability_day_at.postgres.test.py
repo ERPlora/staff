@@ -73,9 +73,16 @@ def day_at(
 
 def plant(db: ScratchDb, table: str, hub: str, **cols) -> None:
     """Insert a row straight into `table`, bypassing the commands and their hub guards."""
-    row = {"id": str(uuid.uuid4()), "hub_id": hub, "is_deleted": 0,
-           "created_at": "2026-01-01T00:00:00Z", **cols}
-    lit = lambda v: "NULL" if v is None else (str(v) if isinstance(v, int) else f"'{v}'")
+    row = {
+        "id": str(uuid.uuid4()),
+        "hub_id": hub,
+        "is_deleted": 0,
+        "created_at": "2026-01-01T00:00:00Z",
+        **cols,
+    }
+    lit = lambda v: (
+        "NULL" if v is None else (str(v) if isinstance(v, int) else f"'{v}'")
+    )
     db.scalar(
         f"INSERT INTO {table} ({', '.join(row)}) VALUES ({', '.join(lit(v) for v in row.values())})"
     )
@@ -264,8 +271,17 @@ def main() -> int:
         # bad import or a restore would: each JOIN must hold its own hub_id, not trust the writer.
         #   · a hub A template carrying hub B's member id (Nora) — only the member join's hub_id
         #     keeps it from governing hub A's answer about Nora;
-        plant(db, "staff_schedule", HUB, staff_id=nora, name="Foreign member", is_default=1,
-              effective_from=None, effective_until=None, is_active=1)
+        plant(
+            db,
+            "staff_schedule",
+            HUB,
+            staff_id=nora,
+            name="Foreign member",
+            is_default=1,
+            effective_from=None,
+            effective_until=None,
+            is_active=1,
+        )
         check(
             "hub A asking about hub B's member: nothing governs, no absence",
             {"day": ["2026-08-17"], "governed": [False], "shifts": [], "off": []},
@@ -273,8 +289,17 @@ def main() -> int:
         )
         #   · a hub B template carrying hub A's member id (Leo, who has none in A) — only the
         #     template's own hub_id keeps it out;
-        plant(db, "staff_schedule", OTHER_HUB, staff_id=leo, name="Foreign template",
-              is_default=1, effective_from=None, effective_until=None, is_active=1)
+        plant(
+            db,
+            "staff_schedule",
+            OTHER_HUB,
+            staff_id=leo,
+            name="Foreign template",
+            is_default=1,
+            effective_from=None,
+            effective_until=None,
+            is_active=1,
+        )
         check(
             "hub B's template pointing at hub A's member does not govern hub A's day",
             {"day": ["2026-08-17"], "governed": [False], "shifts": [], "off": []},
@@ -284,9 +309,18 @@ def main() -> int:
         #     piece's own hub_id keeps it off Eva's day.
         eva = seed_member(db, HUB, "Eva")
         eva_tpl = seed_schedule(db, HUB, eva, "Eva, no hours", 1)
-        plant(db, "staff_working_hours", OTHER_HUB, schedule_id=eva_tpl, day_of_week=0,
-              start_time="07:00:00", end_time="08:00:00", break_start="07:30:00", break_end="07:45:00",
-              is_working=1)
+        plant(
+            db,
+            "staff_working_hours",
+            OTHER_HUB,
+            schedule_id=eva_tpl,
+            day_of_week=0,
+            start_time="07:00:00",
+            end_time="08:00:00",
+            break_start="07:30:00",
+            break_end="07:45:00",
+            is_working=1,
+        )
         check(
             "hub B's working piece on hub A's template is not hub A's shift",
             {"day": ["2026-08-17"], "governed": [True], "shifts": [], "off": []},
@@ -301,6 +335,87 @@ def main() -> int:
                 "off": ["full"],
             },
             summary(day_at(db, nora, "2026-08-17T09:00:00Z", hub=OTHER_HUB)),
+        )
+
+        print("7. deleted rows and non-working pieces do not count")
+        # A soft-deleted absence that still refused bookings, or a deleted template that still
+        # governed, is a booking door answering from rows the business already removed.
+        zoe = seed_member(db, HUB, "Zoe")
+        zoe_tpl = seed_schedule(
+            db, HUB, zoe, "Zoe regular", 1, hours=[(0, "09:00:00", "12:00:00")]
+        )
+        plant(
+            db,
+            "staff_working_hours",
+            HUB,
+            schedule_id=zoe_tpl,
+            day_of_week=1,
+            start_time="15:00:00",
+            end_time="17:00:00",
+            break_start="15:30:00",
+            break_end="16:00:00",
+            is_working=1,
+            is_deleted=1,
+        )
+        plant(
+            db,
+            "staff_working_hours",
+            HUB,
+            schedule_id=zoe_tpl,
+            day_of_week=2,
+            start_time="18:00:00",
+            end_time="20:00:00",
+            break_start="18:30:00",
+            break_end="19:00:00",
+            is_working=0,
+        )
+        deleted_specific = seed_schedule(
+            db,
+            HUB,
+            zoe,
+            "Deleted specific",
+            0,
+            "2026-08-17",
+            "2026-08-17",
+            hours=[(0, "07:00:00", "08:00:00")],
+        )
+        db.scalar(
+            f"UPDATE staff_schedule SET is_deleted = 1 WHERE id = '{deleted_specific}' RETURNING id"
+        )
+        seed_time_off(db, HUB, zoe, "2026-08-17", "2026-08-17", "approved")
+        db.scalar(
+            f"UPDATE staff_time_off SET is_deleted = 1 WHERE staff_id = '{zoe}' "
+            "AND start_date = '2026-08-17' RETURNING id"
+        )
+        check(
+            "zoe on monday: her live template, its live working piece, no deleted absence",
+            {
+                "day": ["2026-08-17"],
+                "governed": [True],
+                "shifts": ["09:00-12:00"],
+                "off": [],
+            },
+            summary(day_at(db, zoe, "2026-08-17T09:00:00Z")),
+        )
+        check(
+            "zoe on tuesday: a deleted working piece is no shift",
+            {"day": ["2026-08-18"], "governed": [True], "shifts": [], "off": []},
+            summary(day_at(db, zoe, "2026-08-18T09:00:00Z")),
+        )
+        check(
+            "zoe on wednesday: a non-working piece is no shift",
+            {"day": ["2026-08-19"], "governed": [True], "shifts": [], "off": []},
+            summary(day_at(db, zoe, "2026-08-19T09:00:00Z")),
+        )
+        uma = seed_member(db, HUB, "Uma")
+        seed_schedule(db, HUB, uma, "Uma regular", 1, hours=WEEK)
+        db.scalar(
+            f"UPDATE staff_member SET is_deleted = 1 WHERE id = '{uma}' RETURNING id"
+        )
+        check(
+            "a deleted member's template governs nothing",
+            {"day": ["2026-08-17"], "governed": [False], "shifts": [], "off": []},
+            summary(day_at(db, uma, "2026-08-17T09:00:00Z")),
         )
     finally:
         db.drop()
