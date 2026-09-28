@@ -153,6 +153,31 @@ def main() -> int:
             ["2026-10-26"],
             summary(day_at(db, ana, "2026-10-25T23:30:00Z"))["day"],
         )
+        # appointments#230: the free-slots list asks about a DATE, not an instant — its payload
+        # has `date` and `reads.params` can only bind it as-is. A bare `YYYY-MM-DD` IS the
+        # business day: read as an instant it would be midnight on the session clock, which is
+        # the day BEFORE on every zone west of it.
+        for zone in [
+            MADRID,
+            "America/Mexico_City",
+            "America/Los_Angeles",
+            "Pacific/Auckland",
+        ]:
+            check(
+                f"a bare date is that very business day ({zone})",
+                {
+                    "day": ["2026-08-17"],
+                    "governed": [True],
+                    "shifts": ["09:00-13:00", "14:00-18:00"],
+                    "off": [],
+                },
+                summary(day_at(db, ana, "2026-08-17", tz=zone)),
+            )
+        check(
+            "a bare date with no zone is that very day too",
+            ["2026-08-17"],
+            summary(day_at(db, ana, "2026-08-17", tz=None))["day"],
+        )
 
         print("2. shifts of the governing template")
         check(

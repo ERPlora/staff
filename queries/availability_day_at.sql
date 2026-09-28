@@ -5,7 +5,9 @@
 --
 -- The day is the BUSINESS day of `:at`: read on `:timezone` (the hub's IANA zone, injected by the
 -- runtime in every query, hub#1022; '' → UTC, the runtime's own fallback). Same idiom as
--- `time_off_active_for_member.sql`. Runtime injects :hub_id.
+-- `time_off_active_for_member.sql`. A bare `YYYY-MM-DD` (appointments#230: the free-slots list
+-- binds its `date`) IS the business day as given — read as an instant it would be midnight on the
+-- session clock, the day BEFORE on every zone west of it. Runtime injects :hub_id.
 --
 -- It answers with the material, not a verdict — the caller owns the booking's end:
 --   kind = 'day'   always exactly one row: the day + the GOVERNING template (NULL = no template
@@ -17,8 +19,11 @@
 -- day, specific beats default, newest `effective_from`, newest row) and the two are pinned to agree
 -- by tests/availability_day_at.postgres.test.py. Times are HH:MM:SS TEXT.
 WITH d AS (
-  SELECT CAST(CAST(CAST(:at AS TEXT) AS timestamptz)
-              AT TIME ZONE COALESCE(NULLIF(TRIM(CAST(:timezone AS TEXT)), ''), 'UTC') AS date) AS day
+  SELECT CASE WHEN LENGTH(TRIM(CAST(:at AS TEXT))) = 10
+              THEN CAST(TRIM(CAST(:at AS TEXT)) AS date)
+              ELSE CAST(CAST(CAST(:at AS TEXT) AS timestamptz)
+                        AT TIME ZONE COALESCE(NULLIF(TRIM(CAST(:timezone AS TEXT)), ''), 'UTC') AS date)
+         END AS day
 ),
 gov AS (
   SELECT d.day,
