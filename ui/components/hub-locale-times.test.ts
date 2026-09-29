@@ -289,6 +289,32 @@ for (const locale of ['es', 'en'] as const) {
       expect(commands).toHaveLength(0);
     });
 
+    it('a half-typed end never keeps the last valid hour: the save is refused', async () => {
+      const el = await partDay();
+      await type(el, 'staff-time-off-start-time', '930');
+      await type(el, 'staff-time-off-end-time', '1800');
+      await type(el, 'staff-time-off-end-time', '14:');
+      expect(el.draft.end_time).toBe('');
+      await el.createTimeOff(new Event('submit'));
+      expect(el.formError).toBe('ui.valTimeOffHours');
+      expect(commands).toHaveLength(0);
+    });
+
+    it('a half-typed hour stays on screen after leaving the field', async () => {
+      const el = await partDay();
+      await type(el, 'staff-time-off-end-time', '14:');
+      await leave(el, 'staff-time-off-end-time');
+      expect(shown(el, 'staff-time-off-end-time')).toBe('14:');
+    });
+
+    it('pasting text that is not a time is left to the browser (not swallowed)', async () => {
+      const el = await partDay();
+      await type(el, 'staff-time-off-end-time', '1800');
+      const ev = await paste(el, 'staff-time-off-end-time', 'lunch');
+      expect(ev.defaultPrevented).toBe(false);
+      expect(el.draft.end_time).toBe('18:00');
+    });
+
     it('a pasted «2:30 pm» is stored and painted in the hub clock at once', async () => {
       const el = await partDay();
       const ev = await paste(el, 'staff-time-off-end-time', '2:30 pm');
