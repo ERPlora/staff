@@ -9,6 +9,7 @@ import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { formatDate } from '../../lib/enums';
 import { formatCalendarDate, isUnreadableDate, parseCalendarDate } from '../../lib/calendar-date';
+import { formatWallTime, parseWallTime } from '../../lib/wall-time';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -50,7 +51,7 @@ interface WorkingHours {
   is_working: number;
 }
 
-/** `HH:MM:SS` (DB) → `HH:MM` (input type=time). */
+/** `HH:MM:SS` (DB) → the stored `HH:MM` of the form. */
 const hhmm = (t: string | null | undefined): string => (t ? String(t).slice(0, 5) : '');
 
 /** Fila editable del horario semanal (day_of_week 0=Lunes..6=Domingo, como la BD). */
@@ -62,6 +63,10 @@ interface DayRow {
   breakStart: string;
   breakEnd: string;
 }
+
+/** The four time fields of a day (staff#86). */
+type DayTimeField = 'start' | 'end' | 'breakStart' | 'breakEnd';
+const DAY_TIME_FIELDS: readonly DayTimeField[] = ['start', 'end', 'breakStart', 'breakEnd'];
 
 // Claves i18n por día (0=Lunes..6=Domingo, como la BD). El texto se resuelve reactivamente con
 // `erplora.t()` (ADR-0055), no en carga del módulo (el cliente aún no existe entonces).
@@ -147,6 +152,11 @@ export class ErpStaffSchedules extends LitElement {
 
   @state() week: DayRow[] = defaultWeek();
 
+  /** staff#86 — the text being typed into a time field, by `<day>:<field>`, kept apart from the
+   *  week (which only ever holds a valid 'HH:MM' or ''). Emptied whenever another week is loaded
+   *  into the form, so a half-typed text is never painted over somebody else's hour. */
+  @state() private timeDrafts: Record<string, string> = {};
+
   /** Intervals of every template of the member (staff#2), grouped by `schedule_id` on render. */
   @state() hours: WorkingHours[] = [];
 
@@ -187,13 +197,18 @@ export class ErpStaffSchedules extends LitElement {
     if (!rows.length) return '—';
     return rows
       .map((h) => {
-        const brk = h.break_start && h.break_end ? ` (${hhmm(h.break_start)}-${hhmm(h.break_end)})` : '';
-        return `${this.dayLabel(h.day_of_week)} ${hhmm(h.start_time)}-${hhmm(h.end_time)}${brk}`;
+        const brk = h.break_start && h.break_end ? ` (${this.fmtTime(h.break_start)}-${this.fmtTime(h.break_end)})` : '';
+        return `${this.dayLabel(h.day_of_week)} ${this.fmtTime(h.start_time)}-${this.fmtTime(h.end_time)}${brk}`;
       })
       .join(' · ');
   }
 
-  /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
+  /** A stored time in the hub's clock (staff#86): list and form read the same hour. */
+  private fmtTime(time: string | null | undefined): string {
+    return formatWallTime(hhmm(time), erplora().locale);
+  }
+
+  /** Localized day label (0=Monday..6=Sunday) — ADR-0055. */
   private dayLabel(day: number): string {
     return erplora().t(CATALOG, DAY_KEYS[day]);
   }
@@ -267,6 +282,49 @@ export class ErpStaffSchedules extends LitElement {
     this.week = this.week.map((d) => (d.day === day ? { ...d, ...patch } : d));
   }
 
+  /** staff#86 — what a time field shows: the raw text while it is being typed (a half-typed
+   *  «14:» stays on screen), the stored hour in the hub's clock otherwise. */
+  private timeFieldValue(d: DayRow, field: DayTimeField): string {
+    return this.timeDrafts[`${d.day}:${field}`] ?? formatWallTime(d[field], erplora().locale);
+  }
+
+  /** staff#86 — `ionInput`: the text is kept as the draft and the stored hour follows it exactly,
+   *  back to '' while it is not (yet) a time — a half-typed hour never saves the last valid one. */
+  private onTimeInput(day: number, field: DayTimeField, text: string): void {
+    this.timeDrafts = { ...this.timeDrafts, [`${day}:${field}`]: text };
+    this.patchDay(day, { [field]: parseWallTime(text) ?? '' });
+  }
+
+  /** staff#86 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored hour
+   *  in the hub's clock. An unreadable text stays, so the save can say why it refuses. */
+  private commitTimeDraft(day: number, field: DayTimeField): void {
+    const key = `${day}:${field}`;
+    const text = this.timeDrafts[key];
+    if (text === undefined || (text.trim() && !parseWallTime(text))) return;
+    const { [key]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+  }
+
+  /** staff#86 — a time pasted in any spelling the parser reads is stored and repainted in the hub
+   *  clock at once. Anything else is left to the browser's own paste. */
+  private onTimePaste(day: number, field: DayTimeField, e: Event): void {
+    const time = parseWallTime((e as ClipboardEvent).clipboardData?.getData('text') ?? '');
+    if (!time) return;
+    e.preventDefault();
+    const { [`${day}:${field}`]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+    this.patchDay(day, { [field]: time });
+  }
+
+  /** staff#86 — a field whose text cannot be read as a time: blank in the week, so without this a
+   *  break typed «13:» would be saved as «no break» without a word. */
+  private hasUnreadableTime(day: number): boolean {
+    return DAY_TIME_FIELDS.some((field) => {
+      const text = this.timeDrafts[`${day}:${field}`];
+      return text !== undefined && text.trim() !== '' && parseWallTime(text) === null;
+    });
+  }
+
   /** Valida en cliente lo mismo que el handler WASM para dar feedback inmediato. */
   private validateWeek(): string {
     const t = (k: string, p?: Record<string, unknown>): string => erplora().t(CATALOG, k, p);
@@ -274,6 +332,7 @@ export class ErpStaffSchedules extends LitElement {
     if (!active.length) return t('ui.valNeedWorkingDay');
     for (const d of active) {
       const day = this.dayLabel(d.day);
+      if (this.hasUnreadableTime(d.day)) return t('ui.valTimeUnreadable', { day });
       if (!d.start || !d.end) return t('ui.valNeedStartEnd', { day });
       if (d.start >= d.end) return t('ui.valStartBeforeEnd', { day });
       const hasBs = !!d.breakStart;
@@ -328,6 +387,7 @@ export class ErpStaffSchedules extends LitElement {
       this.effectiveUntil = row.effective_until ?? '';
       this.dateDrafts = {};
       const mine = this.hours.filter((h) => h.schedule_id === row.id);
+      this.timeDrafts = {};
       this.week = DAY_KEYS.map((_k, day) => {
         const h = mine.find((x) => x.day_of_week === day && Number(x.is_working) === 1);
         return h
@@ -372,6 +432,7 @@ export class ErpStaffSchedules extends LitElement {
     this.effectiveUntil = '';
     this.dateDrafts = {};
     this.week = defaultWeek();
+    this.timeDrafts = {};
   }
 
   /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
@@ -498,18 +559,20 @@ export class ErpStaffSchedules extends LitElement {
             <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.dateFieldValue('effectiveFrom')} @ionInput=${(e: any) => this.onDateInput('effectiveFrom', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('effectiveFrom')}></ion-input>
             <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.dateFieldValue('effectiveUntil')} @ionInput=${(e: any) => this.onDateInput('effectiveUntil', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('effectiveUntil')}></ion-input>
             <ion-checkbox data-testid="staff-schedules-default" label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
+            <!-- staff#86: TEXT time fields painted in the hub's clock, never type="time": the browser
+                 paints a native time field with its own (operating system) clock. -->
             <div class="week">
               ${this.week.map(
                 (d) => html`<div class="day">
                   <ion-checkbox data-testid=${`staff-schedules-day-working-${d.day}`} justify="start" label-placement="end" .checked=${d.working} @ionChange=${(e: any) => this.patchDay(d.day, { working: e.detail.checked })}><span class="name">${this.dayLabel(d.day)}</span></ion-checkbox>
                   ${d.working
-                    ? html`<ion-input data-testid=${`staff-schedules-day-start-${d.day}`} mode="md" fill="outline" type="time" aria-label=${t('ui.ariaStart')} .value=${d.start} @ionInput=${(e: any) => this.patchDay(d.day, { start: e.target.value })}></ion-input>
+                    ? html`<ion-input data-testid=${`staff-schedules-day-start-${d.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} aria-label=${t('ui.ariaStart')} .value=${this.timeFieldValue(d, 'start')} @ionInput=${(e: any) => this.onTimeInput(d.day, 'start', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft(d.day, 'start')} @paste=${(e: Event) => this.onTimePaste(d.day, 'start', e)}></ion-input>
                         <span class="sep">${t('ui.sepTo')}</span>
-                        <ion-input data-testid=${`staff-schedules-day-end-${d.day}`} mode="md" fill="outline" type="time" aria-label=${t('ui.ariaEnd')} .value=${d.end} @ionInput=${(e: any) => this.patchDay(d.day, { end: e.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-end-${d.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} aria-label=${t('ui.ariaEnd')} .value=${this.timeFieldValue(d, 'end')} @ionInput=${(e: any) => this.onTimeInput(d.day, 'end', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft(d.day, 'end')} @paste=${(e: Event) => this.onTimePaste(d.day, 'end', e)}></ion-input>
                         <span class="sep">${t('ui.sepBreak')}</span>
-                        <ion-input data-testid=${`staff-schedules-day-break-start-${d.day}`} mode="md" fill="outline" type="time" aria-label=${t('ui.ariaBreakStart')} .value=${d.breakStart} @ionInput=${(e: any) => this.patchDay(d.day, { breakStart: e.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-break-start-${d.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} aria-label=${t('ui.ariaBreakStart')} .value=${this.timeFieldValue(d, 'breakStart')} @ionInput=${(e: any) => this.onTimeInput(d.day, 'breakStart', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft(d.day, 'breakStart')} @paste=${(e: Event) => this.onTimePaste(d.day, 'breakStart', e)}></ion-input>
                         <span class="sep">${t('ui.sepTo')}</span>
-                        <ion-input data-testid=${`staff-schedules-day-break-end-${d.day}`} mode="md" fill="outline" type="time" aria-label=${t('ui.ariaBreakEnd')} .value=${d.breakEnd} @ionInput=${(e: any) => this.patchDay(d.day, { breakEnd: e.target.value })}></ion-input>`
+                        <ion-input data-testid=${`staff-schedules-day-break-end-${d.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} aria-label=${t('ui.ariaBreakEnd')} .value=${this.timeFieldValue(d, 'breakEnd')} @ionInput=${(e: any) => this.onTimeInput(d.day, 'breakEnd', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft(d.day, 'breakEnd')} @paste=${(e: Event) => this.onTimePaste(d.day, 'breakEnd', e)}></ion-input>`
                     : html`<span class="sep">${t('ui.notWorking')}</span>`}
                 </div>`,
               )}

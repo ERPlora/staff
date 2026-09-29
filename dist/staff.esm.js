@@ -4041,6 +4041,7 @@ var es_default = {
     valStartBeforeEnd: "{day}: la hora de inicio debe ser anterior a la de fin",
     valBreakBoth: "{day}: el descanso necesita inicio y fin (o ninguno)",
     valBreakInside: "{day}: el descanso debe caer dentro del intervalo de trabajo",
+    valTimeUnreadable: "{day}: hay una hora que no se entiende \u2014 escr\xEDbela como hh:mm (p. ej. 14:30)",
     dayMonday: "Lunes",
     dayTuesday: "Martes",
     dayWednesday: "Mi\xE9rcoles",
@@ -4055,6 +4056,7 @@ var es_default = {
     ariaEnd: "Fin",
     ariaBreakStart: "Inicio descanso",
     ariaBreakEnd: "Fin descanso",
+    timePlaceholder: "hh:mm",
     hubUser: "Usuario del Hub",
     hubUserNone: "Sin acceso al Hub",
     hubUserWhyLink: "Sin usuario del Hub, las ventas de mostrador se atribuyen a quien tenga la sesi\xF3n y no le contar\xE1n para su comisi\xF3n.",
@@ -4287,6 +4289,7 @@ var en_default = {
     valStartBeforeEnd: "{day}: the start time must be earlier than the end time",
     valBreakBoth: "{day}: the break needs a start and end (or neither)",
     valBreakInside: "{day}: the break must fall within the working interval",
+    valTimeUnreadable: "{day}: a time can't be read \u2014 write it as hh:mm (e.g. 14:30)",
     dayMonday: "Monday",
     dayTuesday: "Tuesday",
     dayWednesday: "Wednesday",
@@ -4301,6 +4304,7 @@ var en_default = {
     ariaEnd: "End",
     ariaBreakStart: "Break start",
     ariaBreakEnd: "Break end",
+    timePlaceholder: "hh:mm",
     hubUser: "Hub user",
     hubUserNone: "No Hub access",
     hubUserWhyLink: "Without a Hub user, counter sales go to whoever is signed in and will not count towards this person's commission.",
@@ -5503,9 +5507,49 @@ __decorateClass([
 ], ErpStaffRoles.prototype, "saving", 2);
 define("erp-staff-roles", ErpStaffRoles);
 
+// ui/lib/wall-time.ts
+function pad22(n6) {
+  return String(n6).padStart(2, "0");
+}
+var STORED2 = /^(\d{2}):(\d{2})(?::\d{2})?$/;
+function formatWallTime(time, locale) {
+  const match = time.match(STORED2);
+  if (!match) return time;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return time;
+  try {
+    return new Intl.DateTimeFormat(locale || void 0, {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "UTC"
+    }).format(new Date(Date.UTC(2026, 0, 1, hour, minute)));
+  } catch {
+  }
+  return `${pad22(hour)}:${pad22(minute)}`;
+}
+var TYPED2 = /^(?:(\d{1,2})(?:[:.](\d{2})(?::\d{2})?)?|(\d{1,2})(\d{2}))(?:\s*([ap])\.?\s?m\.?)?$/i;
+function parseWallTime(text) {
+  const match = text.trim().match(TYPED2);
+  if (!match) return null;
+  const [, hourText, minuteText, packedHour, packedMinute, meridiem] = match;
+  let hour = Number(hourText ?? packedHour);
+  const minute = Number(minuteText ?? packedMinute ?? 0);
+  if (minute > 59) return null;
+  if (meridiem) {
+    if (hour < 1 || hour > 12) return null;
+    const isPm = meridiem.toLowerCase() === "p";
+    hour = isPm ? hour === 12 ? 12 : hour + 12 : hour === 12 ? 0 : hour;
+  } else if (hour > 23) {
+    return null;
+  }
+  return `${pad22(hour)}:${pad22(minute)}`;
+}
+
 // ui/components/erp-staff-schedules/erp-staff-schedules.ts
 var CATALOG4 = { es: es_default, en: en_default };
 var hhmm = (t5) => t5 ? String(t5).slice(0, 5) : "";
+var DAY_TIME_FIELDS = ["start", "end", "breakStart", "breakEnd"];
 var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
 var DATE_FIELDS = ["effectiveFrom", "effectiveUntil"];
 function defaultWeek() {
@@ -5540,6 +5584,7 @@ var ErpStaffSchedules = class extends i3 {
     this.effectiveUntil = "";
     this.dateDrafts = {};
     this.week = defaultWeek();
+    this.timeDrafts = {};
     this.hours = [];
     this.editingId = "";
     this.pendingDelete = null;
@@ -5593,11 +5638,15 @@ var ErpStaffSchedules = class extends i3 {
     const rows = this.hours.filter((h4) => h4.schedule_id === scheduleId && Number(h4.is_working) === 1).sort((a3, b3) => a3.day_of_week - b3.day_of_week);
     if (!rows.length) return "\u2014";
     return rows.map((h4) => {
-      const brk = h4.break_start && h4.break_end ? ` (${hhmm(h4.break_start)}-${hhmm(h4.break_end)})` : "";
-      return `${this.dayLabel(h4.day_of_week)} ${hhmm(h4.start_time)}-${hhmm(h4.end_time)}${brk}`;
+      const brk = h4.break_start && h4.break_end ? ` (${this.fmtTime(h4.break_start)}-${this.fmtTime(h4.break_end)})` : "";
+      return `${this.dayLabel(h4.day_of_week)} ${this.fmtTime(h4.start_time)}-${this.fmtTime(h4.end_time)}${brk}`;
     }).join(" \xB7 ");
   }
-  /** Etiqueta localizada del día (0=Lunes..6=Domingo) — ADR-0055. */
+  /** A stored time in the hub's clock (staff#86): list and form read the same hour. */
+  fmtTime(time) {
+    return formatWallTime(hhmm(time), erplora4().locale);
+  }
+  /** Localized day label (0=Monday..6=Sunday) — ADR-0055. */
   dayLabel(day) {
     return erplora4().t(CATALOG4, DAY_KEYS[day]);
   }
@@ -5661,6 +5710,44 @@ var ErpStaffSchedules = class extends i3 {
   patchDay(day, patch) {
     this.week = this.week.map((d3) => d3.day === day ? { ...d3, ...patch } : d3);
   }
+  /** staff#86 — what a time field shows: the raw text while it is being typed (a half-typed
+   *  «14:» stays on screen), the stored hour in the hub's clock otherwise. */
+  timeFieldValue(d3, field) {
+    return this.timeDrafts[`${d3.day}:${field}`] ?? formatWallTime(d3[field], erplora4().locale);
+  }
+  /** staff#86 — `ionInput`: the text is kept as the draft and the stored hour follows it exactly,
+   *  back to '' while it is not (yet) a time — a half-typed hour never saves the last valid one. */
+  onTimeInput(day, field, text) {
+    this.timeDrafts = { ...this.timeDrafts, [`${day}:${field}`]: text };
+    this.patchDay(day, { [field]: parseWallTime(text) ?? "" });
+  }
+  /** staff#86 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored hour
+   *  in the hub's clock. An unreadable text stays, so the save can say why it refuses. */
+  commitTimeDraft(day, field) {
+    const key = `${day}:${field}`;
+    const text = this.timeDrafts[key];
+    if (text === void 0 || text.trim() && !parseWallTime(text)) return;
+    const { [key]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+  }
+  /** staff#86 — a time pasted in any spelling the parser reads is stored and repainted in the hub
+   *  clock at once. Anything else is left to the browser's own paste. */
+  onTimePaste(day, field, e5) {
+    const time = parseWallTime(e5.clipboardData?.getData("text") ?? "");
+    if (!time) return;
+    e5.preventDefault();
+    const { [`${day}:${field}`]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+    this.patchDay(day, { [field]: time });
+  }
+  /** staff#86 — a field whose text cannot be read as a time: blank in the week, so without this a
+   *  break typed «13:» would be saved as «no break» without a word. */
+  hasUnreadableTime(day) {
+    return DAY_TIME_FIELDS.some((field) => {
+      const text = this.timeDrafts[`${day}:${field}`];
+      return text !== void 0 && text.trim() !== "" && parseWallTime(text) === null;
+    });
+  }
   /** Valida en cliente lo mismo que el handler WASM para dar feedback inmediato. */
   validateWeek() {
     const t5 = (k2, p4) => erplora4().t(CATALOG4, k2, p4);
@@ -5668,6 +5755,7 @@ var ErpStaffSchedules = class extends i3 {
     if (!active.length) return t5("ui.valNeedWorkingDay");
     for (const d3 of active) {
       const day = this.dayLabel(d3.day);
+      if (this.hasUnreadableTime(d3.day)) return t5("ui.valTimeUnreadable", { day });
       if (!d3.start || !d3.end) return t5("ui.valNeedStartEnd", { day });
       if (d3.start >= d3.end) return t5("ui.valStartBeforeEnd", { day });
       const hasBs = !!d3.breakStart;
@@ -5717,6 +5805,7 @@ var ErpStaffSchedules = class extends i3 {
       this.effectiveUntil = row.effective_until ?? "";
       this.dateDrafts = {};
       const mine = this.hours.filter((h4) => h4.schedule_id === row.id);
+      this.timeDrafts = {};
       this.week = DAY_KEYS.map((_k, day) => {
         const h4 = mine.find((x2) => x2.day_of_week === day && Number(x2.is_working) === 1);
         return h4 ? { day, working: true, start: hhmm(h4.start_time), end: hhmm(h4.end_time), breakStart: hhmm(h4.break_start), breakEnd: hhmm(h4.break_end) } : { day, working: false, start: "09:00", end: "18:00", breakStart: "", breakEnd: "" };
@@ -5757,6 +5846,7 @@ var ErpStaffSchedules = class extends i3 {
     this.effectiveUntil = "";
     this.dateDrafts = {};
     this.week = defaultWeek();
+    this.timeDrafts = {};
   }
   /** pm#450: the table's «Add» emits no event and keeps our form state; after an edit it would
    *  show the edited schedule under a «New» header, and the submit would UPDATE it. */
@@ -5868,17 +5958,19 @@ var ErpStaffSchedules = class extends i3 {
             <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.dateFieldValue("effectiveFrom")} @ionInput=${(e5) => this.onDateInput("effectiveFrom", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("effectiveFrom")}></ion-input>
             <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.dateFieldValue("effectiveUntil")} @ionInput=${(e5) => this.onDateInput("effectiveUntil", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("effectiveUntil")}></ion-input>
             <ion-checkbox data-testid="staff-schedules-default" label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
+            <!-- staff#86: TEXT time fields painted in the hub's clock, never type="time": the browser
+                 paints a native time field with its own (operating system) clock. -->
             <div class="week">
               ${this.week.map(
       (d3) => b2`<div class="day">
                   <ion-checkbox data-testid=${`staff-schedules-day-working-${d3.day}`} justify="start" label-placement="end" .checked=${d3.working} @ionChange=${(e5) => this.patchDay(d3.day, { working: e5.detail.checked })}><span class="name">${this.dayLabel(d3.day)}</span></ion-checkbox>
-                  ${d3.working ? b2`<ion-input data-testid=${`staff-schedules-day-start-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaStart")} .value=${d3.start} @ionInput=${(e5) => this.patchDay(d3.day, { start: e5.target.value })}></ion-input>
+                  ${d3.working ? b2`<ion-input data-testid=${`staff-schedules-day-start-${d3.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} aria-label=${t5("ui.ariaStart")} .value=${this.timeFieldValue(d3, "start")} @ionInput=${(e5) => this.onTimeInput(d3.day, "start", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft(d3.day, "start")} @paste=${(e5) => this.onTimePaste(d3.day, "start", e5)}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input data-testid=${`staff-schedules-day-end-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaEnd")} .value=${d3.end} @ionInput=${(e5) => this.patchDay(d3.day, { end: e5.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-end-${d3.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} aria-label=${t5("ui.ariaEnd")} .value=${this.timeFieldValue(d3, "end")} @ionInput=${(e5) => this.onTimeInput(d3.day, "end", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft(d3.day, "end")} @paste=${(e5) => this.onTimePaste(d3.day, "end", e5)}></ion-input>
                         <span class="sep">${t5("ui.sepBreak")}</span>
-                        <ion-input data-testid=${`staff-schedules-day-break-start-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakStart")} .value=${d3.breakStart} @ionInput=${(e5) => this.patchDay(d3.day, { breakStart: e5.target.value })}></ion-input>
+                        <ion-input data-testid=${`staff-schedules-day-break-start-${d3.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} aria-label=${t5("ui.ariaBreakStart")} .value=${this.timeFieldValue(d3, "breakStart")} @ionInput=${(e5) => this.onTimeInput(d3.day, "breakStart", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft(d3.day, "breakStart")} @paste=${(e5) => this.onTimePaste(d3.day, "breakStart", e5)}></ion-input>
                         <span class="sep">${t5("ui.sepTo")}</span>
-                        <ion-input data-testid=${`staff-schedules-day-break-end-${d3.day}`} mode="md" fill="outline" type="time" aria-label=${t5("ui.ariaBreakEnd")} .value=${d3.breakEnd} @ionInput=${(e5) => this.patchDay(d3.day, { breakEnd: e5.target.value })}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
+                        <ion-input data-testid=${`staff-schedules-day-break-end-${d3.day}`} data-role="day-time" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} aria-label=${t5("ui.ariaBreakEnd")} .value=${this.timeFieldValue(d3, "breakEnd")} @ionInput=${(e5) => this.onTimeInput(d3.day, "breakEnd", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft(d3.day, "breakEnd")} @paste=${(e5) => this.onTimePaste(d3.day, "breakEnd", e5)}></ion-input>` : b2`<span class="sep">${t5("ui.notWorking")}</span>`}
                 </div>`
     )}
             </div>
@@ -5943,6 +6035,9 @@ __decorateClass([
 ], ErpStaffSchedules.prototype, "week", 2);
 __decorateClass([
   r5()
+], ErpStaffSchedules.prototype, "timeDrafts", 2);
+__decorateClass([
+  r5()
 ], ErpStaffSchedules.prototype, "hours", 2);
 __decorateClass([
   r5()
@@ -5980,6 +6075,7 @@ var ErpStaffTimeOff = class extends i3 {
     this.members = [];
     this.draft = { ...EMPTY_DRAFT };
     this.dateDrafts = {};
+    this.timeDrafts = {};
     this.saving = false;
     this.onLocaleChange = () => this.requestUpdate();
   }
@@ -6096,6 +6192,35 @@ var ErpStaffTimeOff = class extends i3 {
     const { [field]: _typed, ...rest } = this.dateDrafts;
     this.dateDrafts = rest;
   }
+  /** staff#86 — what an hour field shows: the raw text while it is being typed, the stored hour
+   *  in the hub's clock otherwise (24 h in Spanish, never the browser's clock). */
+  timeFieldValue(field) {
+    return this.timeDrafts[field] ?? formatWallTime(this.draft[field], erplora5().locale);
+  }
+  /** staff#86 — `ionInput`: the stored hour follows the text exactly, back to '' while it is not
+   *  (yet) a time — a half-typed hour is never sent. */
+  onTimeInput(field, text) {
+    this.timeDrafts = { ...this.timeDrafts, [field]: text };
+    this.patch({ [field]: parseWallTime(text) ?? "" });
+  }
+  /** staff#86 — blur/Enter (`ionChange`): a readable text is repainted in the hub's clock; an
+   *  unreadable one stays on screen so the refusal points at it. */
+  commitTimeDraft(field) {
+    const text = this.timeDrafts[field];
+    if (text === void 0 || text.trim() && !parseWallTime(text)) return;
+    const { [field]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+  }
+  /** staff#86 — a time pasted in any spelling the parser reads is stored and repainted at once;
+   *  anything else is left to the browser's own paste. */
+  onTimePaste(field, e5) {
+    const time = parseWallTime(e5.clipboardData?.getData("text") ?? "");
+    if (!time) return;
+    e5.preventDefault();
+    const { [field]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+    this.patch({ [field]: time });
+  }
   /**
    * Lo que el usuario puede corregir se le dice AQUÍ, antes de gastar un viaje al servidor y de
    * leer un error crudo del handler. Lo que solo sabe el servidor —el solape con otra ausencia
@@ -6140,6 +6265,7 @@ var ErpStaffTimeOff = class extends i3 {
       this.pageError = "";
       this.draft = { ...EMPTY_DRAFT };
       this.dateDrafts = {};
+      this.timeDrafts = {};
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e5) {
@@ -6209,10 +6335,14 @@ var ErpStaffTimeOff = class extends i3 {
         <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.colTo")} .value=${this.dateFieldValue("end_date")} @ionInput=${(e5) => this.onDateInput("end_date", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("end_date")}></ion-input>
       </div>
       <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e5) => this.patch({ is_full_day: !!e5.detail.checked })}>${t5("ui.fullDay")}</ion-toggle>
-      ${this.draft.is_full_day ? A : b2`<div class="grid2" data-section="hours">
-            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeFrom")} .value=${this.draft.start_time} @ionInput=${(e5) => this.patch({ start_time: e5.target.value })}></ion-input>
-            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t5("ui.timeTo")} .value=${this.draft.end_time} @ionInput=${(e5) => this.patch({ end_time: e5.target.value })}></ion-input>
-          </div>`}
+      ${this.draft.is_full_day ? A : (
+      // staff#86: TEXT hour fields in the hub's clock, never type="time" (the browser paints
+      // a native time field with its own operating-system clock).
+      b2`<div class="grid2" data-section="hours">
+            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} label=${t5("ui.timeFrom")} .value=${this.timeFieldValue("start_time")} @ionInput=${(e5) => this.onTimeInput("start_time", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft("start_time")} @paste=${(e5) => this.onTimePaste("start_time", e5)}></ion-input>
+            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.timePlaceholder")} label=${t5("ui.timeTo")} .value=${this.timeFieldValue("end_time")} @ionInput=${(e5) => this.onTimeInput("end_time", String(e5.target.value ?? ""))} @ionChange=${() => this.commitTimeDraft("end_time")} @paste=${(e5) => this.onTimePaste("end_time", e5)}></ion-input>
+          </div>`
+    )}
       <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.reason")} .value=${this.draft.reason} @ionInput=${(e5) => this.patch({ reason: e5.target.value })}></ion-textarea>
       <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
            and a banner on the page underneath it is never seen. -->
@@ -6242,6 +6372,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "dateDrafts", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "timeDrafts", 2);
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "saving", 2);
