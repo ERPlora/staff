@@ -223,6 +223,16 @@ for (const locale of ['es', 'en'] as const) {
       expect(shown(el, 'staff-schedules-day-start-0')).toBe(want.eight);
     });
 
+    it('after a save the next template starts with the default hours (no stale text)', async () => {
+      const el = await mount<SchedulesWc>('erp-staff-schedules');
+      await editTemplate(el, 'h1');
+      await type(el, 'staff-schedules-day-start-0', '930');
+      await el.createSchedule(new Event('submit'));
+      await el.updateComplete;
+      expect(el.formError).toBe('');
+      expect(shown(el, 'staff-schedules-day-start-0')).toBe(want.nine);
+    });
+
     it('the time fields are numeric text in md mode, never a native type=time', async () => {
       const el = await mount<SchedulesWc>('erp-staff-schedules');
       await editTemplate(el, 'h1');
