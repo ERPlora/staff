@@ -9,6 +9,7 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { LEAVE_TYPE_KEY, REQUEST_STATUS_KEY, enumLabel, enumOptions, formatDate } from '../../lib/enums';
+import { formatWallTime, parseWallTime } from '../../lib/wall-time';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -47,6 +48,8 @@ interface TimeOffDraft {
   end_time: string;
   reason: string;
 }
+
+type TimeField = 'start_time' | 'end_time';
 
 const EMPTY_DRAFT: TimeOffDraft = {
   staff_id: '', leave_type: 'vacation', start_date: '', end_date: '',
@@ -100,6 +103,10 @@ export class ErpStaffTimeOff extends LitElement {
 
   /** The absence being typed in the panel (staff#36). */
   @state() draft: TimeOffDraft = { ...EMPTY_DRAFT };
+
+  /** staff#86 — the text being typed into an hour field, kept apart from the draft (which only
+   *  ever holds a valid 'HH:MM' or ''). Emptied with the draft after a save. */
+  @state() private timeDrafts: Partial<Record<TimeField, string>> = {};
 
   @state() saving = false;
 
@@ -198,6 +205,39 @@ export class ErpStaffTimeOff extends LitElement {
     this.draft = { ...this.draft, ...p };
   }
 
+  /** staff#86 — what an hour field shows: the raw text while it is being typed, the stored hour
+   *  in the hub's clock otherwise (24 h in Spanish, never the browser's clock). */
+  private timeFieldValue(field: TimeField): string {
+    return this.timeDrafts[field] ?? formatWallTime(this.draft[field], erplora().locale);
+  }
+
+  /** staff#86 — `ionInput`: the stored hour follows the text exactly, back to '' while it is not
+   *  (yet) a time — a half-typed hour is never sent. */
+  private onTimeInput(field: TimeField, text: string): void {
+    this.timeDrafts = { ...this.timeDrafts, [field]: text };
+    this.patch({ [field]: parseWallTime(text) ?? '' });
+  }
+
+  /** staff#86 — blur/Enter (`ionChange`): a readable text is repainted in the hub's clock; an
+   *  unreadable one stays on screen so the refusal points at it. */
+  private commitTimeDraft(field: TimeField): void {
+    const text = this.timeDrafts[field];
+    if (text === undefined || (text.trim() && !parseWallTime(text))) return;
+    const { [field]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+  }
+
+  /** staff#86 — a time pasted in any spelling the parser reads is stored and repainted at once;
+   *  anything else is left to the browser's own paste. */
+  private onTimePaste(field: TimeField, e: Event): void {
+    const time = parseWallTime((e as ClipboardEvent).clipboardData?.getData('text') ?? '');
+    if (!time) return;
+    e.preventDefault();
+    const { [field]: _gone, ...rest } = this.timeDrafts;
+    this.timeDrafts = rest;
+    this.patch({ [field]: time });
+  }
+
   /**
    * Lo que el usuario puede corregir se le dice AQUÍ, antes de gastar un viaje al servidor y de
    * leer un error crudo del handler. Lo que solo sabe el servidor —el solape con otra ausencia
@@ -242,6 +282,7 @@ export class ErpStaffTimeOff extends LitElement {
       // A save that went fine retires the refusal of an earlier row action (staff#72 review).
       this.pageError = '';
       this.draft = { ...EMPTY_DRAFT };
+      this.timeDrafts = {};
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e) {
@@ -319,9 +360,11 @@ export class ErpStaffTimeOff extends LitElement {
       <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e: any) => this.patch({ is_full_day: !!e.detail.checked })}>${t('ui.fullDay')}</ion-toggle>
       ${this.draft.is_full_day
         ? nothing
-        : html`<div class="grid2" data-section="hours">
-            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeFrom')} .value=${this.draft.start_time} @ionInput=${(e: any) => this.patch({ start_time: e.target.value })}></ion-input>
-            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="time" label=${t('ui.timeTo')} .value=${this.draft.end_time} @ionInput=${(e: any) => this.patch({ end_time: e.target.value })}></ion-input>
+        : // staff#86: TEXT hour fields in the hub's clock, never type="time" (the browser paints
+          // a native time field with its own operating-system clock).
+          html`<div class="grid2" data-section="hours">
+            <ion-input data-testid="staff-time-off-start-time" data-field="start_time" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} label=${t('ui.timeFrom')} .value=${this.timeFieldValue('start_time')} @ionInput=${(e: any) => this.onTimeInput('start_time', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft('start_time')} @paste=${(e: Event) => this.onTimePaste('start_time', e)}></ion-input>
+            <ion-input data-testid="staff-time-off-end-time" data-field="end_time" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.timePlaceholder')} label=${t('ui.timeTo')} .value=${this.timeFieldValue('end_time')} @ionInput=${(e: any) => this.onTimeInput('end_time', String(e.target.value ?? ''))} @ionChange=${() => this.commitTimeDraft('end_time')} @paste=${(e: Event) => this.onTimePaste('end_time', e)}></ion-input>
           </div>`}
       <ion-textarea data-testid="staff-time-off-reason" data-field="reason" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.reason')} .value=${this.draft.reason} @ionInput=${(e: any) => this.patch({ reason: e.target.value })}></ion-textarea>
       <!-- staff#72: the refusal travels WITH the form — on a phone the panel is a full-screen sheet
