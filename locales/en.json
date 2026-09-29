@@ -180,6 +180,8 @@
     "deleteScheduleTitle": "Delete schedule",
     "deleteScheduleMessage": "Delete the schedule \"{name}\"? Its hours stop counting for availability.",
     "valRangeOrder": "\"Effective from\" must be on or before \"Effective until\".",
+    "valDateUnreadable": "A date can't be read — write it as mm/dd/yyyy (e.g. 10/05/2026).",
+    "datePlaceholder": "mm/dd/yyyy",
     "errUpdateSchedule": "Could not update the schedule",
     "employeeId": "Employee ID",
     "roleNone": "No role",

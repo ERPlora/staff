@@ -181,6 +181,8 @@
     "deleteScheduleTitle": "Eliminar horario",
     "deleteScheduleMessage": "¿Eliminar el horario «{name}»? Sus horas dejan de contar para la disponibilidad.",
     "valRangeOrder": "«Vigente desde» tiene que ser anterior o igual a «Vigente hasta».",
+    "valDateUnreadable": "Hay una fecha que no se entiende — escríbela como dd/mm/aaaa (p. ej. 05/10/2026).",
+    "datePlaceholder": "dd/mm/aaaa",
     "errUpdateSchedule": "No se pudo actualizar el horario",
     "employeeId": "Nº de empleado",
     "roleNone": "Sin rol",

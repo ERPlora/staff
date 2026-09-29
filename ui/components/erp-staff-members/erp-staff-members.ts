@@ -9,6 +9,7 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { MEMBER_STATUS_KEY, enumLabel } from '../../lib/enums';
+import { formatCalendarDate, isUnreadableDate, parseCalendarDate } from '../../lib/calendar-date';
 import { hubDecimals } from '../../lib/hub-currency';
 // What a person types or pastes into a money field, read the one way every module reads it (pm#521).
 import { formatMoneyInput, normaliseMoneyInput, parseMoneyInput } from '@erplora/module-toolkit/money-input';
@@ -216,6 +217,11 @@ export class ErpStaffMembers extends LitElement {
   /** The record being typed (create) or edited. */
   @state() form: MemberForm = { ...EMPTY_FORM };
 
+  /** staff#87 — the text being typed into the hire date, kept apart from the form (which only ever
+   *  holds a real 'YYYY-MM-DD' or ''): a half-typed «24/12» stays on screen. `null` = no draft, the
+   *  field paints the stored date. Emptied whenever another member is loaded into the form. */
+  @state() private hireDateDraft: string | null = null;
+
   /** Id del miembro en edición; vacío = el panel está dando de ALTA (mismo panel, dos modos). */
   @state() editingId = '';
 
@@ -364,6 +370,7 @@ export class ErpStaffMembers extends LitElement {
     const seq = ++this.editSeq;
     this.editingId = m.id;
     this.formError = '';
+    this.hireDateDraft = null;
     this.form = {
       ...EMPTY_FORM,
       first_name: m.first_name ?? '', last_name: m.last_name ?? '', email: m.email ?? '', phone: m.phone ?? '',
@@ -425,6 +432,26 @@ export class ErpStaffMembers extends LitElement {
     }
   }
 
+  /** staff#87 — what the hire date shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  private hireDateValue(): string {
+    return this.hireDateDraft ?? formatCalendarDate(this.form.hire_date, erplora().locale);
+  }
+
+  /** staff#87 — `ionInput`: the stored date follows the text exactly, back to '' while it is not
+   *  (yet) a date — a half-typed date never keeps the last valid one. */
+  private onHireDateInput(text: string): void {
+    this.hireDateDraft = text;
+    this.patch({ hire_date: parseCalendarDate(text, erplora().locale) ?? '' });
+  }
+
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  private commitHireDateDraft(): void {
+    if (this.hireDateDraft === null || isUnreadableDate(this.hireDateDraft, erplora().locale)) return;
+    this.hireDateDraft = null;
+  }
+
   private patch(p: Partial<MemberForm>): void {
     this.form = { ...this.form, ...p };
   }
@@ -460,6 +487,7 @@ export class ErpStaffMembers extends LitElement {
     this.formError = '';
     this.servicesError = '';
     this.form = { ...EMPTY_FORM };
+    this.hireDateDraft = null;
     this.memberServices = [];
     this.rememberLink('');
   }
@@ -708,6 +736,11 @@ export class ErpStaffMembers extends LitElement {
     ev.preventDefault();
     const f = this.form;
     if (!f.first_name.trim() || !f.last_name.trim()) return;
+    // staff#87: the hire date is optional — an unreadable one would be saved as «no hire date».
+    if (isUnreadableDate(this.hireDateDraft ?? '', erplora().locale)) {
+      this.formError = erplora().t(CATALOG, 'ui.valDateUnreadable');
+      return;
+    }
     // The rate travels only when the session could read it (see below); a field it cannot read is
     // refused before anything is sent. Empty = no rate (0): the column is NOT NULL.
     const rate = this.canSeeCompensation ? readMoneyField(String(f.hourly_rate)) : null;
@@ -814,7 +847,9 @@ export class ErpStaffMembers extends LitElement {
                 : nothing}
               <ion-toggle data-testid="staff-members-bookable" label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e: any) => this.patch({ is_bookable: !!e.detail.checked })}>${t('ui.bookable')}</ion-toggle>
               <ion-input data-testid="staff-members-booking-buffer" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t('ui.bookingBuffer')} .value=${this.form.booking_buffer} @ionInput=${(e: any) => this.patch({ booking_buffer: e.target.value })}></ion-input>
-              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.hireDate')} .value=${this.form.hire_date} @ionInput=${(e: any) => this.patch({ hire_date: e.target.value })}></ion-input>
+              <!-- staff#87: a TEXT date field in the hub's day/month order, never type="date": the browser
+                   paints a native date field in its own (operating system) order. -->
+              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.hireDate')} .value=${this.hireDateValue()} @ionInput=${(e: any) => this.onHireDateInput(String(e.target.value ?? ''))} @ionChange=${() => this.commitHireDateDraft()}></ion-input>
               <ion-input data-testid="staff-members-color" mode="md" fill="outline" label-placement="floating" type="color" label=${t('ui.colColor')} .value=${this.form.color || '#000000'} @ionInput=${(e: any) => this.patch({ color: e.target.value })}></ion-input>
               <ion-input data-testid="staff-members-specialties" mode="md" fill="outline" label-placement="floating" label=${t('ui.specialties')} .value=${this.form.specialties} @ionInput=${(e: any) => this.patch({ specialties: e.target.value })}></ion-input>
               <ion-textarea data-testid="staff-members-bio" mode="md" fill="outline" label-placement="floating" auto-grow label=${t('ui.bio')} .value=${this.form.bio} @ionInput=${(e: any) => this.patch({ bio: e.target.value })}></ion-textarea>

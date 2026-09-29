@@ -4077,6 +4077,8 @@ var es_default = {
     deleteScheduleTitle: "Eliminar horario",
     deleteScheduleMessage: "\xBFEliminar el horario \xAB{name}\xBB? Sus horas dejan de contar para la disponibilidad.",
     valRangeOrder: "\xABVigente desde\xBB tiene que ser anterior o igual a \xABVigente hasta\xBB.",
+    valDateUnreadable: "Hay una fecha que no se entiende \u2014 escr\xEDbela como dd/mm/aaaa (p. ej. 05/10/2026).",
+    datePlaceholder: "dd/mm/aaaa",
     errUpdateSchedule: "No se pudo actualizar el horario",
     employeeId: "N\xBA de empleado",
     roleNone: "Sin rol",
@@ -4323,6 +4325,8 @@ var en_default = {
     deleteScheduleTitle: "Delete schedule",
     deleteScheduleMessage: 'Delete the schedule "{name}"? Its hours stop counting for availability.',
     valRangeOrder: '"Effective from" must be on or before "Effective until".',
+    valDateUnreadable: "A date can't be read \u2014 write it as mm/dd/yyyy (e.g. 10/05/2026).",
+    datePlaceholder: "mm/dd/yyyy",
     errUpdateSchedule: "Could not update the schedule",
     employeeId: "Employee ID",
     roleNone: "No role",
@@ -4433,6 +4437,66 @@ function formatDate(value) {
   } catch {
     return iso;
   }
+}
+
+// ui/lib/calendar-date.ts
+function pad2(n6) {
+  return String(n6).padStart(2, "0");
+}
+function isLeapYear(year) {
+  return year % 4 === 0 && year % 100 !== 0 || year % 400 === 0;
+}
+function toIsoDate(year, month, day) {
+  if (month < 1 || month > 12 || day < 1) return null;
+  const days = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day > days[month - 1]) return null;
+  return `${String(year).padStart(4, "0")}-${pad2(month)}-${pad2(day)}`;
+}
+function isDayFirst(locale) {
+  try {
+    const parts = new Intl.DateTimeFormat(locale || void 0, { year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(
+      new Date(Date.UTC(2026, 8, 26))
+    );
+    const month = parts.findIndex((p4) => p4.type === "month");
+    const day = parts.findIndex((p4) => p4.type === "day");
+    return month === -1 || day === -1 || day < month;
+  } catch {
+    return true;
+  }
+}
+var STORED = /^(\d{4})-(\d{2})-(\d{2})$/;
+function formatCalendarDate(iso, locale) {
+  const match = iso.match(STORED);
+  if (!match) return "";
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  if (!toIsoDate(year, month, day)) return "";
+  try {
+    const parts = new Intl.DateTimeFormat(locale || void 0, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC"
+    }).formatToParts(new Date(Date.UTC(year, month - 1, day)));
+    const ordered = parts.filter((p4) => p4.type === "day" || p4.type === "month" || p4.type === "year").map((p4) => p4.value);
+    if (ordered.length === 3) return ordered.join("/");
+  } catch {
+  }
+  return `${pad2(day)}/${pad2(month)}/${String(year).padStart(4, "0")}`;
+}
+var TYPED = /^(?:(\d{1,2})\s*[/.\-\s]\s*(\d{1,2})\s*[/.\-\s]\s*(\d{4})|(\d{2})(\d{2})(\d{4}))$/;
+function parseCalendarDate(text, locale) {
+  const trimmed = text.trim();
+  const iso = trimmed.match(STORED);
+  if (iso) return toIsoDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  const match = trimmed.match(TYPED);
+  if (!match) return null;
+  const first = Number(match[1] ?? match[4]);
+  const second = Number(match[2] ?? match[5]);
+  const year = Number(match[3] ?? match[6]);
+  return isDayFirst(locale) ? toIsoDate(year, second, first) : toIsoDate(year, first, second);
+}
+function isUnreadableDate(text, locale) {
+  return text.trim() !== "" && parseCalendarDate(text, locale) === null;
 }
 
 // ui/lib/hub-currency.ts
@@ -4631,6 +4695,7 @@ var ErpStaffMembers = class extends i3 {
     this.formError = "";
     this.pageError = "";
     this.form = { ...EMPTY_FORM };
+    this.hireDateDraft = null;
     this.editingId = "";
     this.pendingAction = null;
     this.saving = false;
@@ -4775,6 +4840,7 @@ var ErpStaffMembers = class extends i3 {
     const seq = ++this.editSeq;
     this.editingId = m4.id;
     this.formError = "";
+    this.hireDateDraft = null;
     this.form = {
       ...EMPTY_FORM,
       first_name: m4.first_name ?? "",
@@ -4846,6 +4912,23 @@ var ErpStaffMembers = class extends i3 {
       return "";
     }
   }
+  /** staff#87 — what the hire date shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  hireDateValue() {
+    return this.hireDateDraft ?? formatCalendarDate(this.form.hire_date, erplora2().locale);
+  }
+  /** staff#87 — `ionInput`: the stored date follows the text exactly, back to '' while it is not
+   *  (yet) a date — a half-typed date never keeps the last valid one. */
+  onHireDateInput(text) {
+    this.hireDateDraft = text;
+    this.patch({ hire_date: parseCalendarDate(text, erplora2().locale) ?? "" });
+  }
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  commitHireDateDraft() {
+    if (this.hireDateDraft === null || isUnreadableDate(this.hireDateDraft, erplora2().locale)) return;
+    this.hireDateDraft = null;
+  }
   patch(p4) {
     this.form = { ...this.form, ...p4 };
   }
@@ -4878,6 +4961,7 @@ var ErpStaffMembers = class extends i3 {
     this.formError = "";
     this.servicesError = "";
     this.form = { ...EMPTY_FORM };
+    this.hireDateDraft = null;
     this.memberServices = [];
     this.rememberLink("");
   }
@@ -5100,6 +5184,10 @@ var ErpStaffMembers = class extends i3 {
     ev.preventDefault();
     const f3 = this.form;
     if (!f3.first_name.trim() || !f3.last_name.trim()) return;
+    if (isUnreadableDate(this.hireDateDraft ?? "", erplora2().locale)) {
+      this.formError = erplora2().t(CATALOG2, "ui.valDateUnreadable");
+      return;
+    }
     const rate = this.canSeeCompensation ? readMoneyField(String(f3.hourly_rate)) : null;
     if (rate && !rate.ok) {
       this.formError = rate.message;
@@ -5194,7 +5282,9 @@ var ErpStaffMembers = class extends i3 {
               ${this.editingId ? b2`<ion-select data-testid="staff-members-status" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colStatus")} .value=${this.form.status} @ionChange=${(e5) => this.patch({ status: e5.target.value })}>${STATUS_OPTIONS.map((st) => b2`<ion-select-option .value=${st}>${enumLabel(MEMBER_STATUS_KEY, st)}</ion-select-option>`)}</ion-select>` : A}
               <ion-toggle data-testid="staff-members-bookable" label-placement="end" .checked=${this.form.is_bookable} @ionChange=${(e5) => this.patch({ is_bookable: !!e5.detail.checked })}>${t5("ui.bookable")}</ion-toggle>
               <ion-input data-testid="staff-members-booking-buffer" mode="md" fill="outline" label-placement="floating" type="number" inputmode="numeric" min="0" label=${t5("ui.bookingBuffer")} .value=${this.form.booking_buffer} @ionInput=${(e5) => this.patch({ booking_buffer: e5.target.value })}></ion-input>
-              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.hireDate")} .value=${this.form.hire_date} @ionInput=${(e5) => this.patch({ hire_date: e5.target.value })}></ion-input>
+              <!-- staff#87: a TEXT date field in the hub's day/month order, never type="date": the browser
+                   paints a native date field in its own (operating system) order. -->
+              <ion-input data-testid="staff-members-hire-date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.hireDate")} .value=${this.hireDateValue()} @ionInput=${(e5) => this.onHireDateInput(String(e5.target.value ?? ""))} @ionChange=${() => this.commitHireDateDraft()}></ion-input>
               <ion-input data-testid="staff-members-color" mode="md" fill="outline" label-placement="floating" type="color" label=${t5("ui.colColor")} .value=${this.form.color || "#000000"} @ionInput=${(e5) => this.patch({ color: e5.target.value })}></ion-input>
               <ion-input data-testid="staff-members-specialties" mode="md" fill="outline" label-placement="floating" label=${t5("ui.specialties")} .value=${this.form.specialties} @ionInput=${(e5) => this.patch({ specialties: e5.target.value })}></ion-input>
               <ion-textarea data-testid="staff-members-bio" mode="md" fill="outline" label-placement="floating" auto-grow label=${t5("ui.bio")} .value=${this.form.bio} @ionInput=${(e5) => this.patch({ bio: e5.target.value })}></ion-textarea>
@@ -5244,6 +5334,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "form", 2);
+__decorateClass([
+  r5()
+], ErpStaffMembers.prototype, "hireDateDraft", 2);
 __decorateClass([
   r5()
 ], ErpStaffMembers.prototype, "editingId", 2);
@@ -5415,12 +5508,12 @@ __decorateClass([
 define("erp-staff-roles", ErpStaffRoles);
 
 // ui/lib/wall-time.ts
-function pad2(n6) {
+function pad22(n6) {
   return String(n6).padStart(2, "0");
 }
-var STORED = /^(\d{2}):(\d{2})(?::\d{2})?$/;
+var STORED2 = /^(\d{2}):(\d{2})(?::\d{2})?$/;
 function formatWallTime(time, locale) {
-  const match = time.match(STORED);
+  const match = time.match(STORED2);
   if (!match) return time;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
@@ -5433,11 +5526,11 @@ function formatWallTime(time, locale) {
     }).format(new Date(Date.UTC(2026, 0, 1, hour, minute)));
   } catch {
   }
-  return `${pad2(hour)}:${pad2(minute)}`;
+  return `${pad22(hour)}:${pad22(minute)}`;
 }
-var TYPED = /^(?:(\d{1,2})(?:[:.](\d{2})(?::\d{2})?)?|(\d{1,2})(\d{2}))(?:\s*([ap])\.?\s?m\.?)?$/i;
+var TYPED2 = /^(?:(\d{1,2})(?:[:.](\d{2})(?::\d{2})?)?|(\d{1,2})(\d{2}))(?:\s*([ap])\.?\s?m\.?)?$/i;
 function parseWallTime(text) {
-  const match = text.trim().match(TYPED);
+  const match = text.trim().match(TYPED2);
   if (!match) return null;
   const [, hourText, minuteText, packedHour, packedMinute, meridiem] = match;
   let hour = Number(hourText ?? packedHour);
@@ -5450,7 +5543,7 @@ function parseWallTime(text) {
   } else if (hour > 23) {
     return null;
   }
-  return `${pad2(hour)}:${pad2(minute)}`;
+  return `${pad22(hour)}:${pad22(minute)}`;
 }
 
 // ui/components/erp-staff-schedules/erp-staff-schedules.ts
@@ -5458,6 +5551,7 @@ var CATALOG4 = { es: es_default, en: en_default };
 var hhmm = (t5) => t5 ? String(t5).slice(0, 5) : "";
 var DAY_TIME_FIELDS = ["start", "end", "breakStart", "breakEnd"];
 var DAY_KEYS = ["ui.dayMonday", "ui.dayTuesday", "ui.dayWednesday", "ui.dayThursday", "ui.dayFriday", "ui.daySaturday", "ui.daySunday"];
+var DATE_FIELDS = ["effectiveFrom", "effectiveUntil"];
 function defaultWeek() {
   return DAY_KEYS.map((_key, day) => ({
     day,
@@ -5488,6 +5582,7 @@ var ErpStaffSchedules = class extends i3 {
     this.newDefault = true;
     this.effectiveFrom = "";
     this.effectiveUntil = "";
+    this.dateDrafts = {};
     this.week = defaultWeek();
     this.timeDrafts = {};
     this.hours = [];
@@ -5672,6 +5767,30 @@ var ErpStaffSchedules = class extends i3 {
     }
     return "";
   }
+  /** staff#87 — what a date field shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  dateFieldValue(field) {
+    return this.dateDrafts[field] ?? formatCalendarDate(this[field], erplora4().locale);
+  }
+  /** staff#87 — `ionInput`: the text is kept as the draft and the stored date follows it exactly,
+   *  back to '' while it is not (yet) a date — a half-typed date never keeps the last valid one. */
+  onDateInput(field, text) {
+    this.dateDrafts = { ...this.dateDrafts, [field]: text };
+    this[field] = parseCalendarDate(text, erplora4().locale) ?? "";
+  }
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  commitDateDraft(field) {
+    const text = this.dateDrafts[field];
+    if (text === void 0 || isUnreadableDate(text, erplora4().locale)) return;
+    const { [field]: _typed, ...rest } = this.dateDrafts;
+    this.dateDrafts = rest;
+  }
+  /** staff#87 — both dates are optional: without this an unreadable «until» would be saved as a
+   *  schedule with no end, without a word. */
+  hasUnreadableDate() {
+    return DATE_FIELDS.some((field) => isUnreadableDate(this.dateDrafts[field] ?? "", erplora4().locale));
+  }
   /** Row actions (staff#2): edit loads the template + ITS week into the panel; toggle flips
    *  `is_active`; delete parks the row for the confirmation alert. */
   async onRowAction(ev) {
@@ -5684,6 +5803,7 @@ var ErpStaffSchedules = class extends i3 {
       this.newDefault = Number(row.is_default) === 1;
       this.effectiveFrom = row.effective_from ?? "";
       this.effectiveUntil = row.effective_until ?? "";
+      this.dateDrafts = {};
       const mine = this.hours.filter((h4) => h4.schedule_id === row.id);
       this.timeDrafts = {};
       this.week = DAY_KEYS.map((_k, day) => {
@@ -5724,6 +5844,7 @@ var ErpStaffSchedules = class extends i3 {
     this.newDefault = true;
     this.effectiveFrom = "";
     this.effectiveUntil = "";
+    this.dateDrafts = {};
     this.week = defaultWeek();
     this.timeDrafts = {};
   }
@@ -5757,6 +5878,10 @@ var ErpStaffSchedules = class extends i3 {
   async createSchedule(ev) {
     ev.preventDefault();
     if (!this.staffId) return;
+    if (this.hasUnreadableDate()) {
+      this.formError = erplora4().t(CATALOG4, "ui.valDateUnreadable");
+      return;
+    }
     if (this.effectiveFrom && this.effectiveUntil && this.effectiveFrom > this.effectiveUntil) {
       this.formError = erplora4().t(CATALOG4, "ui.valRangeOrder");
       return;
@@ -5828,8 +5953,10 @@ var ErpStaffSchedules = class extends i3 {
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
           <form data-testid="staff-schedules-form" slot="create" class="form" @submit=${(e5) => this.createSchedule(e5)}>
             <ion-input data-testid="staff-schedules-name" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colSchedule")} placeholder=${t5("ui.phScheduleName")} .value=${this.newName} @ionInput=${(e5) => this.newName = e5.target.value}></ion-input>
-            <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e5) => this.effectiveFrom = e5.target.value}></ion-input>
-            <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="date" label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e5) => this.effectiveUntil = e5.target.value}></ion-input>
+            <!-- staff#87: TEXT date fields in the hub's day/month order, never type="date": the browser
+                 paints a native date field in its own (operating system) order. -->
+            <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.labelEffectiveFrom")} label-placement="floating" .value=${this.dateFieldValue("effectiveFrom")} @ionInput=${(e5) => this.onDateInput("effectiveFrom", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("effectiveFrom")}></ion-input>
+            <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.labelEffectiveUntil")} label-placement="floating" .value=${this.dateFieldValue("effectiveUntil")} @ionInput=${(e5) => this.onDateInput("effectiveUntil", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("effectiveUntil")}></ion-input>
             <ion-checkbox data-testid="staff-schedules-default" label-placement="end" .checked=${this.newDefault} @ionChange=${(e5) => this.newDefault = e5.detail.checked}>${t5("ui.labelDefault")}</ion-checkbox>
             <!-- staff#86: TEXT time fields painted in the hub's clock, never type="time": the browser
                  paints a native time field with its own (operating system) clock. -->
@@ -5902,6 +6029,9 @@ __decorateClass([
 ], ErpStaffSchedules.prototype, "effectiveUntil", 2);
 __decorateClass([
   r5()
+], ErpStaffSchedules.prototype, "dateDrafts", 2);
+__decorateClass([
+  r5()
 ], ErpStaffSchedules.prototype, "week", 2);
 __decorateClass([
   r5()
@@ -5919,6 +6049,7 @@ define("erp-staff-schedules", ErpStaffSchedules);
 
 // ui/components/erp-staff-time-off/erp-staff-time-off.ts
 var CATALOG5 = { es: es_default, en: en_default };
+var DATE_FIELDS2 = ["start_date", "end_date"];
 var EMPTY_DRAFT = {
   staff_id: "",
   leave_type: "vacation",
@@ -5943,6 +6074,7 @@ var ErpStaffTimeOff = class extends i3 {
     this.tick = 0;
     this.members = [];
     this.draft = { ...EMPTY_DRAFT };
+    this.dateDrafts = {};
     this.timeDrafts = {};
     this.saving = false;
     this.onLocaleChange = () => this.requestUpdate();
@@ -6041,6 +6173,25 @@ var ErpStaffTimeOff = class extends i3 {
   patch(p4) {
     this.draft = { ...this.draft, ...p4 };
   }
+  /** staff#87 — what a date field shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  dateFieldValue(field) {
+    return this.dateDrafts[field] ?? formatCalendarDate(this.draft[field], erplora5().locale);
+  }
+  /** staff#87 — `ionInput`: the stored date follows the text exactly, back to '' while it is not
+   *  (yet) a date — a half-typed date never keeps the last valid one. */
+  onDateInput(field, text) {
+    this.dateDrafts = { ...this.dateDrafts, [field]: text };
+    this.patch({ [field]: parseCalendarDate(text, erplora5().locale) ?? "" });
+  }
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  commitDateDraft(field) {
+    const text = this.dateDrafts[field];
+    if (text === void 0 || isUnreadableDate(text, erplora5().locale)) return;
+    const { [field]: _typed, ...rest } = this.dateDrafts;
+    this.dateDrafts = rest;
+  }
   /** staff#86 — what an hour field shows: the raw text while it is being typed, the stored hour
    *  in the hub's clock otherwise (24 h in Spanish, never the browser's clock). */
   timeFieldValue(field) {
@@ -6080,6 +6231,7 @@ var ErpStaffTimeOff = class extends i3 {
   validationKey() {
     const d3 = this.draft;
     if (!d3.staff_id) return "ui.valTimeOffMember";
+    if (DATE_FIELDS2.some((field) => isUnreadableDate(this.dateDrafts[field] ?? "", erplora5().locale))) return "ui.valDateUnreadable";
     if (!d3.start_date || !d3.end_date) return "ui.valTimeOffDates";
     if (d3.start_date > d3.end_date) return "ui.valTimeOffRange";
     if (!d3.is_full_day) {
@@ -6112,6 +6264,7 @@ var ErpStaffTimeOff = class extends i3 {
       });
       this.pageError = "";
       this.draft = { ...EMPTY_DRAFT };
+      this.dateDrafts = {};
       this.timeDrafts = {};
       this.dataTable()?.close();
       await this.ctrl.load();
@@ -6176,8 +6329,10 @@ var ErpStaffTimeOff = class extends i3 {
         ${enumOptions(LEAVE_TYPE_KEY).map((o7) => b2`<ion-select-option .value=${o7.value}>${o7.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
-        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colFrom")} .value=${this.draft.start_date} @ionInput=${(e5) => this.patch({ start_date: e5.target.value })}></ion-input>
-        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t5("ui.colTo")} .value=${this.draft.end_date} @ionInput=${(e5) => this.patch({ end_date: e5.target.value })}></ion-input>
+        <!-- staff#87: TEXT date fields in the hub's day/month order, never type="date": the browser
+             paints a native date field in its own (operating system) order. -->
+        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.colFrom")} .value=${this.dateFieldValue("start_date")} @ionInput=${(e5) => this.onDateInput("start_date", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("start_date")}></ion-input>
+        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t5("ui.datePlaceholder")} label=${t5("ui.colTo")} .value=${this.dateFieldValue("end_date")} @ionInput=${(e5) => this.onDateInput("end_date", String(e5.target.value ?? ""))} @ionChange=${() => this.commitDateDraft("end_date")}></ion-input>
       </div>
       <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e5) => this.patch({ is_full_day: !!e5.detail.checked })}>${t5("ui.fullDay")}</ion-toggle>
       ${this.draft.is_full_day ? A : (
@@ -6214,6 +6369,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "draft", 2);
+__decorateClass([
+  r5()
+], ErpStaffTimeOff.prototype, "dateDrafts", 2);
 __decorateClass([
   r5()
 ], ErpStaffTimeOff.prototype, "timeDrafts", 2);

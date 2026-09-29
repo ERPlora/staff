@@ -8,6 +8,7 @@ import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { formatDate } from '../../lib/enums';
+import { formatCalendarDate, isUnreadableDate, parseCalendarDate } from '../../lib/calendar-date';
 import { formatWallTime, parseWallTime } from '../../lib/wall-time';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
@@ -70,6 +71,10 @@ const DAY_TIME_FIELDS: readonly DayTimeField[] = ['start', 'end', 'breakStart', 
 // Claves i18n por día (0=Lunes..6=Domingo, como la BD). El texto se resuelve reactivamente con
 // `erplora.t()` (ADR-0055), no en carga del módulo (el cliente aún no existe entonces).
 const DAY_KEYS = ['ui.dayMonday', 'ui.dayTuesday', 'ui.dayWednesday', 'ui.dayThursday', 'ui.dayFriday', 'ui.daySaturday', 'ui.daySunday'];
+
+/** staff#87 — the two date fields of a template, named by the state each one fills. */
+type DateField = 'effectiveFrom' | 'effectiveUntil';
+const DATE_FIELDS: readonly DateField[] = ['effectiveFrom', 'effectiveUntil'];
 
 function defaultWeek(): DayRow[] {
   return DAY_KEYS.map((_key, day) => ({
@@ -139,6 +144,11 @@ export class ErpStaffSchedules extends LitElement {
   @state() effectiveFrom = '';
 
   @state() effectiveUntil = '';
+
+  /** staff#87 — the text being typed into a date field, kept apart from the stored ISO date (which
+   *  only ever holds a real 'YYYY-MM-DD' or ''): a half-typed «24/12» stays on screen. Emptied
+   *  whenever another schedule is loaded into the form. */
+  @state() private dateDrafts: Partial<Record<DateField, string>> = {};
 
   @state() week: DayRow[] = defaultWeek();
 
@@ -335,6 +345,34 @@ export class ErpStaffSchedules extends LitElement {
     return '';
   }
 
+  /** staff#87 — what a date field shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  private dateFieldValue(field: DateField): string {
+    return this.dateDrafts[field] ?? formatCalendarDate(this[field], erplora().locale);
+  }
+
+  /** staff#87 — `ionInput`: the text is kept as the draft and the stored date follows it exactly,
+   *  back to '' while it is not (yet) a date — a half-typed date never keeps the last valid one. */
+  private onDateInput(field: DateField, text: string): void {
+    this.dateDrafts = { ...this.dateDrafts, [field]: text };
+    this[field] = parseCalendarDate(text, erplora().locale) ?? '';
+  }
+
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  private commitDateDraft(field: DateField): void {
+    const text = this.dateDrafts[field];
+    if (text === undefined || isUnreadableDate(text, erplora().locale)) return;
+    const { [field]: _typed, ...rest } = this.dateDrafts;
+    this.dateDrafts = rest;
+  }
+
+  /** staff#87 — both dates are optional: without this an unreadable «until» would be saved as a
+   *  schedule with no end, without a word. */
+  private hasUnreadableDate(): boolean {
+    return DATE_FIELDS.some((field) => isUnreadableDate(this.dateDrafts[field] ?? '', erplora().locale));
+  }
+
   /** Row actions (staff#2): edit loads the template + ITS week into the panel; toggle flips
    *  `is_active`; delete parks the row for the confirmation alert. */
   async onRowAction(ev: CustomEvent<{ actionId: string; row: Record<string, unknown> }>): Promise<void> {
@@ -347,6 +385,7 @@ export class ErpStaffSchedules extends LitElement {
       this.newDefault = Number(row.is_default) === 1;
       this.effectiveFrom = row.effective_from ?? '';
       this.effectiveUntil = row.effective_until ?? '';
+      this.dateDrafts = {};
       const mine = this.hours.filter((h) => h.schedule_id === row.id);
       this.timeDrafts = {};
       this.week = DAY_KEYS.map((_k, day) => {
@@ -391,6 +430,7 @@ export class ErpStaffSchedules extends LitElement {
     this.newDefault = true;
     this.effectiveFrom = '';
     this.effectiveUntil = '';
+    this.dateDrafts = {};
     this.week = defaultWeek();
     this.timeDrafts = {};
   }
@@ -431,6 +471,10 @@ export class ErpStaffSchedules extends LitElement {
   async createSchedule(ev: Event) {
     ev.preventDefault();
     if (!this.staffId) return;
+    if (this.hasUnreadableDate()) {
+      this.formError = erplora().t(CATALOG, 'ui.valDateUnreadable');
+      return;
+    }
     if (this.effectiveFrom && this.effectiveUntil && this.effectiveFrom > this.effectiveUntil) {
       this.formError = erplora().t(CATALOG, 'ui.valRangeOrder');
       return;
@@ -510,8 +554,10 @@ export class ErpStaffSchedules extends LitElement {
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
           <form data-testid="staff-schedules-form" slot="create" class="form" @submit=${(e: Event) => this.createSchedule(e)}>
             <ion-input data-testid="staff-schedules-name" mode="md" fill="outline" label-placement="floating" label=${t('ui.colSchedule')} placeholder=${t('ui.phScheduleName')} .value=${this.newName} @ionInput=${(e: any) => (this.newName = e.target.value)}></ion-input>
-            <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="date" label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.effectiveFrom} @ionInput=${(e: any) => (this.effectiveFrom = e.target.value)}></ion-input>
-            <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="date" label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.effectiveUntil} @ionInput=${(e: any) => (this.effectiveUntil = e.target.value)}></ion-input>
+            <!-- staff#87: TEXT date fields in the hub's day/month order, never type="date": the browser
+                 paints a native date field in its own (operating system) order. -->
+            <ion-input data-testid="staff-schedules-effective-from" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.labelEffectiveFrom')} label-placement="floating" .value=${this.dateFieldValue('effectiveFrom')} @ionInput=${(e: any) => this.onDateInput('effectiveFrom', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('effectiveFrom')}></ion-input>
+            <ion-input data-testid="staff-schedules-effective-until" mode="md" fill="outline" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.labelEffectiveUntil')} label-placement="floating" .value=${this.dateFieldValue('effectiveUntil')} @ionInput=${(e: any) => this.onDateInput('effectiveUntil', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('effectiveUntil')}></ion-input>
             <ion-checkbox data-testid="staff-schedules-default" label-placement="end" .checked=${this.newDefault} @ionChange=${(e: any) => (this.newDefault = e.detail.checked)}>${t('ui.labelDefault')}</ion-checkbox>
             <!-- staff#86: TEXT time fields painted in the hub's clock, never type="time": the browser
                  paints a native time field with its own (operating system) clock. -->
