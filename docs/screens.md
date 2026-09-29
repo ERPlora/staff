@@ -18,7 +18,12 @@ filter on a value you cannot see would be an oracle for guessing it.
 ### Create an employee
 
 1. Open **Staff** and add one.
-2. Fill in first name and last name; email, phone and hire date are optional.
+2. Fill in first name and last name; email, phone and hire date are optional. Dates in Staff (the
+   hire date, an absence's dates, a schedule's validity) are shown and typed in the order of the
+   hub's language, whatever the browser's: day first in Spanish (`05/10/2026`), month first in
+   English (`10/05/2026`). Digits only (`05102026`, handy on a phone keypad) and an ISO date
+   (`2026-10-05`) are read too; leaving the field repaints it. A date that is not complete or does
+   not exist stops the save with a message instead of being dropped.
 3. Pick the **role** (a catalogue label) and whether the person is **bookable**, with a booking
    buffer if needed.
 4. Optionally link the **hub user** this record belongs to — the selector lists only **active**
@@ -106,7 +111,7 @@ The operational view: **who is away and when** (`staff.time_off.list`, 50 rows p
 ### File an absence
 
 1. Pick the member, the **leave type** (`vacation`, `sick`, `personal`, `training`, `other`) and the
-   dates.
+   dates — typed in the order of the hub's language, as every date in Staff.
 2. Mark it full-day, or give start and end times.
 3. Save.
 
@@ -138,7 +143,8 @@ Weekly schedule templates per member.
    (asks first).
 
 The rules are checked in the screen and again in the server: start before end, the break inside the
-interval, no duplicated weekday, at least one working day, and «effective from» not after
+interval, no duplicated weekday, at least one working day, the validity dates readable (typed in
+the order of the hub's language, as every date in Staff), and «effective from» not after
 «effective until». Requires `staff.manage_settings` to create/edit, `staff.view_staff_member` to view.
 
 ### When can this person work — effective availability

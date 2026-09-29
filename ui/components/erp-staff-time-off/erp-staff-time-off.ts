@@ -9,6 +9,7 @@ import { createListController } from '@erplora/module-sdk';
 import type { ListController, ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { LEAVE_TYPE_KEY, REQUEST_STATUS_KEY, enumLabel, enumOptions, formatDate } from '../../lib/enums';
+import { formatCalendarDate, isUnreadableDate, parseCalendarDate } from '../../lib/calendar-date';
 import esLocale from '../../../locales/es.json';
 import enLocale from '../../../locales/en.json';
 const CATALOG: Record<string, unknown> = { es: esLocale, en: enLocale };
@@ -47,6 +48,10 @@ interface TimeOffDraft {
   end_time: string;
   reason: string;
 }
+
+/** staff#87 — the two date fields of an absence. */
+type DateField = 'start_date' | 'end_date';
+const DATE_FIELDS: readonly DateField[] = ['start_date', 'end_date'];
 
 const EMPTY_DRAFT: TimeOffDraft = {
   staff_id: '', leave_type: 'vacation', start_date: '', end_date: '',
@@ -100,6 +105,11 @@ export class ErpStaffTimeOff extends LitElement {
 
   /** The absence being typed in the panel (staff#36). */
   @state() draft: TimeOffDraft = { ...EMPTY_DRAFT };
+
+  /** staff#87 — the text being typed into a date field, kept apart from the draft (which only ever
+   *  holds a real 'YYYY-MM-DD' or ''): a half-typed «24/12» stays on screen. Emptied with the draft
+   *  after a save. */
+  @state() private dateDrafts: Partial<Record<DateField, string>> = {};
 
   @state() saving = false;
 
@@ -198,6 +208,28 @@ export class ErpStaffTimeOff extends LitElement {
     this.draft = { ...this.draft, ...p };
   }
 
+  /** staff#87 — what a date field shows: the raw text while it is being typed, the stored date in
+   *  the hub's day/month order otherwise (never the browser's, as a native date field). */
+  private dateFieldValue(field: DateField): string {
+    return this.dateDrafts[field] ?? formatCalendarDate(this.draft[field], erplora().locale);
+  }
+
+  /** staff#87 — `ionInput`: the stored date follows the text exactly, back to '' while it is not
+   *  (yet) a date — a half-typed date never keeps the last valid one. */
+  private onDateInput(field: DateField, text: string): void {
+    this.dateDrafts = { ...this.dateDrafts, [field]: text };
+    this.patch({ [field]: parseCalendarDate(text, erplora().locale) ?? '' });
+  }
+
+  /** staff#87 — blur/Enter (`ionChange`): forget the draft so the field repaints the stored date in
+   *  the hub's order. An unreadable text stays, so the save can say why it refuses. */
+  private commitDateDraft(field: DateField): void {
+    const text = this.dateDrafts[field];
+    if (text === undefined || isUnreadableDate(text, erplora().locale)) return;
+    const { [field]: _typed, ...rest } = this.dateDrafts;
+    this.dateDrafts = rest;
+  }
+
   /**
    * Lo que el usuario puede corregir se le dice AQUÍ, antes de gastar un viaje al servidor y de
    * leer un error crudo del handler. Lo que solo sabe el servidor —el solape con otra ausencia
@@ -208,6 +240,8 @@ export class ErpStaffTimeOff extends LitElement {
   private validationKey(): string {
     const d = this.draft;
     if (!d.staff_id) return 'ui.valTimeOffMember';
+    // staff#87: a typed text that is not a date is named as such, not as a missing date.
+    if (DATE_FIELDS.some((field) => isUnreadableDate(this.dateDrafts[field] ?? '', erplora().locale))) return 'ui.valDateUnreadable';
     if (!d.start_date || !d.end_date) return 'ui.valTimeOffDates';
     if (d.start_date > d.end_date) return 'ui.valTimeOffRange';
     if (!d.is_full_day) {
@@ -242,6 +276,7 @@ export class ErpStaffTimeOff extends LitElement {
       // A save that went fine retires the refusal of an earlier row action (staff#72 review).
       this.pageError = '';
       this.draft = { ...EMPTY_DRAFT };
+      this.dateDrafts = {};
       this.dataTable()?.close();
       await this.ctrl.load();
     } catch (e) {
@@ -313,8 +348,10 @@ export class ErpStaffTimeOff extends LitElement {
         ${enumOptions(LEAVE_TYPE_KEY).map((o) => html`<ion-select-option .value=${o.value}>${o.label}</ion-select-option>`)}
       </ion-select>
       <div class="grid2">
-        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colFrom')} .value=${this.draft.start_date} @ionInput=${(e: any) => this.patch({ start_date: e.target.value })}></ion-input>
-        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="date" label=${t('ui.colTo')} .value=${this.draft.end_date} @ionInput=${(e: any) => this.patch({ end_date: e.target.value })}></ion-input>
+        <!-- staff#87: TEXT date fields in the hub's day/month order, never type="date": the browser
+             paints a native date field in its own (operating system) order. -->
+        <ion-input data-testid="staff-time-off-start-date" data-field="start_date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.colFrom')} .value=${this.dateFieldValue('start_date')} @ionInput=${(e: any) => this.onDateInput('start_date', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('start_date')}></ion-input>
+        <ion-input data-testid="staff-time-off-end-date" data-field="end_date" mode="md" fill="outline" label-placement="floating" type="text" inputmode="numeric" autocomplete="off" placeholder=${t('ui.datePlaceholder')} label=${t('ui.colTo')} .value=${this.dateFieldValue('end_date')} @ionInput=${(e: any) => this.onDateInput('end_date', String(e.target.value ?? ''))} @ionChange=${() => this.commitDateDraft('end_date')}></ion-input>
       </div>
       <ion-toggle data-testid="staff-time-off-full-day" data-field="is_full_day" label-placement="end" .checked=${this.draft.is_full_day} @ionChange=${(e: any) => this.patch({ is_full_day: !!e.detail.checked })}>${t('ui.fullDay')}</ion-toggle>
       ${this.draft.is_full_day
