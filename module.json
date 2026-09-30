@@ -70,7 +70,7 @@
     },
     {
       "id": "schedules",
-      "label": "Horarios",
+      "label": "Schedules",
       "icon": "time-outline",
       "component": "erp-staff-schedules"
     }
