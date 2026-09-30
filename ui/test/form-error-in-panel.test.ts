@@ -186,14 +186,20 @@ describe('staff#72 · a refused save is shown INSIDE the form, where the phone c
     expect(inForm(el, 'staff-schedules')).toBeNull();
   });
 
-  it('schedules: a failure loading the list is shown on the page, not in the closed panel', async () => {
+  it('schedules: a failure loading the list is not an action refusal and never lands in the closed panel', async () => {
     (globalThis as any).erplora.query = async (name: string) => {
       if (name === 'staff.schedules.list_for_member') throw new Error('network');
       return name === 'staff.members.list' ? MEMBERS : [];
     };
     const el = await mount('erp-staff-schedules', '../components/erp-staff-schedules/erp-staff-schedules');
-    expect(onPage(el, 'staff-schedules')).not.toBeNull();
+    // staff#93: the table says it with its Retry (the older-shell banner is anchored in
+    // schedules-load-error.test.ts); the page banner is only for what an action was refused.
+    const table = el.shadowRoot.querySelector('ok-data-table') as HTMLElement & { error?: string };
+    const loadBanner = el.shadowRoot.querySelector('[data-testid="staff-schedules-load-error"]');
+    expect(table.error === 'network' || loadBanner?.textContent?.includes('network'), 'the failure is shown nowhere').toBe(true);
+    expect(onPage(el, 'staff-schedules'), 'a failed load reads as a refused action').toBeNull();
     expect(inForm(el, 'staff-schedules')).toBeNull();
+    expect(loadBanner?.closest('form[slot="create"]') ?? null, 'the notice sits in the closed panel').toBeNull();
   });
 
   it('time off: validation and server refusal land in the form; a refused approval on the page', async () => {

@@ -5,6 +5,7 @@ import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-data-table';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
+import { dataTableShowsLoadError } from '@erplora/module-sdk';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
 import { domainMessage } from '../../lib/domain-error';
 import { formatDate } from '../../lib/enums';
@@ -132,8 +133,12 @@ export class ErpStaffSchedules extends LitElement {
 
   /** What went wrong saving the form: painted INSIDE the form (staff#72). */
   @state() formError = '';
-  /** What went wrong loading the list or in a row action (no panel open): painted on the page. */
+  /** What a row action was refused (no panel open): painted on the page. */
   @state() pageError = '';
+  /** Why the members could not load (staff#93): the table says it, with its Retry. */
+  @state() private membersLoadError = '';
+  /** Why the chosen member's schedules could not load (staff#93): the table says it, with its Retry. */
+  @state() private schedulesLoadError = '';
 
   @state() saving = false;
 
@@ -218,7 +223,7 @@ export class ErpStaffSchedules extends LitElement {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener('erplora:locale-changed', this.onLocaleChange);
-    await this.loadMembers();
+    await this.load();
     try {
       const reload = () => this.loadSchedules();
       const off1 = erplora().on('staff.schedule.created', reload);
@@ -240,19 +245,30 @@ export class ErpStaffSchedules extends LitElement {
     this.unsub?.();
   }
 
+  /** Why the tab could not load, or ''. A refused ACTION is not here: it stays in `pageError`. */
+  private get loadError(): string {
+    return this.membersLoadError || this.schedulesLoadError;
+  }
+
+  /** Opening the tab, and the table's Retry: only reads — it never repeats an action nor clears
+   *  what an action answered (rv-schedules-61). */
+  private async load() {
+    await this.loadMembers();
+    await this.loadSchedules();
+  }
+
   private async loadMembers() {
+    this.membersLoadError = '';
     try {
       this.members = (await erplora().query<StaffMember[]>('staff.members.list')) ?? [];
-      if (!this.staffId && this.members.length) {
-        this.staffId = this.members[0].id;
-        await this.loadSchedules();
-      }
+      if (!this.staffId && this.members.length) this.staffId = this.members[0].id;
     } catch (e) {
-      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
+      this.membersLoadError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
     }
   }
 
   private async loadSchedules() {
+    this.schedulesLoadError = '';
     if (!this.staffId) {
       this.schedules = [];
       return;
@@ -266,7 +282,7 @@ export class ErpStaffSchedules extends LitElement {
       this.schedules = schedules ?? [];
       this.hours = hours ?? [];
     } catch (e) {
-      this.pageError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadSchedules');
+      this.schedulesLoadError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadSchedules');
     } finally {
       this.loading = false;
     }
@@ -545,10 +561,11 @@ export class ErpStaffSchedules extends LitElement {
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.pageError ? html`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
-        ${!this.members.length ? html`<p data-testid="staff-schedules-no-members" class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
+        ${this.loadError && !dataTableShowsLoadError() ? html`<ok-inline-feedback data-testid="staff-schedules-load-error" tone="danger" icon="alert-circle-outline">${this.loadError}</ok-inline-feedback>` : nothing}
+        ${!this.members.length && !this.membersLoadError ? html`<p data-testid="staff-schedules-no-members" class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
+        <ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->

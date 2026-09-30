@@ -136,6 +136,7 @@ const COVERED: Record<
       'staff-schedules-effective-until',
       'staff-schedules-form',
       'staff-schedules-form-error',
+      'staff-schedules-load-error',
       'staff-schedules-member',
       'staff-schedules-name',
       'staff-schedules-no-members',
