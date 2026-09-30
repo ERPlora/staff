@@ -31,10 +31,13 @@ function shellTableKnowsErrors(yes: boolean) {
 const REASON = 'The hub is not responding.';
 const REFUSED = 'The hub refused the change.';
 const MEMBER = { id: 'm1', full_name: 'Ana Ruiz' };
+const MEMBER_2 = { id: 'm2', full_name: 'Luis Gil' };
 const SCHEDULE = { id: 's1', staff_id: 'm1', name: 'Morning shift', is_default: 1, is_active: 1, effective_from: null, effective_until: null };
 
 let failing = new Set<string>();
 let queryCalls: string[] = [];
+let queryParams: Array<[string, unknown]> = [];
+let members: Array<typeof MEMBER> = [MEMBER];
 let commandCalls: string[] = [];
 let refuseCommands = false;
 
@@ -47,13 +50,16 @@ beforeEach(() => {
   document.body.innerHTML = '';
   failing = new Set();
   queryCalls = [];
+  queryParams = [];
+  members = [MEMBER];
   commandCalls = [];
   refuseCommands = false;
   (globalThis as Record<string, unknown>).erplora = {
-    query: async (name: string) => {
+    query: async (name: string, params?: unknown) => {
       queryCalls.push(name);
+      queryParams.push([name, params]);
       if (failing.has(name)) throw new Error(REASON);
-      if (name === 'staff.members.list') return [MEMBER];
+      if (name === 'staff.members.list') return members;
       if (name === 'staff.schedules.list_for_member') return [SCHEDULE];
       return [];
     },
@@ -171,6 +177,27 @@ describe('erp-staff-schedules — schedules that could not load (staff#93)', () 
     await retry(el, table);
     expect(queryCalls).toContain('staff.schedules.list_for_member');
     expect(tableRows(table)).toEqual([SCHEDULE]);
+  });
+
+  it('Retry after a schedules failure keeps the member the person picked', async () => {
+    shellTableKnowsErrors(true);
+    members = [MEMBER, MEMBER_2];
+    const { el, table } = await mount('staff.schedules.list_for_member');
+    const select = el.shadowRoot.querySelector('[data-testid="staff-schedules-member"]') as HTMLElement & { value: string };
+    failing.add('staff.schedules.list_for_member');
+    select.value = 'm2';
+    select.dispatchEvent(new CustomEvent('ionChange', { detail: { value: 'm2' } }));
+    await vi.waitFor(async () => {
+      await settle(el);
+      if (tableError(table) !== REASON) throw new Error('the failure for the second member is not on the table');
+    });
+    queryParams = [];
+    await retry(el, table);
+    const asked = queryParams.filter(([name]) => name === 'staff.schedules.list_for_member').map(([, p]) => p);
+    // Retry re-reads the members too; that must not jump back to the first one.
+    expect(asked, 'Retry asked for another member').toEqual([{ staff_id: 'm2' }]);
+    await settle(el);
+    expect(select.value, 'Retry switched the picked member').toBe('m2');
   });
 
   it('a refused row action stays in the page banner, and Retry does not erase it', async () => {
