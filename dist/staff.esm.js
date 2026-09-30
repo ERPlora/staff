@@ -5663,6 +5663,8 @@ var ErpStaffSchedules = class extends i3 {
     this.loading = false;
     this.formError = "";
     this.pageError = "";
+    this.membersLoadError = "";
+    this.schedulesLoadError = "";
     this.saving = false;
     this.newName = "";
     this.newDefault = true;
@@ -5739,7 +5741,7 @@ var ErpStaffSchedules = class extends i3 {
   async connectedCallback() {
     super.connectedCallback();
     window.addEventListener("erplora:locale-changed", this.onLocaleChange);
-    await this.loadMembers();
+    await this.load();
     try {
       const reload = () => this.loadSchedules();
       const off1 = erplora4().on("staff.schedule.created", reload);
@@ -5758,18 +5760,27 @@ var ErpStaffSchedules = class extends i3 {
     super.disconnectedCallback();
     this.unsub?.();
   }
+  /** Why the tab could not load, or ''. A refused ACTION is not here: it stays in `pageError`. */
+  get loadError() {
+    return this.membersLoadError || this.schedulesLoadError;
+  }
+  /** Opening the tab, and the table's Retry: only reads — it never repeats an action nor clears
+   *  what an action answered (rv-schedules-61). */
+  async load() {
+    await this.loadMembers();
+    await this.loadSchedules();
+  }
   async loadMembers() {
+    this.membersLoadError = "";
     try {
       this.members = await erplora4().query("staff.members.list") ?? [];
-      if (!this.staffId && this.members.length) {
-        this.staffId = this.members[0].id;
-        await this.loadSchedules();
-      }
+      if (!this.staffId && this.members.length) this.staffId = this.members[0].id;
     } catch (e5) {
-      this.pageError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
+      this.membersLoadError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
     }
   }
   async loadSchedules() {
+    this.schedulesLoadError = "";
     if (!this.staffId) {
       this.schedules = [];
       return;
@@ -5783,7 +5794,7 @@ var ErpStaffSchedules = class extends i3 {
       this.schedules = schedules ?? [];
       this.hours = hours ?? [];
     } catch (e5) {
-      this.pageError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadSchedules");
+      this.schedulesLoadError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadSchedules");
     } finally {
       this.loading = false;
     }
@@ -6030,10 +6041,11 @@ var ErpStaffSchedules = class extends i3 {
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
         </header>
         ${this.pageError ? b2`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
-        ${!this.members.length ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
+        ${this.loadError && !dataTableShowsLoadError() ? b2`<ok-inline-feedback data-testid="staff-schedules-load-error" tone="danger" icon="alert-circle-outline">${this.loadError}</ok-inline-feedback>` : A}
+        ${!this.members.length && !this.membersLoadError ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
+        <ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
@@ -6098,6 +6110,12 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "pageError", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "membersLoadError", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "schedulesLoadError", 2);
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "saving", 2);
