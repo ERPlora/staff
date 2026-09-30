@@ -4193,21 +4193,26 @@ var es_default = {
   widgets: {
     "staff.headcount": {
       title: "Plantilla activa",
-      label: "Empleados activos"
+      label: "Empleados activos",
+      category: "Personal"
     },
     "staff.on_leave_today": {
       title: "Ausentes hoy",
-      label: "Ausentes hoy"
+      label: "Ausentes hoy",
+      category: "Personal"
     },
     "staff.pending_time_off": {
       title: "Ausencias pendientes",
-      label: "Solicitudes por aprobar"
+      label: "Solicitudes por aprobar",
+      category: "Personal"
     },
     "staff.time_off_today": {
-      title: "Ausencias de hoy"
+      title: "Ausencias de hoy",
+      category: "Personal"
     },
     "staff.by_role": {
-      title: "Empleados por rol"
+      title: "Empleados por rol",
+      category: "Personal"
     }
   },
   errors: {
