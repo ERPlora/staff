@@ -1,7 +1,7 @@
 # Staff — Screens
 
 The module contributes four tabs to the hub navigation — **Staff**, **Roles**, **Time Off** and
-**Horarios** — plus a **Personal** settings tab the shell generates from the declarative settings
+**Schedules** — plus a **Personal** settings tab the shell generates from the declarative settings
 block.
 
 ## Staff — the directory
@@ -127,7 +127,7 @@ Change the status. Approving stamps who approved it and when. Requires `staff.ma
 `staff.time_off.today` lists **approved** absences whose range covers today. It says who is missing,
 never why.
 
-## Horarios — schedules
+## Schedules — staff schedules
 
 Weekly schedule templates per member.
 
