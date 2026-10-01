@@ -93,11 +93,14 @@ describe('no staff members: one empty state instead of an empty table', () => {
     expect(go!.textContent?.trim()).toBe('ui.actionAddFirstMember');
     let popped = 0;
     const onPop = () => popped++;
+    const depth = window.history.length;
     window.addEventListener('popstate', onPop);
     go!.click();
     window.removeEventListener('popstate', onPop);
     expect(window.location.pathname).toBe('/m/staff/staff');
     expect(popped, 'the shell is not told to route').toBe(1);
+    // A new history entry, not a replaced one: Back from the staff tab returns to Schedules.
+    expect(window.history.length, 'Back no longer returns to Schedules').toBe(depth + 1);
   });
 });
 
