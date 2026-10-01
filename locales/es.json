@@ -129,6 +129,8 @@
     "valYes": "Sí",
     "valNo": "No",
     "hintNoMembers": "Da de alta miembros del staff para poder asignarles horarios.",
+    "noMembersTitle": "Aún no hay miembros del staff",
+    "actionAddFirstMember": "Dar de alta un miembro",
     "emptySchedules": "Este miembro aún no tiene horarios.",
     "newScheduleTitle": "Nuevo horario",
     "phScheduleName": "Nombre del horario",

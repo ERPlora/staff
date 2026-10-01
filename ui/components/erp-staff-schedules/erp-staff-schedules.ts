@@ -4,6 +4,7 @@ import { state } from 'lit/decorators.js';
 import { define } from '@erplora/outfitkit/define';
 import '@erplora/outfitkit/ok-inline-feedback';
 import '@erplora/outfitkit/ok-data-table';
+import '@erplora/outfitkit/ok-empty-state';
 import type { DataTableColumn, DataTableAction } from '@erplora/outfitkit';
 import { dataTableShowsLoadError } from '@erplora/module-sdk';
 import type { ListClient, ListParams, ListPage } from '@erplora/module-sdk';
@@ -120,7 +121,6 @@ export class ErpStaffSchedules extends LitElement {
     .day ion-input { max-width:8rem; }
     .day .sep { color:var(--ion-color-medium,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
-    .hint { color:var(--ion-color-medium,#6f6a5e); font-size:.9rem; }
   `;
 
   @state() members: StaffMember[] = [];
@@ -137,6 +137,8 @@ export class ErpStaffSchedules extends LitElement {
   @state() pageError = '';
   /** Why the members could not load (staff#93): the table says it, with its Retry. */
   @state() private membersLoadError = '';
+  /** The members list has answered at least once: until then «none» is not known (staff#98). */
+  @state() private membersLoaded = false;
   /** Why the chosen member's schedules could not load (staff#93): the table says it, with its Retry. */
   @state() private schedulesLoadError = '';
 
@@ -261,6 +263,7 @@ export class ErpStaffSchedules extends LitElement {
     this.membersLoadError = '';
     try {
       this.members = (await erplora().query<StaffMember[]>('staff.members.list')) ?? [];
+      this.membersLoaded = true;
       if (!this.staffId && this.members.length) this.staffId = this.members[0].id;
     } catch (e) {
       this.membersLoadError = e instanceof Error ? e.message : erplora().t(CATALOG, 'ui.errLoadMembers');
@@ -286,6 +289,19 @@ export class ErpStaffSchedules extends LitElement {
     } finally {
       this.loading = false;
     }
+  }
+
+  /** staff#98: with no member there is nobody to schedule — the tab is one empty state, not an
+   *  empty table that talks about «this member». */
+  private get noMembers(): boolean {
+    return this.membersLoaded && !this.members.length && !this.membersLoadError;
+  }
+
+  /** Opens the staff tab. A Web Component does not get the router: push the URL and tell the
+   *  shell with `popstate` (same channel as appointments → sales). */
+  private goToMembers(): void {
+    window.history.pushState({}, '', '/m/staff/staff');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
   private async onMemberChange(id: string) {
@@ -557,15 +573,18 @@ export class ErpStaffSchedules extends LitElement {
     return html`<div class="page">
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
-        <header>
+        ${this.noMembers
+          ? html`<ok-empty-state data-testid="staff-schedules-no-members" icon="people-outline" heading=${t('ui.noMembersTitle')} message=${t('ui.hintNoMembers')}>
+              <ion-button data-testid="staff-schedules-go-members" slot="action" @click=${() => this.goToMembers()}>${t('ui.actionAddFirstMember')}</ion-button>
+            </ok-empty-state>`
+          : html`<header>
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t('ui.colMember')} .value=${this.staffId} @ionChange=${(e: any) => this.onMemberChange(e.target.value)}>${this.members.map((m) => html`<ion-select-option .value=${m.id}>${m.full_name}</ion-select-option>`)}</ion-select>
-        </header>
+        </header>`}
         ${this.pageError ? html`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : nothing}
         ${this.loadError && !dataTableShowsLoadError() ? html`<ok-inline-feedback data-testid="staff-schedules-load-error" tone="danger" icon="alert-circle-outline">${this.loadError}</ok-inline-feedback>` : nothing}
-        ${!this.members.length && !this.membersLoadError ? html`<p data-testid="staff-schedules-no-members" class="hint">${t('ui.hintNoMembers')}</p>` : nothing}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
+        ${this.noMembers ? nothing : html`<ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r: Record<string, unknown>) => String(r.name ?? '—')} .cardIcon=${() => 'calendar-number-outline'} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading || !this.membersLoaded ? t('ui.loading') : t('ui.emptySchedules')} @rowAction=${(e: CustomEvent<{ actionId: string; row: Record<string, unknown> }>) => this.onRowAction(e)} @rowClick=${(e: CustomEvent<{ row: Record<string, unknown> }>) => this.onRowAction({ detail: { actionId: 'edit', row: e.detail.row } } as CustomEvent<{ actionId: string; row: Record<string, unknown> }>)}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
@@ -599,7 +618,7 @@ export class ErpStaffSchedules extends LitElement {
             ${this.formError ? html`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : nothing}
             <ion-button data-testid="staff-schedules-submit" type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t('ui.actionSaving') : this.editingId ? t('ui.actionSave') : t('ui.actionCreateSchedule')}</ion-button>
           </form>
-        </ok-data-table>
+        </ok-data-table>`}
         <ion-alert
           data-testid="staff-schedules-delete-alert"
           .isOpen=${this.pendingDelete !== null}
