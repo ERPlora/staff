@@ -128,6 +128,8 @@
     "valYes": "Yes",
     "valNo": "No",
     "hintNoMembers": "Add staff members so you can assign them schedules.",
+    "noMembersTitle": "No staff members yet",
+    "actionAddFirstMember": "Add staff member",
     "emptySchedules": "This member has no schedules yet.",
     "newScheduleTitle": "New schedule",
     "phScheduleName": "Schedule name",

@@ -4607,6 +4607,8 @@ var es_default = {
     valYes: "S\xED",
     valNo: "No",
     hintNoMembers: "Da de alta miembros del staff para poder asignarles horarios.",
+    noMembersTitle: "A\xFAn no hay miembros del staff",
+    actionAddFirstMember: "Dar de alta un miembro",
     emptySchedules: "Este miembro a\xFAn no tiene horarios.",
     newScheduleTitle: "Nuevo horario",
     phScheduleName: "Nombre del horario",
@@ -4860,6 +4862,8 @@ var en_default = {
     valYes: "Yes",
     valNo: "No",
     hintNoMembers: "Add staff members so you can assign them schedules.",
+    noMembersTitle: "No staff members yet",
+    actionAddFirstMember: "Add staff member",
     emptySchedules: "This member has no schedules yet.",
     newScheduleTitle: "New schedule",
     phScheduleName: "Schedule name",
@@ -6094,6 +6098,106 @@ __decorateClass([
 ], ErpStaffRoles.prototype, "saving", 2);
 define("erp-staff-roles", ErpStaffRoles);
 
+// @erplora/outfitkit/dist/ok-empty-state.js
+var __defProp4 = Object.defineProperty;
+var __decorateClass4 = (decorators, target, key, kind) => {
+  var result = void 0;
+  for (var i7 = decorators.length - 1, decorator; i7 >= 0; i7--)
+    if (decorator = decorators[i7])
+      result = decorator(target, key, result) || result;
+  if (result) __defProp4(target, key, result);
+  return result;
+};
+var OkEmptyState = class extends i3 {
+  constructor() {
+    super(...arguments);
+    this.icon = "file-tray-outline";
+  }
+  static {
+    this.styles = i`
+    /* Ancho máximo del contenedor; bloque a 100%. */
+    :host {
+      display: block;
+      width: 100%;
+      /* Tokens propios estilo Ionic (overridables): --ok-* → --ion-* → hex. */
+      --icon-color: var(--ok-color-medium, var(--ion-color-medium, #92949c));
+      --heading-color: var(--ok-text-color, var(--ion-text-color, #1f2933));
+      --message-color: var(--ok-color-medium, var(--ion-color-medium, #92949c));
+      --icon-size: 64px;
+      --padding: 2.5rem 1.25rem;
+    }
+
+    /* Centrado vertical y horizontal del contenido. */
+    .wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 0.5rem;
+      padding: var(--padding);
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    ion-icon {
+      font-size: var(--icon-size);
+      color: var(--icon-color);
+      opacity: 0.5; /* atenuado */
+      margin-bottom: 0.25rem;
+    }
+
+    .heading {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--heading-color);
+    }
+
+    .message {
+      margin: 0;
+      font-size: 0.9375rem;
+      color: var(--message-color);
+      max-width: 38ch;
+    }
+
+    /* Acción debajo del texto. */
+    .action {
+      margin-top: 1rem;
+    }
+
+    /* Oculta los wrappers si no hay contenido. */
+    .heading:empty,
+    .message:empty {
+      display: none;
+    }
+  `;
+  }
+  render() {
+    return b2`
+      <div class="wrap">
+        <ion-icon .icon=${okIcon(this.icon)} aria-hidden="true"></ion-icon>
+        ${this.heading ? b2`<h2 class="heading">${this.heading}</h2>` : null}
+        ${this.message ? b2`<p class="message">${this.message}</p>` : null}
+        <slot></slot>
+        <div class="action">
+          <slot name="action"></slot>
+        </div>
+      </div>
+    `;
+  }
+};
+__decorateClass4([
+  n4()
+], OkEmptyState.prototype, "icon");
+__decorateClass4([
+  n4()
+], OkEmptyState.prototype, "heading");
+__decorateClass4([
+  n4()
+], OkEmptyState.prototype, "message");
+define("ok-empty-state", OkEmptyState);
+
 // ui/lib/wall-time.ts
 function pad22(n6) {
   return String(n6).padStart(2, "0");
@@ -6165,6 +6269,7 @@ var ErpStaffSchedules = class extends i3 {
     this.formError = "";
     this.pageError = "";
     this.membersLoadError = "";
+    this.membersLoaded = false;
     this.schedulesLoadError = "";
     this.saving = false;
     this.newName = "";
@@ -6200,7 +6305,6 @@ var ErpStaffSchedules = class extends i3 {
     .day ion-input { max-width:8rem; }
     .day .sep { color:var(--ion-color-medium,#6f6a5e); font-size:.85rem; }
     .err { color:#d9480f; font-weight:600; }
-    .hint { color:var(--ion-color-medium,#6f6a5e); font-size:.9rem; }
   `;
   }
   get columns() {
@@ -6275,6 +6379,7 @@ var ErpStaffSchedules = class extends i3 {
     this.membersLoadError = "";
     try {
       this.members = await erplora4().query("staff.members.list") ?? [];
+      this.membersLoaded = true;
       if (!this.staffId && this.members.length) this.staffId = this.members[0].id;
     } catch (e5) {
       this.membersLoadError = e5 instanceof Error ? e5.message : erplora4().t(CATALOG4, "ui.errLoadMembers");
@@ -6299,6 +6404,17 @@ var ErpStaffSchedules = class extends i3 {
     } finally {
       this.loading = false;
     }
+  }
+  /** staff#98: with no member there is nobody to schedule — the tab is one empty state, not an
+   *  empty table that talks about «this member». */
+  get noMembers() {
+    return this.membersLoaded && !this.members.length && !this.membersLoadError;
+  }
+  /** Opens the staff tab. A Web Component does not get the router: push the URL and tell the
+   *  shell with `popstate` (same channel as appointments → sales). */
+  goToMembers() {
+    window.history.pushState({}, "", "/m/staff/staff");
+    window.dispatchEvent(new PopStateEvent("popstate"));
   }
   async onMemberChange(id) {
     this.staffId = id;
@@ -6538,15 +6654,16 @@ var ErpStaffSchedules = class extends i3 {
     return b2`<div class="page">
         <!-- El selector de miembro NO es un campo del alta: es el ÁMBITO de la lista
              (list_for_member no lista nada sin staff_id) → por eso se queda fuera de la tabla. -->
-        <header>
+        ${this.noMembers ? b2`<ok-empty-state data-testid="staff-schedules-no-members" icon="people-outline" heading=${t5("ui.noMembersTitle")} message=${t5("ui.hintNoMembers")}>
+              <ion-button data-testid="staff-schedules-go-members" slot="action" @click=${() => this.goToMembers()}>${t5("ui.actionAddFirstMember")}</ion-button>
+            </ok-empty-state>` : b2`<header>
           <ion-select data-testid="staff-schedules-member" mode="md" fill="outline" label-placement="floating" label=${t5("ui.colMember")} .value=${this.staffId} @ionChange=${(e5) => this.onMemberChange(e5.target.value)}>${this.members.map((m4) => b2`<ion-select-option .value=${m4.id}>${m4.full_name}</ion-select-option>`)}</ion-select>
-        </header>
+        </header>`}
         ${this.pageError ? b2`<ok-inline-feedback data-testid="staff-schedules-page-error" tone="danger" icon="alert-circle-outline">${this.pageError}</ok-inline-feedback>` : A}
         ${this.loadError && !dataTableShowsLoadError() ? b2`<ok-inline-feedback data-testid="staff-schedules-load-error" tone="danger" icon="alert-circle-outline">${this.loadError}</ok-inline-feedback>` : A}
-        ${!this.members.length && !this.membersLoadError ? b2`<p data-testid="staff-schedules-no-members" class="hint">${t5("ui.hintNoMembers")}</p>` : A}
         <!-- The «Edit» button is not the only door: rowClickable makes the whole row open the
              same edit panel (outfitkit#67 — the actions column can be off-screen at 1440 px). -->
-        <ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
+        ${this.noMembers ? A : b2`<ok-data-table testid="staff-schedules-table" .error=${this.loadError} @retry=${() => this.load()} .fill=${true} .addable=${true} .labels=${this.panelLabels} .columns=${this.columns} .views=${true} .cardTitle=${(r6) => String(r6.name ?? "\u2014")} .cardIcon=${() => "calendar-number-outline"} .actions=${this.actions} .rowClickable=${true} .rows=${this.schedules} .searchable=${false} .emptyMessage=${this.loading || !this.membersLoaded ? t5("ui.loading") : t5("ui.emptySchedules")} @rowAction=${(e5) => this.onRowAction(e5)} @rowClick=${(e5) => this.onRowAction({ detail: { actionId: "edit", row: e5.detail.row } })}>
           <!-- El formulario se proyecta SIEMPRE en el panel: si solo se pintara al abrirlo, el «+»
                abriría un panel vacío (la tabla no re-renderiza a sus hijos de luz). La semana va
                DENTRO: sus días viajan en el mismo staff.schedules.create, no son otro alta. -->
@@ -6578,7 +6695,7 @@ var ErpStaffSchedules = class extends i3 {
             ${this.formError ? b2`<ok-inline-feedback data-testid="staff-schedules-form-error" tone="danger" icon="alert-circle-outline">${this.formError}</ok-inline-feedback>` : A}
             <ion-button data-testid="staff-schedules-submit" type="submit" size="small" ?disabled=${this.saving || !this.staffId}>${this.saving ? t5("ui.actionSaving") : this.editingId ? t5("ui.actionSave") : t5("ui.actionCreateSchedule")}</ion-button>
           </form>
-        </ok-data-table>
+        </ok-data-table>`}
         <ion-alert
           data-testid="staff-schedules-delete-alert"
           .isOpen=${this.pendingDelete !== null}
@@ -6614,6 +6731,9 @@ __decorateClass([
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "membersLoadError", 2);
+__decorateClass([
+  r5()
+], ErpStaffSchedules.prototype, "membersLoaded", 2);
 __decorateClass([
   r5()
 ], ErpStaffSchedules.prototype, "schedulesLoadError", 2);
