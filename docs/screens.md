@@ -131,6 +131,9 @@ never why.
 
 Weekly schedule templates per member.
 
+With no staff member yet there is nobody to schedule: the tab shows only «No staff members yet» and
+an **Add staff member** button that opens the Staff tab — no member picker and no empty table.
+
 1. Pick the member. Their schedules are listed (`staff.schedules.list_for_member`).
 2. Create a schedule with its **working hours per day**: for each weekday (0 = Monday … 6 = Sunday), a
    start and an end time, and optionally a break.
