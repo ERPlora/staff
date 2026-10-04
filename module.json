@@ -16,6 +16,9 @@
     ]
   },
   "depends_on": [],
+  "compatibility": {
+    "min_erplora_version": "1.1.30"
+  },
   "permissions": [
     "staff.view_staff_member",
     "staff.view_compensation",
@@ -436,7 +439,10 @@
       "ai": {
         "description": "Creates a new staff member and emits a member-created event."
       },
-      "expose_api": true
+      "expose_api": true,
+      "on_unique": {
+        "uq_staff_member_hub_user": "staff.user_already_linked"
+      }
     },
     "staff.members.update": {
       "permission": "staff.change_staff_member",
@@ -461,7 +467,10 @@
       "ai": {
         "description": "Updates the details of an existing staff member."
       },
-      "expose_api": true
+      "expose_api": true,
+      "on_unique": {
+        "uq_staff_member_hub_user": "staff.user_already_linked"
+      }
     },
     "staff.members.deactivate": {
       "permission": "staff.delete_staff_member",
