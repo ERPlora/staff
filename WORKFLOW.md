@@ -6,7 +6,7 @@ Alcance MVP: transversal
 ## Para qué sirve y para quién
 La plantilla del negocio como recurso de trabajo: quién trabaja, qué rol de catálogo tiene («estilista», «camarero»), qué servicios hace cada profesional, en qué turnos, cuándo falta y qué porcentaje de comisión lleva. La usan el **administrador** y el **responsable** (dan de alta, editan, asignan servicios, ponen horarios y registran y aprueban ausencias; solo el administrador desactiva o da de baja) y el **empleado** (ve el directorio y quién falta, nunca la tarifa ni el motivo de una ausencia). Citas lee de aquí quién puede hacer cada servicio y cuándo trabaja, y el TPV y la cocina leen el directorio para nombrar a quien atiende. Es el módulo de personas del hub, no el de acceso.
 
-**Frontera con el Hub (importante).** El hub tiene su propia pantalla, **Empleados** (menú del hub; su pestaña interna también se llama «Personal»): ahí viven las cuentas de acceso, su rol de permisos y el PIN, y responde a «quién entra». Este módulo responde a «quién trabaja y atiende» y es otra tabla. La ficha de Personal puede **colgar** de una cuenta del hub (campo «Usuario del Hub», STAFF-F03) y esa unión es opcional en los dos sentidos: un profesional sin cuenta aparece solo en la agenda, y una cuenta sin ficha no atiende. Ni el hub crea fichas ni Personal crea cuentas: ningún comando del hub escribe en la tabla de fichas (en `hub/crates/runtime/src` solo aparece en el mapeo del error de unicidad, `commands.rs:2327-2397`, y en la migración de importes, `money_backfill.rs:178`) y desactivar una cuenta en el hub no toca la ficha. El **rol de Personal** es una etiqueta de catálogo y **no concede permisos**; los permisos los da el rol de la cuenta. Pendiente de enlazar al documento de la pantalla Empleados del hub desde STAFF-F01 y STAFF-F03.
+**Frontera con el Hub (importante).** El hub tiene su propia pantalla, **Empleados** (menú del hub; su pestaña interna también se llama «Personal»): ahí viven las cuentas de acceso, su rol de permisos y el PIN, y responde a «quién entra». Este módulo responde a «quién trabaja y atiende» y es otra tabla. La ficha de Personal puede **colgar** de una cuenta del hub (campo «Usuario del Hub», STAFF-F03) y esa unión es opcional en los dos sentidos: un profesional sin cuenta aparece solo en la agenda, y una cuenta sin ficha no atiende. Ninguna pantalla ni comando de negocio del hub crea, edita ni desactiva fichas, ni Personal crea cuentas, y desactivar una cuenta en el hub no toca la ficha. Las únicas vías del hub que escriben en la tabla de fichas son la restauración o importación de un paquete o blueprint (ADR-0113, `hub/crates/runtime/src/export.rs:1340-1417`), que recrea las fichas tal como estaban, enlaces a cuentas incluidos, y la migración de importes (`money_backfill.rs:178`). Fuera del formulario de Personal, una ficha también se enlaza a una cuenta por la API (`staff.members.create` y `staff.members.update`), por el asistente y por esos paquetes. El **rol de Personal** es una etiqueta de catálogo y **no concede permisos**; los permisos los da el rol de la cuenta. Pendiente de enlazar al documento de la pantalla Empleados del hub desde STAFF-F01 y STAFF-F03.
 
 ## Referencia adoptada
 - **Salón (Fresha, Vagaro, Mangomint, Square Appointments)**: ya contrastada en la regla 4 de `.claude/qa/qa-method-shared.md`. De ahí se adopta: el profesional como recurso de la agenda con sus servicios, su turno y sus ausencias; reservable o no; quien atiende queda atribuido a la venta; comisión por profesional.
@@ -49,7 +49,7 @@ Pestaña **Horarios**. Arriba el selector **Miembro** (carga el primero); la tab
 Pestaña **Ajustes**, que el hub añade sola porque el módulo declara sus ajustes. La ve todo el que entra al módulo; quien no es administrador la ve en solo lectura con «Solo un administrador puede cambiar estos ajustes.» (aunque su rol tenga el permiso `staff.manage_settings`, el formulario de ajustes del hub solo deja editar al administrador: `hub/apps/web/src/components/ModuleSettingsForm.vue:252`). Campos: «Inicio de jornada (HH:MM)», «Fin de jornada (HH:MM)», «Duración del descanso (minutos)», «Antelación mínima de reserva (horas)», «Horas máximas por día», «Umbral de horas extra (horas/semana)», «Mostrar fotos del personal», «Mostrar biografía del personal», «Permitir elegir profesional», «Avisar de nueva cita», «Avisar de cancelación»; botón **Guardar**. Cargando: «Cargando ajustes…» · Error: «No se pudieron cargar los ajustes.» o «No se pudieron guardar los ajustes.» · Guardado: «Ajustes guardados.»
 
 ### Paneles del inicio
-Los cinco paneles de Personal salen en el inicio del hub (los tres primeros vienen activos por defecto): **Plantilla activa** («Empleados activos»), **Ausentes hoy**, **Ausencias de hoy** (cronología), **Ausencias pendientes** («Solicitudes por aprobar», no activo por defecto) y **Empleados por rol** (no activo por defecto, los 10 primeros). Se refrescan solos con los avisos de alta, baja, ausencia y rol.
+Los cinco paneles de Personal salen en el inicio del hub (los tres primeros vienen activos por defecto): **Plantilla activa** («Empleados activos»), **Ausentes hoy**, **Ausencias de hoy** (cronología), **Ausencias pendientes** («Solicitudes por aprobar», no activo por defecto) y **Empleados por rol** (no activo por defecto, los 10 primeros). «Plantilla activa» se refresca con altas, desactivaciones y bajas; «Empleados por rol», además, con roles nuevos; los de ausencias, al registrar o resolver una. Ninguno de los dos primeros se refresca al editar una ficha.
 
 ## Flujos
 
@@ -69,7 +69,7 @@ El detalle de cada flujo (pasos, datos, fallos, implicados y QA) está en `workf
 | STAFF-F10 | Asignar un servicio a un profesional | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
 | STAFF-F11 | Cambiar o quitar un servicio de un profesional | parcial | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
 | STAFF-F12 | Saber quién puede hacer un servicio | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
-| STAFF-F13 | Crear el horario semanal de un profesional | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
+| STAFF-F13 | Crear el horario semanal de un profesional | parcial | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
 | STAFF-F14 | Editar un horario | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
 | STAFF-F15 | Activar, desactivar o eliminar un horario | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
 | STAFF-F16 | Saber cuándo puede trabajar un profesional | hecho | [`workflow/disponibilidad.md`](workflow/disponibilidad.md) |
@@ -115,7 +115,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 | Desactivar sin borrar | hecho | STAFF-F05 |
 | Baja definitiva con fecha y motivo | hecho | STAFF-F06 |
 | Reactivar a una persona dada de baja | no hecho — la ficha queda cerrada | STAFF-F06 |
-| Alta en lote | parcial — solo asistente, sin pantalla de importación y sin avisar de lo que pasa de 100 filas | STAFF-F07 |
+| Alta en lote | parcial — solo asistente, sin pantalla de importación; un nombre vacío o una tarifa negativa tumba el lote entero y lo que pasa de 100 filas se pierde sin avisar | STAFF-F07 |
 | Ver mis propios datos | parcial — solo asistente o API | STAFF-F08 |
 | Avisar de las citas futuras al desactivar, dar de baja o aprobar una ausencia | no hecho — Personal no mira las citas ya reservadas | STAFF-F05, STAFF-F06, STAFF-F18 |
 
@@ -128,7 +128,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 
 | Elemento (turnos y ausencias) | Estado | Flujo |
 |---|---|---|
-| Turno semanal con descanso | hecho | STAFF-F13, STAFF-F14 |
+| Turno semanal con descanso | parcial — con más de 50 personas el selector de miembro solo ofrece las 50 primeras | STAFF-F13, STAFF-F14 |
 | Turno que cruza la medianoche | no hecho — el fin tiene que ser posterior al inicio | STAFF-F13 |
 | Dos tramos en un día sin descanso de por medio | no hecho — un día es un tramo con un descanso opcional | STAFF-F13 |
 | Excepción de un día concreto | parcial — sin pantalla propia: un horario no habitual con vigencia de un solo día | STAFF-F13, STAFF-F16 |
@@ -136,7 +136,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 | Vacaciones, bajas y permisos con aprobación | hecho | STAFF-F17, STAFF-F18 |
 | Ausencia de horas, no de día entero | parcial — dos ausencias de horas distintas el mismo día se rechazan como solapadas | STAFF-F17 |
 | Que el empleado pida su propia ausencia | no hecho — solo quien gestiona ausencias las registra | STAFF-F17 |
-| Cancelar una ausencia | parcial — solo asistente o API | STAFF-F19 |
+| Cancelar una ausencia | parcial — solo con el asistente (no está en la API pública con llave) | STAFF-F19 |
 | Quién falta hoy | hecho | STAFF-F20 |
 | Disponibilidad efectiva (turno menos ausencias) para quien reserva | hecho | STAFF-F16 |
 | Pantalla de disponibilidad efectiva de una persona | no hecho — solo la leen Citas y el asistente | STAFF-F16 |
@@ -173,7 +173,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 - **Horarios, horas de cada día, roles y ajustes:** sin datos personales más allá del profesional al que pertenecen.
 - **Auditoría** en todas las tablas: quién creó y quién cambió cada fila (usuarios del hub).
 - **Tablas retiradas con otro nombre:** ninguna; las seis migraciones no borran ni renombran tablas.
-- **Lo que sale hacia otros:** el hub guarda en la bandeja de avisos los parámetros del comando que emite cada aviso (`hub/crates/runtime/src/commands.rs:665-672`), así que los avisos de alta y edición de ficha viajan con nombre, contacto, tarifa y notas, y `staff.time_off.created` con el motivo y las notas; qué campos ve cada oyente: sin confirmar. `staff.time_off.created` es disparador de Flujos.
+- **Lo que sale hacia otros:** el hub guarda en la bandeja de avisos los parámetros del comando que emite cada aviso (`hub/crates/runtime/src/commands.rs:665-672` para los comandos SQL y `:1551-1572` para los de handler), así que los avisos de alta y edición de ficha viajan con nombre, contacto, tarifa y notas, `staff.member.terminated` con el motivo de baja y `staff.time_off.created` con el motivo y las notas; qué campos ve cada oyente: sin confirmar. Flujos ofrece como disparadores `staff.time_off.created`, `staff.member.created` y `staff.member.deactivated`.
 - **Borrado:** Dar de baja es un borrado lógico que conserva todos esos datos (también el motivo de baja y las notas); no existe borrado ni anonimización de una ficha. Personal no escucha ningún aviso de otros módulos (`events.listen` vacío en `module.json`), así que ni la baja ni la anonimización de una cuenta del hub ni de un cliente cambian nada aquí. Es un hueco de la familia RGPD.
 
 ## Reglas que no se rompen
@@ -182,12 +182,12 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 - **Tarifa, comisión y motivo de una ausencia solo con permiso:** van en consultas aparte (`staff.members.compensation`, `staff.time_off.detail`) con `staff.view_compensation` y `staff.view_time_off_detail`; el directorio y la lista de ausencias no los llevan ni como columna ni como filtro. La única excepción es lo propio de la sesión (`staff.members.mine`, `staff.time_off.mine`).
 - **`terminated` solo se alcanza dando de baja:** los esquemas de alta y edición no admiten ese estado y una ficha dada de baja ya no se puede editar (queda borrada).
 - **Una ausencia no se solapa con otra pendiente o aprobada** del mismo profesional, y cambia de estado solo por el camino pendiente → aprobada, rechazada o cancelada y aprobada → cancelada; aprobar se rechaza si solapa con otra ya aprobada (`handler/src/lib.rs:669-800`, `commands/_insert_time_off.sql`).
-- **No se desactiva** a quien tiene una ausencia pendiente o aprobada que no ha terminado (`handler/src/lib.rs:235`).
+- **No se desactiva** a quien tiene una ausencia pendiente o aprobada que no ha terminado (`handler/src/lib.rs:251-256`, `commands/_deactivate_member.sql`).
 - **Un horario válido:** al menos un día de trabajo, inicio antes del fin, descanso con inicio y fin y dentro del tramo, ningún día repetido, vigencia con «desde» no posterior a «hasta»; un solo horario por defecto por profesional (los demás se desmarcan en la misma transacción) (`handler/src/lib.rs:455-560`).
 - **Un rol solo se asigna si es de este negocio, está vivo y está activo** (`commands/member_create.sql`, `commands/member_update.sql`).
 - **Dinero en céntimos enteros y nunca negativo:** la tarifa y el precio propio de un servicio (`schemas/member_create.json`, `schemas/service_assign.json`); la comisión es un porcentaje de 0 a 100 y no es dinero.
 - **El «hoy» es el día del negocio**, no el UTC, para el bloqueo de Desactivar, el último día de una baja, «Ausentes hoy» y las ausencias activas (`queries/time_off_today.sql`, `commands/member_delete.sql`).
-- **Un rechazo de dominio no deja rastro:** ni escritura ni aviso, en los comandos que lo vigilan con handler o con `expect_rows` (todos menos `staff.roles.create`, que siempre inserta, y el alta en lote, que omite filas por su cuenta).
+- **Un rechazo de dominio no deja rastro:** ni escritura ni aviso, en los comandos que lo vigilan con handler o con `expect_rows` (todos menos `staff.roles.create`, que siempre inserta, y el alta en lote, que omite filas por su cuenta). En una carrera entre la lectura y la escritura, desactivar, registrar o resolver una ausencia y crear un horario pueden emitir su aviso sin haber cambiado nada: sus sentencias internas no llevan `expect_rows`.
 - **Permisos por comando:** crear y editar fichas y servicios con `staff.add_staff_member` y `staff.change_staff_member`, desactivar y dar de baja con `staff.delete_staff_member` (solo administrador), registrar y resolver ausencias con `staff.manage_time_off`, y roles, horarios y ajustes con `staff.manage_settings` (`module.json`).
 
 Lo que **no** es una regla aunque se diga: que una persona dada de baja, desactivada o ausente no tenga citas. Citas rechaza las reservas **nuevas** (profesional no encontrado, no reservable o fuera de turno) pero las ya reservadas siguen en la agenda y Personal no las mira.
@@ -205,7 +205,7 @@ Lo que **no** es una regla aunque se diga: que una persona dada de baja, desacti
 
 ## Dudas abiertas
 - ¿Qué debe pasar con las **citas futuras** de un profesional al desactivarlo, darlo de baja o aprobarle una ausencia: avisar de cuáles son, bloquearlo, o reasignarlas desde Citas? Hoy no pasa nada y nadie se entera.
-- **Desactivar** se rechaza mientras haya una ausencia aprobada sin terminar, pero una aprobada solo se anula con el asistente o la API (STAFF-F19): ¿se da pantalla a Cancelar, o Desactivar deja de mirar las ausencias?
+- **Desactivar** se rechaza mientras haya una ausencia aprobada sin terminar, pero una aprobada solo se anula con el asistente (STAFF-F19): ¿se da pantalla a Cancelar, o Desactivar deja de mirar las ausencias?
 - ¿Debe el **empleado** poder pedir su propia ausencia? Hoy solo el responsable las registra (STAFF-F17).
 - Los **ajustes** de Personal (11) no cambian nada: ¿se conectan los que tienen sentido (jornada por defecto en el formulario de horario, antelación y elegir profesional), se ocultan o se retiran?
 - **«Margen entre citas (min)»**: ¿Citas debe aplicarlo entre una cita y la siguiente del mismo profesional?
@@ -214,11 +214,10 @@ Lo que **no** es una regla aunque se diga: que una persona dada de baja, desacti
 - «**De baja**» (estado temporal) y «**Dado de baja**» (baja definitiva) se parecen demasiado, y el botón «Dar de baja» hace la segunda: ¿se renombra alguna?
 - **Registro horario** (RD-ley 8/2019, ya anotado en `.claude/qa/qa-method-shared.md` como fuera del producto): ¿entra en el MVP v2?
 - ¿Quién compone el **cierre del día por profesional** con la comisión: Caja, Ventas o el asistente? Hoy nadie.
-- Los selectores de miembro de Horarios y de Ausencias leen el directorio sin pedir un número de filas, y el hub entonces manda 50: con más de 50 personas, ¿salen todas? Sin confirmar si el SDK añade otro límite.
 
 ## Fuentes contrastadas
 Contra el código de `origin/main` (v2.3.12), una línea por discrepancia:
-- `architecture/modules/staff.md` (contrato de pantalla, vista Ausencias) pide «Aprobar / rechazar / cancelar»; la pantalla solo tiene Aprobar y Rechazar y cancelar es solo asistente o API (`ui/components/erp-staff-time-off/erp-staff-time-off.ts:159-166`, STAFF-F19).
+- `architecture/modules/staff.md` (contrato de pantalla, vista Ausencias) pide «Aprobar / rechazar / cancelar»; la pantalla solo tiene Aprobar y Rechazar y cancelar es solo con el asistente (no está en la API pública con llave) (`ui/components/erp-staff-time-off/erp-staff-time-off.ts:159-166`, STAFF-F19).
 - `architecture/modules/staff.md` dice que el directorio filtra por «bookable»; la pantalla no tiene esa columna ni filtro y el filtro de Estado solo ofrece Activo e Inactivo (`erp-staff-members.ts:288-301`); el filtro por reservable solo existe en la consulta.
 - `architecture/modules/staff.md` dice que Roles enseña «nombre, color, nº de miembros»; la tabla enseña Rol, Descripción y Miembros, sin color (`erp-staff-roles.ts:63-69`).
 - `architecture/modules/staff.md` y `docs/screens.md` dicen que los ajustes los edita quien tiene `staff.manage_settings`; el formulario del hub solo deja editar al administrador (`ModuleSettingsForm.vue:252`).

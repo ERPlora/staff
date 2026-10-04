@@ -12,7 +12,7 @@ Pantalla: ninguna
 Pasos:
 1. Quien edita la ficha escribe la «Comisión (%)» de la persona, de 0 a 100; sin permiso de ver compensación el campo no sale (STAFF-F02).
 2. Con permiso de ver compensación, el asistente o la API piden la hoja de comisiones.
-3. Personal contesta, por cada persona **Activo** (no las Inactivo ni las dadas de baja), el identificador de su ficha, el de su cuenta del hub (vacío si no tiene), su nombre, su rol y su tasa; las de tasa 0 salen también.
+3. Personal contesta, por cada persona **Activo** o **De baja** (no las Inactivo ni las dadas de baja), el identificador de su ficha, el de su cuenta del hub (vacío si no tiene), su nombre, su rol y su tasa; las de tasa 0 salen también.
 4. El importe del día (total vendido × tasa ÷ 100) lo tiene que componer quien cierra el día cruzando la hoja con las ventas por profesional de Ventas; hoy ninguna pantalla ni módulo lo hace, y el asistente solo tiene las dos consultas con esa indicación.
 Entra: la tasa de cada ficha; no lee ventas.
 Sale: solo lectura. Una persona puede aparecer en las ventas bajo dos identificadores (el de su ficha, si la venta nace de una cita, o el de su cuenta del hub, si la cobra en el mostrador): por eso la hoja da los dos y quien suma los junta antes de aplicar la tasa (STAFF-F03). Sin cuenta vinculada, lo cobrado en el mostrador no cuenta para su comisión.
@@ -47,7 +47,7 @@ Pasos:
 1. En el inicio del hub, «Plantilla activa» («Empleados activos») sale activo por defecto; «Empleados por rol» no viene activo por defecto (cómo se activa desde el inicio: sin confirmar).
 2. «Plantilla activa» da cuántas personas tienen el estado **Activo**, sean o no reservables; no cuenta las Inactivo, las De baja ni las dadas de baja.
 3. «Empleados por rol» dibuja una barra por rol con las personas **Activo** que lo llevan, con el color del rol, hasta 10 roles.
-4. Ambos se refrescan solos con altas, desactivaciones, bajas y roles nuevos.
+4. «Plantilla activa» se refresca con altas, desactivaciones y bajas; «Empleados por rol», además, con roles nuevos. Ninguno se refresca al editar una ficha (cambiar Estado o Rol desde Editar).
 Entra: las fichas y los roles.
 Sale: solo lectura. Qué 10 roles salen cuando hay más: los primeros que devuelve la lista de roles (por nombre); si el panel los reordena por tamaño: sin confirmar.
 Si falla: sin personas o sin roles, el panel sale vacío o en 0; cómo pinta el inicio un fallo de lectura: sin confirmar.

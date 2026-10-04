@@ -66,7 +66,7 @@ Pasos:
 2. Escribe el «Nombre del rol» (obligatorio; sin él Guardar queda apagado) y, si quieres, Descripción y Color (texto libre, marcador «Color (#RRGGBB)»).
 3. Pulsa Guardar.
 4. El rol sale en la tabla con 0 Miembros y ya se puede elegir en el Rol de una ficha.
-Entra: nombre, descripción y color tecleados; el orden siempre se guarda 0.
+Entra: nombre, descripción y color tecleados; la pantalla guarda siempre el orden 0; el asistente puede darle otro al crear, pero ninguna lista ordena los roles por él.
 Sale: el rol (`staff.role.created`) y el panel «Empleados por rol». Un rol es una etiqueta de catálogo, **no concede permisos** (los da el rol de la cuenta del hub). «Miembros» cuenta solo las personas **Activo** con ese rol. No avisa de un nombre repetido.
 Si falla: dentro del panel sale el texto del servidor tal cual, sin traducir códigos (la pantalla de Roles muestra el mensaje de error del servidor); el aviso de error de esa pantalla no pasa por el catálogo de errores del módulo.
 Implicados: ninguno
@@ -84,7 +84,7 @@ Pasos:
 4. La fila pasa a **Inactivo** y deja de ser reservable.
 Entra: la ficha y sus ausencias pendientes o aprobadas cuya fecha de fin no ha pasado (el «hoy» es el día del negocio).
 Sale: estado Inactivo y Reservable apagado (`staff.member.deactivated`). No toca sus horarios, servicios, ausencias, cuenta del hub ni las citas ya reservadas. Para volver: Editar, Estado Activo y encender Reservable (STAFF-F02).
-Si falla: un aviso sobre la tabla: «Ese miembro tiene ausencias pendientes o aprobadas que aún no han terminado. Resuélvelas primero.» (una pendiente se rechaza en STAFF-F18; una aprobada solo se anula con el asistente o la API, STAFF-F19) «Ese miembro del personal ya está inactivo.» si ya lo estaba, o «Ese miembro del personal no existe en este negocio.» si la ficha ya se dio de baja o es de otro negocio.
+Si falla: un aviso sobre la tabla: «Ese miembro tiene ausencias pendientes o aprobadas que aún no han terminado. Resuélvelas primero.» (una pendiente se rechaza en STAFF-F18; una aprobada solo se anula con el asistente, STAFF-F19). Si un responsable, que no tiene este permiso, puede pedirlo con aprobación por PIN: sin confirmar «Ese miembro del personal ya está inactivo.» si ya lo estaba, o «Ese miembro del personal no existe en este negocio.» si la ficha ya se dio de baja o es de otro negocio.
 Implicados: pendiente
 Pendiente de enlazar: appointments — las citas futuras del profesional desactivado siguen en la agenda sin aviso; las reservas nuevas se rechazan por no ser reservable (APPOINTMENTS-F01)
 QA: ninguno
@@ -107,7 +107,7 @@ Pendiente de enlazar: appointments — las citas futuras de quien se da de baja 
 QA: ninguno
 
 ### STAFF-F07 Dar de alta a varios profesionales de golpe
-Estado: parcial — sin pantalla de importación (solo el asistente), y las filas pasadas de la 100 se descartan sin constar entre las omitidas
+Estado: parcial — sin pantalla de importación (solo el asistente); una fila con nombre vacío, tarifa negativa o un campo de más tumba el lote entero, y las filas pasadas de la 100 se descartan sin constar entre las omitidas
 Vertical: comun
 Actor: asistente
 Pantalla: asistente
@@ -115,15 +115,15 @@ Pasos:
 1. Quien tiene permiso de alta pide al asistente que dé de alta a varias personas con sus nombres (y, si quiere, email, teléfono, rol, fecha de alta, tarifa, reservable, bio y especialidades).
 2. El asistente envía el lote (hasta 100 filas por llamada).
 3. Se crea una ficha **Activo** por cada fila válida.
-4. La respuesta dice cuántas se crearon y cuáles se omitieron con su motivo (sin nombre, fecha de alta mal formada, rol que no es de este negocio o tarifa negativa).
+4. La respuesta dice cuántas se crearon y cuáles se omitieron con su motivo (nombre de solo espacios, rol que no es de este negocio o retirado, o fecha de alta mal formada; si el servidor ya rechaza antes una fecha mal formada: sin confirmar).
 Entra: las filas del lote; los roles activos del negocio. Una fila no lleva cuenta del hub, comisión ni color.
 Sale: una ficha por fila válida y un solo aviso de ficha creada para todo el lote.
-Si falla: una fila inválida se omite y las demás entran; las filas pasadas de la 100 no se crean ni se listan como omitidas. Si se omiten todas, no se crea ninguna ficha (si el aviso de ficha creada sale igualmente: sin confirmar).
+Si falla: el servidor valida el esquema antes del código del módulo, así que una fila con nombre vacío, con tarifa negativa o no entera, o con un campo que el alta en lote no admite (por ejemplo cuenta del hub o color) rechaza el lote entero sin crear a nadie. Solo un nombre de solo espacios, un rol que no es de este negocio o retirado, o una fecha mal formada (si el esquema no la rechaza antes) omiten esa fila y las demás entran. Las filas pasadas de la 100 no se crean ni se listan como omitidas. Si se omiten todas, no se crea ninguna ficha pero el aviso de ficha creada sale igualmente.
 Implicados: ninguno
 QA: ninguno
 
 ### STAFF-F08 Ver mi propia ficha y mis ausencias
-Estado: parcial — sin pantalla propia: solo el asistente o la API; el empleado no puede registrar una ausencia suya (STAFF-F17)
+Estado: parcial — sin pantalla propia: solo el asistente o la API con llave; el empleado no puede registrar una ausencia suya (STAFF-F17)
 Vertical: comun
 Actor: empleado, asistente
 Pantalla: asistente
@@ -144,7 +144,7 @@ Vertical: comun
 Actor: sistema, empleado
 Pantalla: ninguna
 Pasos:
-1. Un módulo que necesita nombrar al equipo (el TPV en «Atiende», la cocina al nombrar a quien dispara una comanda, Citas al listar profesionales) pide el directorio.
+1. Un módulo que necesita nombrar al equipo (el TPV en «Atiende», la cocina al nombrar a quien dispara una comanda, Citas al listar profesionales, el propio hub al imprimir la comanda) pide el directorio.
 2. Personal contesta solo si la sesión puede ver el equipo: lo pueden administrador, responsable, empleado y cajero.
 3. Recibe, por persona, nombre, email, teléfono, rol, cuenta del hub, estado, reservable, fecha de alta, color y orden, nunca la tarifa ni la comisión; sin pedir un número de filas llegan 50 por página (Citas pide 500 y el TPV pide todas las páginas).
 4. El otro módulo pinta lo que le toca: el TPV ofrece a quien no está Inactivo (los dados de baja ya no salen).
@@ -156,4 +156,5 @@ Pendiente de enlazar: sales — «Atiende» del TPV y la venta atribuida por pro
 Pendiente de enlazar: kitchen — el nombre de quien dispara la comanda en la pantalla de cocina (kitchen#82)
 Pendiente de enlazar: appointments — la lista de profesionales de la agenda y del alta de una cita (APPOINTMENTS-F01)
 Pendiente de enlazar: whatsapp_inbox — la receta de cita lee profesionales y cabeceras de horario (WHATSAPP_INBOX-F21, REC_WA_CITA-F04)
+Pendiente de enlazar: hub — el shell lee el directorio para imprimir la comanda con el nombre de quien atiende
 QA: ninguno

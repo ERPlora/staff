@@ -5,7 +5,7 @@ Prefijo: STAFF
 ## Flujos
 
 ### STAFF-F17 Registrar una ausencia
-Estado: parcial — el empleado no puede pedir la suya (solo quien gestiona ausencias las registra), y dos ausencias de horas distintas el mismo día se rechazan como solapadas
+Estado: parcial — el empleado no puede pedir la suya (solo quien gestiona ausencias las registra), con más de 50 personas el selector de miembro solo ofrece las 50 primeras, y dos ausencias de horas distintas el mismo día se rechazan como solapadas
 Vertical: comun
 Actor: administrador, responsable
 Pantalla: Ausencias
@@ -16,7 +16,7 @@ Pasos:
 4. La ausencia sale en la tabla como **Pendiente**.
 Entra: la persona (cualquier ficha viva, también una Inactivo), el tipo, las fechas, las horas si no es de día entero y el motivo; la pantalla no recoge notas. Con horas, valen las mismas cada día del rango.
 Sale: la ausencia Pendiente (`staff.time_off.created`), que refresca «Ausencias pendientes» y «Ausentes hoy» y puede disparar una automatización de Flujos (su disparador se llama «alguien pide vacaciones» aunque el tipo sea cualquiera y la registre el responsable). Una ausencia pendiente no cambia todavía la agenda: solo cuenta al aprobarla (STAFF-F18). No avisa a la persona.
-Si falla: dentro del formulario y sin perder lo tecleado: «Elige de quién es la ausencia.», «Indica la fecha de inicio y la de fin.», «La fecha de fin no puede ser anterior a la de inicio.», «Una ausencia de medio día necesita hora de inicio y de fin.», «La hora de inicio tiene que ser anterior a la de fin.», una fecha que no se entiende, y del servidor «Ese miembro ya tiene una ausencia pendiente o aprobada en esas fechas.» (el solape se mide solo por fechas: una de mañana y otra de tarde del mismo día chocan; las rechazadas y canceladas no cuentan) o «Ese miembro del personal no existe en este negocio.»; otro fallo: «No se pudo registrar la ausencia». Con más de 50 personas en el directorio, el selector de miembro puede no ofrecerlas todas (sin confirmar).
+Si falla: dentro del formulario y sin perder lo tecleado: «Elige de quién es la ausencia.», «Indica la fecha de inicio y la de fin.», «La fecha de fin no puede ser anterior a la de inicio.», «Una ausencia de medio día necesita hora de inicio y de fin.», «La hora de inicio tiene que ser anterior a la de fin.», una fecha que no se entiende, y del servidor «Ese miembro ya tiene una ausencia pendiente o aprobada en esas fechas.» (el solape se mide solo por fechas: una de mañana y otra de tarde del mismo día chocan; las rechazadas y canceladas no cuentan) o «Ese miembro del personal no existe en este negocio.»; otro fallo: «No se pudo registrar la ausencia». Con más de 50 personas, el selector de miembro solo ofrece las 50 primeras (por id).
 Implicados: pendiente
 Pendiente de enlazar: flows — el disparador «alguien pide vacaciones» que sale con este aviso
 QA: ninguno
@@ -39,7 +39,7 @@ Pendiente de enlazar: appointments — la ausencia aprobada que Citas respeta al
 QA: ninguno
 
 ### STAFF-F19 Cancelar una ausencia
-Estado: parcial — sin pantalla: la tabla de Ausencias solo tiene Aprobar y Rechazar, y cancelar existe solo con el asistente o la API
+Estado: parcial — sin pantalla: la tabla de Ausencias solo tiene Aprobar y Rechazar, y cancelar existe solo con el asistente (o llamando a `staff.time_off.set_status` con una sesión del hub; no está en la API pública con llave)
 Vertical: comun
 Actor: administrador, responsable, asistente
 Pantalla: asistente

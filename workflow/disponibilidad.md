@@ -23,7 +23,7 @@ Pendiente de enlazar: appointments — la competencia, la duración y el precio 
 QA: BD-06
 
 ### STAFF-F11 Cambiar o quitar un servicio de un profesional
-Estado: parcial — la pantalla no cambia los minutos ni el precio propios de un servicio ya asignado, ni lo desactiva: hay que quitarlo y volver a asignarlo (cambiar y desactivar solo existen en el asistente o la API)
+Estado: parcial — la pantalla no cambia los minutos ni el precio propios de un servicio ya asignado, ni lo desactiva: hay que quitarlo y volver a asignarlo (cambiar y desactivar solo existen con el asistente, o llamando a `staff.services.update` con una sesión del hub; no está en la API pública con llave)
 Vertical: peluqueria
 Actor: administrador, responsable
 Pantalla: Personal
@@ -33,7 +33,7 @@ Pasos:
 3. Para cambiar los minutos o el precio propios, quita el servicio y vuelve a asignarlo (STAFF-F10): volver a asignar recupera la competencia quitada con los datos nuevos.
 4. La lista se recarga.
 Entra: la competencia elegida.
-Sale: el cambio (`staff.service.updated` o `staff.service.removed`). El servicio principal solo ordena las listas de Personal (los elegibles de un servicio salen primero los principales); que otro módulo lo use: sin confirmar (Citas no lo lee). Si al quitarlo ya nadie tiene ese servicio asignado, Citas deja que lo haga todo el equipo reservable (STAFF-F12).
+Sale: el cambio (`staff.service.updated` o `staff.service.removed`). El servicio principal solo ordena las listas de Personal (los elegibles de un servicio salen primero los principales); ningún otro módulo lo lee. Si al quitarlo ya nadie tiene ese servicio asignado, Citas deja que lo haga todo el equipo reservable (STAFF-F12).
 Si falla: dentro de la sección «No se pudieron actualizar los servicios» o «Esa asignación de servicio no existe en este negocio.».
 Implicados: pendiente
 Pendiente de enlazar: appointments — al cambiar el profesional o el servicio de una cita o de una serie se vuelve a comprobar la competencia (APPOINTMENTS-F04, APPOINTMENTS-F14)
@@ -57,7 +57,7 @@ Pendiente de enlazar: appointments — el selector de profesionales por servicio
 QA: B-02, BD-06
 
 ### STAFF-F13 Crear el horario semanal de un profesional
-Estado: hecho
+Estado: parcial — con más de 50 personas el selector de miembro solo ofrece las 50 primeras
 Vertical: peluqueria
 Actor: administrador, responsable
 Pantalla: Horarios
@@ -68,7 +68,7 @@ Pasos:
 4. El horario sale en la tabla con su semana resumida en la columna «Horas».
 Entra: la persona elegida y la semana tecleada.
 Sale: la plantilla y sus horas (`staff.schedule.created`). Si es «Por defecto», los demás horarios de esa persona dejan de serlo en la misma operación. **Qué horario manda un día:** de los horarios activos y vigentes ese día gana el que **no** es «Por defecto» (uno con fechas, o uno sin fechas, gana siempre al habitual); entre varios, el de vigencia «desde» más reciente y luego el más nuevo; si ninguno vale ese día, la persona no tiene turno ese día y Citas no restringe por turno. Un horario con vigencia de un solo día es la forma de dar una excepción.
-Si falla: dentro del panel, la primera falta: «Marca al menos un día de trabajo», «{día}: indica hora de inicio y fin», «{día}: la hora de inicio debe ser anterior a la de fin», «{día}: el descanso necesita inicio y fin (o ninguno)», «{día}: el descanso debe caer dentro del intervalo de trabajo», una hora o una fecha que no se entiende, o ««Vigente desde» tiene que ser anterior o igual a «Vigente hasta».». El servidor repite las comprobaciones: «La vigencia del horario termina antes de empezar.», «Un horario necesita al menos un día de trabajo con horas.»; otro fallo: «No se pudo crear el horario». Un turno que cruza la medianoche (fin anterior al inicio) no se admite. Con más de 50 personas en el directorio, el selector de miembro puede no ofrecerlas todas (sin confirmar).
+Si falla: dentro del panel, la primera falta: «Marca al menos un día de trabajo», «{día}: indica hora de inicio y fin», «{día}: la hora de inicio debe ser anterior a la de fin», «{día}: el descanso necesita inicio y fin (o ninguno)», «{día}: el descanso debe caer dentro del intervalo de trabajo», una hora o una fecha que no se entiende, o ««Vigente desde» tiene que ser anterior o igual a «Vigente hasta».». El servidor repite las comprobaciones: «La vigencia del horario termina antes de empezar.», «Un horario necesita al menos un día de trabajo con horas.»; otro fallo: «No se pudo crear el horario». Un turno que cruza la medianoche (fin anterior al inicio) no se admite. Con más de 50 personas, el selector de miembro solo ofrece las 50 primeras (por id).
 Implicados: pendiente
 Pendiente de enlazar: appointments — el turno del profesional que Citas respeta al reservar y al ofrecer horas libres (APPOINTMENTS-F01, APPOINTMENTS-F02)
 QA: B-02, BD-06
@@ -113,12 +113,12 @@ Vertical: peluqueria
 Actor: sistema, asistente
 Pantalla: ninguna
 Pasos:
-1. Quien reserva pregunta por el día de una persona: Citas al guardar una cita (un instante), al guardar una serie o un lote (los días desde hoy, hasta 731), al mover una cita (todo el equipo en ese instante) y al ofrecer horas libres; el asistente, por un rango de fechas.
+1. Quien reserva pregunta por el día de una persona: Citas al guardar una cita (un instante), al guardar un lote y al materializar o editar una serie (los 400 días desde hoy; la consulta admite hasta 731), al mover una cita (todo el equipo en ese instante) y al ofrecer horas libres; el asistente, por un rango de fechas.
 2. Personal toma el día **del negocio** (nunca el UTC; una fecha sola vale como ese día), elige el horario que manda ese día (STAFF-F13) y lo parte por el descanso.
 3. Contesta con una fila del día (qué horario manda; ninguno quiere decir «sin horario»), un tramo por cada tramo de trabajo del día y una fila por cada ausencia **aprobada** que cubre ese día, de día entero o con sus horas (las mismas horas cada día del rango). La consulta por rango de fechas contesta ya el turno menos las ausencias aprobadas.
 4. Quien pregunta decide: Citas rechaza una reserva que no cabe entera en un tramo o que cae sobre una ausencia aprobada; en un día sin horario no rechaza por turno.
 Entra: el profesional y el día o el instante; el reloj del negocio, que inyecta el hub.
-Sale: solo lectura. Una ausencia pendiente, rechazada o cancelada no cuenta. Una ficha dada de baja no tiene horario que mande (la consulta lo une con la ficha viva), pero sus ausencias aprobadas siguen saliendo.
+Sale: solo lectura. Una ausencia pendiente, rechazada o cancelada no cuenta. Una ficha dada de baja no tiene horario que mande (la consulta lo une con la ficha viva), pero sus ausencias aprobadas siguen saliendo en las lecturas de un día (las de Citas); la consulta por rango de fechas no devuelve nada de una ficha dada de baja.
 Si falla: si la lectura no llega, Citas rechaza la reserva (`appointments.staff_hours_unavailable`) en vez de abrir la puerta (`appointments/handler/src/lib.rs:1287-1305`).
 Implicados: pendiente
 Pendiente de enlazar: appointments — turno y ausencias aprobadas del profesional al reservar, mover, ofrecer horas y reservar series (APPOINTMENTS-F01, APPOINTMENTS-F02, APPOINTMENTS-F04, APPOINTMENTS-F13, APPOINTMENTS-F14)
