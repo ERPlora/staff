@@ -13,13 +13,11 @@ Pasos:
 1. Quien edita la ficha escribe la «Comisión (%)» de la persona, de 0 a 100; sin permiso de ver compensación el campo no sale (STAFF-F02).
 2. Con permiso de ver compensación, el asistente o la API piden la hoja de comisiones.
 3. Personal contesta, por cada persona **Activo** o **De baja** (no las Inactivo ni las dadas de baja), el identificador de su ficha, el de su cuenta del hub (vacío si no tiene), su nombre, su rol y su tasa; las de tasa 0 salen también.
-4. El importe del día (total vendido × tasa ÷ 100) lo tiene que componer quien cierra el día cruzando la hoja con las ventas por profesional de Ventas; hoy ninguna pantalla ni módulo lo hace, y el asistente solo tiene las dos consultas con esa indicación.
+4. El importe del día (total vendido × tasa ÷ 100) lo tiene que componer quien cierra el día cruzando la hoja con las ventas por profesional de Ventas (SALES-F28); hoy ninguna pantalla ni módulo lo hace (ni Ventas ni Caja, que no tiene cierre por profesional), y el asistente solo tiene las dos consultas con esa indicación.
 Entra: la tasa de cada ficha; no lee ventas.
 Sale: solo lectura. Una persona puede aparecer en las ventas bajo dos identificadores (el de su ficha, si la venta nace de una cita, o el de su cuenta del hub, si la cobra en el mostrador): por eso la hoja da los dos y quien suma los junta antes de aplicar la tasa (STAFF-F03). Sin cuenta vinculada, lo cobrado en el mostrador no cuenta para su comisión.
 Si falla: sin permiso de ver compensación, la consulta se rechaza.
-Implicados: pendiente
-Pendiente de enlazar: sales — el total vendido por profesional y la atribución de cada venta a ficha o cuenta (sales#179; `sales.by_staff`)
-Pendiente de enlazar: cash_register — el cierre del día por profesional que debería cuadrar con la comisión (B-07)
+Implicados: SALES-F16, SALES-F28
 QA: B-08 (discrepa)
 
 ### STAFF-F22 Cambiar los ajustes de Personal

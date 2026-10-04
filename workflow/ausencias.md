@@ -34,8 +34,7 @@ Pasos:
 Entra: la ausencia y las demás pendientes o aprobadas de la misma persona.
 Sale: el estado nuevo y, al aprobar, quién aprobó y cuándo (se guardan; la tabla no los enseña) (`staff.time_off.status_changed`). **Aprobada** resta esas horas al turno de la persona para la agenda (STAFF-F16) y la cuenta en «Ausentes hoy» si cubre hoy; Rechazada no cambia nada. No mira ni avisa de las citas que esa persona ya tenga esos días, no cambia el estado de la ficha y no avisa a la persona.
 Si falla: un aviso sobre la tabla con el motivo: «Ese miembro ya tiene una ausencia pendiente o aprobada en esas fechas.» (al aprobar, si otra **aprobada** de la misma persona solapa; como el alta ya impide los solapes, solo puede ocurrir con datos anteriores o con dos altas a la vez), «Esa solicitud de ausencia no puede pasar a ese estado desde el actual.», «Esa solicitud de ausencia no existe en este negocio.» o «No se pudo cambiar el estado».
-Implicados: pendiente
-Pendiente de enlazar: appointments — la ausencia aprobada que Citas respeta al reservar y al ofrecer horas libres (APPOINTMENTS-F01, APPOINTMENTS-F02); las citas ya reservadas esos días no se tocan
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02
 QA: ninguno
 
 ### STAFF-F19 Cancelar una ausencia
@@ -51,8 +50,7 @@ Pasos:
 Entra: la ausencia.
 Sale: el estado Cancelada (`staff.time_off.status_changed`), que es final: ni una Rechazada ni una Cancelada vuelven a Pendiente, y repetir una operación terminal se rechaza. Conserva quién la aprobó y cuándo si lo había sido. Es el único camino para quitar una ausencia aprobada, y sin quitarla no se puede Desactivar a esa persona mientras no termine (STAFF-F05).
 Si falla: «Esa solicitud de ausencia no puede pasar a ese estado desde el actual.» o «Esa solicitud de ausencia no existe en este negocio.».
-Implicados: pendiente
-Pendiente de enlazar: appointments — al cancelar una ausencia aprobada vuelven a salir las horas libres del profesional (APPOINTMENTS-F02)
+Implicados: APPOINTMENTS-F02
 QA: ninguno
 
 ### STAFF-F20 Ver quién falta hoy

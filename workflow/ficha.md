@@ -34,8 +34,7 @@ Pasos:
 Entra: la ficha (lectura `staff.members.get`) y, con permiso, su tarifa y comisión (`staff.members.compensation`).
 Sale: la ficha cambiada (`staff.member.updated`). Poner **Inactivo** desde aquí no apaga Reservable ni mira las ausencias (eso solo lo hace Desactivar, STAFF-F05), y volver a **Activo** no vuelve a encender Reservable: hay que encenderlo a mano. Citas solo acepta a quien está Activo y Reservable. Las «Especialidades», la «Bio» y el «Color» se guardan, pero Citas no las lee.
 Si falla: dentro del panel, «No se ha podido actualizar el miembro: no existe en este negocio, o el rol elegido no existe.» (también si la ficha ya se dio de baja), el rol retirado o la cuenta ya vinculada. Si la ficha no carga: «No se pudo cargar la ficha». Cerrar el panel mientras carga descarta la respuesta tardía.
-Implicados: pendiente
-Pendiente de enlazar: appointments — la ficha Activa y Reservable con su duración propia que lee Citas al reservar (APPOINTMENTS-F01)
+Implicados: APPOINTMENTS-F01
 QA: ninguno
 
 ### STAFF-F03 Vincular la ficha con una cuenta del hub
@@ -51,9 +50,8 @@ Pasos:
 Entra: la lista de cuentas del hub (solo identificador, nombre y rol; sin email ni forma de acceso).
 Sale: el vínculo, y con él los dos identificadores bajo los que aparece una persona (el de la ficha y el de su cuenta), que Personal publica junto a la comisión (STAFF-F21) y que el TPV pliega en una sola fila al elegir quién atiende. No cambia ningún permiso: los da el rol de la cuenta, no la ficha ni su rol de Personal. Dar de baja la ficha libera la cuenta (STAFF-F06); desactivar o dar de baja la cuenta en el hub no toca la ficha.
 Si falla: «Ese usuario del Hub ya está vinculado a {nombre}. Un usuario del Hub solo puede pertenecer a un miembro del equipo: desvincúlalo allí primero o elige otro usuario.», con el nombre de la ficha que la tiene. Si dos personas la vinculan a la vez, a la segunda le sale ese mismo mensaje (un índice único lo garantiza). Si la lista de cuentas no se puede leer, el selector queda solo con «Sin acceso al Hub»: en un alta la ficha se guarda sin vínculo.
-Implicados: pendiente
+Implicados: SALES-F16
 Pendiente de enlazar: hub — la pantalla Empleados del hub, que es dueña de las cuentas, su rol de permisos y el PIN
-Pendiente de enlazar: sales — el TPV atribuye la venta de mostrador a la cuenta de la sesión y la de una cita a la ficha, y pliega ambas en una persona (sales#179, sales#318)
 QA: ninguno
 
 ### STAFF-F04 Crear un rol de catálogo
@@ -85,8 +83,7 @@ Pasos:
 Entra: la ficha y sus ausencias pendientes o aprobadas cuya fecha de fin no ha pasado (el «hoy» es el día del negocio).
 Sale: estado Inactivo y Reservable apagado (`staff.member.deactivated`). No toca sus horarios, servicios, ausencias, cuenta del hub ni las citas ya reservadas. Para volver: Editar, Estado Activo y encender Reservable (STAFF-F02).
 Si falla: un aviso sobre la tabla: «Ese miembro tiene ausencias pendientes o aprobadas que aún no han terminado. Resuélvelas primero.» (una pendiente se rechaza en STAFF-F18; una aprobada solo se anula con el asistente, STAFF-F19). Si un responsable, que no tiene este permiso, puede pedirlo con aprobación por PIN: sin confirmar «Ese miembro del personal ya está inactivo.» si ya lo estaba, o «Ese miembro del personal no existe en este negocio.» si la ficha ya se dio de baja o es de otro negocio.
-Implicados: pendiente
-Pendiente de enlazar: appointments — las citas futuras del profesional desactivado siguen en la agenda sin aviso; las reservas nuevas se rechazan por no ser reservable (APPOINTMENTS-F01)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F04
 QA: ninguno
 
 ### STAFF-F06 Dar de baja a un profesional
@@ -102,8 +99,7 @@ Pasos:
 Entra: la fecha (se acepta cualquiera; vacía, hoy en el día del negocio) y el motivo.
 Sale: la ficha queda en baja definitiva, sin Reservable y borrada, con su fecha y motivo (`staff.member.terminated`); libera su cuenta del hub. Es irreversible desde el producto: una ficha dada de baja no se edita ni se reabre. No mira sus ausencias ni sus citas, no se rechaza por una ausencia viva y se puede dar de baja a quien ya estaba Inactivo. Sus horarios y ausencias no se tocan: sus horarios dejan de gobernar la disponibilidad y sus ausencias dejan de salir en la lista y en «Ausentes hoy», pero «Ausencias pendientes» las sigue contando. Personal no toca las citas ni las ventas anteriores de esa persona.
 Si falla: un aviso sobre la tabla; si la ficha ya estaba dada de baja o es de otro negocio, «Ese miembro del personal no existe en este negocio.»; otro fallo: «No se pudo cambiar el estado del profesional».
-Implicados: pendiente
-Pendiente de enlazar: appointments — las citas futuras de quien se da de baja siguen en la agenda sin aviso (APPOINTMENTS-F01, APPOINTMENTS-F04)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F04
 QA: ninguno
 
 ### STAFF-F07 Dar de alta a varios profesionales de golpe
@@ -151,10 +147,7 @@ Pasos:
 Entra: nada; es una lectura.
 Sale: el directorio de fichas vivas, incluidas las Inactivo y De baja; no escribe nada. El asistente de WhatsApp recibe este directorio y las cabeceras de horario de cada persona (nombre, vigencia, activo; no las horas, que da `staff.schedules.hours_for_member`, STAFF-F16).
 Si falla: cada módulo lo trata a su manera (el TPV sigue cobrando con la sesión). Sin Personal instalado, el TPV ofrece solo las cuentas del hub, porque lo lee como integración opcional.
-Implicados: pendiente
-Pendiente de enlazar: sales — «Atiende» del TPV y la venta atribuida por profesional (sales#318)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
 Pendiente de enlazar: kitchen — el nombre de quien dispara la comanda en la pantalla de cocina (kitchen#82)
-Pendiente de enlazar: appointments — la lista de profesionales de la agenda y del alta de una cita (APPOINTMENTS-F01)
-Pendiente de enlazar: whatsapp_inbox — la receta de cita lee profesionales y cabeceras de horario (WHATSAPP_INBOX-F21, REC_WA_CITA-F04)
 Pendiente de enlazar: hub — el shell lee el directorio para imprimir la comanda con el nombre de quien atiende
 QA: ninguno

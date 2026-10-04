@@ -83,16 +83,16 @@ El detalle de cada flujo (pasos, datos, fallos, implicados y QA) está en `workf
 
 ## Qué comparten los verticales
 
-Las pantallas son las mismas para los dos negocios; lo que cambia es quién lee el resultado. Solo Citas (peluquería) lee las competencias, el turno y las ausencias; el TPV y la cocina (los dos verticales) solo leen el directorio.
+Las pantallas son las mismas para los dos negocios; lo que cambia es quién lee el resultado. Solo Citas (peluquería) lee las competencias, el turno y las ausencias, y la receta de cita de WhatsApp lee el directorio y las horas libres que le da Citas; el TPV y la cocina (los dos verticales) solo leen el directorio.
 
 | Pieza compartida | Flujos que la usan |
 |---|---|
 | La ficha del profesional (estado, reservable, rol, cuenta del hub) | STAFF-F01, STAFF-F02, STAFF-F03, STAFF-F05, STAFF-F06, STAFF-F07, STAFF-F09, STAFF-F12, STAFF-F16 |
-| El directorio que leen el TPV, la cocina y Citas | STAFF-F09, STAFF-F12 |
+| El directorio que leen el TPV, la cocina, Citas y la receta de cita de WhatsApp | STAFF-F09, STAFF-F12 |
 | La competencia (servicio de un profesional) | STAFF-F10, STAFF-F11, STAFF-F12 |
 | La plantilla de horario y su regla de «cuál manda ese día» | STAFF-F13, STAFF-F14, STAFF-F15, STAFF-F16 |
 | La ausencia aprobada (resta del turno en la agenda y cuenta en «Ausentes hoy») | STAFF-F16, STAFF-F17, STAFF-F18, STAFF-F19, STAFF-F20 |
-| La tasa de comisión y el vínculo con la cuenta del hub (los dos ids de una persona) | STAFF-F03, STAFF-F21 |
+| La tasa de comisión y el vínculo con la cuenta del hub (los dos ids de una persona; el TPV los pliega en una fila al elegir quién atiende) | STAFF-F03, STAFF-F09, STAFF-F21 |
 | Los ajustes de Personal (ninguno se lee hoy) | STAFF-F22 |
 
 Regla: tocar un flujo `comun` puede afectar a los dos negocios; tocar uno de `peluqueria` (competencias, horario, disponibilidad) no debe afectar al TPV ni a la cocina.
@@ -117,7 +117,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 | Reactivar a una persona dada de baja | no hecho — la ficha queda cerrada | STAFF-F06 |
 | Alta en lote | parcial — solo asistente, sin pantalla de importación; un nombre vacío o una tarifa negativa tumba el lote entero y lo que pasa de 100 filas se pierde sin avisar | STAFF-F07 |
 | Ver mis propios datos | parcial — solo asistente o API | STAFF-F08 |
-| Avisar de las citas futuras al desactivar, dar de baja o aprobar una ausencia | no hecho — Personal no mira las citas ya reservadas | STAFF-F05, STAFF-F06, STAFF-F18 |
+| Avisar de las citas futuras al desactivar, dar de baja o aprobar una ausencia | no hecho — Personal no mira las citas ya reservadas y Citas no escucha a Personal (APPOINTMENTS-F01, APPOINTMENTS-F04) | STAFF-F05, STAFF-F06, STAFF-F18 |
 
 | Elemento (servicios por profesional) | Estado | Flujo |
 |---|---|---|
@@ -145,7 +145,7 @@ Referencia: Fresha, Vagaro, Mangomint y Square Appointments (regla 4 de `.claude
 | Elemento (comisión y control horario) | Estado | Flujo |
 |---|---|---|
 | Tasa de comisión por profesional | parcial — se guarda y se publica; nada la usa hoy | STAFF-F21 |
-| Importe de comisión del día por profesional | no hecho — ninguna pantalla cruza la tasa con las ventas (B-08) | STAFF-F21 |
+| Importe de comisión del día por profesional | no hecho — ninguna pantalla cruza la tasa con las ventas por profesional de Ventas (SALES-F28; B-08) | STAFF-F21 |
 | Ajustes de jornada, reserva y avisos | parcial — se guardan y nadie los lee | STAFF-F22 |
 | Fichaje, horas trabajadas y horas extra | fuera del MVP | — |
 | Nómina | fuera del MVP | — |
