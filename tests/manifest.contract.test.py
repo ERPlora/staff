@@ -86,6 +86,7 @@ TYPES = {
     "settings": dict,
     "ui": dict,
     "agent": dict,
+    "compatibility": dict,
 }
 
 
@@ -320,6 +321,65 @@ def test_every_widget_resolves_to_a_query_a_permission_and_live_events() -> None
         check(f"{wid}: refresh_on events this module never emits", set(), mine - emits)
 
 
+# ── 7b. The race behind the user-link guard (staff#63, hub#2081) ─────────────────────────
+
+USER_LINK_INDEX = "uq_staff_member_hub_user"
+USER_LINK_CODE = "staff.user_already_linked"
+
+
+def test_the_user_link_doors_name_the_index_refusal() -> None:
+    """Every door that guards the Hub user link with `staff.members.by_user` can still lose the race
+    between that read and its write; the index stops the second write, and `on_unique` is what makes
+    the loser read `staff.user_already_linked` instead of `db`. The proof of the race itself is
+    `tests/user_link_race.hub.test.py`; this keeps the declaration from going missing silently on a
+    door added tomorrow, and needs no hub."""
+    doors = sorted(
+        name
+        for name, c in MANIFEST["commands"].items()
+        if "staff.members.by_user"
+        in [r if isinstance(r, str) else r.get("query") for r in c.get("reads", [])]
+    )
+    check(
+        "doors guarding the user link",
+        ["staff.members.create", "staff.members.update"],
+        doors,
+    )
+    for name in doors:
+        check(
+            f"{name}: on_unique",
+            {USER_LINK_INDEX: USER_LINK_CODE},
+            MANIFEST["commands"][name].get("on_unique"),
+        )
+    migrations = "".join(
+        (MODULE_DIR / p).read_text()
+        for p in (
+            e["file"] if isinstance(e, dict) else e
+            for e in MANIFEST["migrations"]["postgres"]
+        )
+    )
+    check(
+        f"{USER_LINK_INDEX} is created by a migration",
+        True,
+        f"CREATE UNIQUE INDEX IF NOT EXISTS {USER_LINK_INDEX}" in migrations,
+    )
+    for lang in ("en", "es"):
+        errors = json.loads((MODULE_DIR / "locales" / f"{lang}.json").read_text()).get(
+            "errors", {}
+        )
+        check(
+            f"{USER_LINK_CODE} translated in {lang}",
+            True,
+            bool(errors.get(USER_LINK_CODE)),
+        )
+    # A hub older than the key REFUSES it inside `commands.*` and would not install the module.
+    floor = MANIFEST.get("compatibility", {}).get("min_erplora_version", "0")
+    check(
+        "min_erplora_version reaches the hub that reads on_unique (1.1.30)",
+        True,
+        tuple(int(x) for x in floor.split(".")) >= (1, 1, 30),
+    )
+
+
 # ── 8. The WASM build ─────────────────────────────────────────────────────────────────────
 
 
@@ -372,6 +432,7 @@ def main() -> int:
     test_every_event_the_handler_emits_is_declared()
     test_the_settings_block_points_at_this_modules_own_door()
     test_every_widget_resolves_to_a_query_a_permission_and_live_events()
+    test_the_user_link_doors_name_the_index_refusal()
     test_the_wasm_build_is_reproducible()
     print()
     for s in skipped:

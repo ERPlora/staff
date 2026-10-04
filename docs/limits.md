@@ -26,7 +26,7 @@
 | Approving an absence when another APPROVED one of the same person overlaps | Refused: `staff.overlapping_time_off` | Cancel one of them first |
 | Approving or rejecting an absence that is already rejected/cancelled, approving twice, or moving anything back to pending | Refused: `staff.invalid_transition` | Only `pending → approved/rejected/cancelled` and `approved → cancelled` exist |
 | Creating or editing a member with a role that is not this business's, or is deleted/retired | Refused: `staff.role_not_found` / `staff.member_update_rejected` | Pick a role from Roles |
-| Linking a Hub user that another live member already has (create or edit) | Refused: `staff.user_already_linked`, naming that member | Unlink the user from that member first, or pick another user |
+| Linking a Hub user that another live member already has (create or edit), also when two people link it at the same moment | Refused: `staff.user_already_linked`, naming that member; of two simultaneous links, the second one saved is refused | Unlink the user from that member first, or pick another user |
 | Updating a business that already had two members on the same Hub user | The update keeps the link on one of them — the active one, then the one created first — and leaves the others without a Hub user | Re-link the others to their own users from the member form |
 | A bulk import row without a name, with a bad hire date, a negative hourly rate or a foreign role | That row is skipped and listed in the answer (`result.skipped[]` with its reason) | Fix the row and import it again |
 | A schedule with a repeated weekday, `start >= end`, or a break outside the interval | Rejected | Fix the hours |
