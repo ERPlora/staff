@@ -17,7 +17,7 @@ Pasos:
 Entra: la tasa de cada ficha; no lee ventas.
 Sale: solo lectura. Una persona puede aparecer en las ventas bajo dos identificadores (el de su ficha, si la venta nace de una cita, o el de su cuenta del hub, si la cobra en el mostrador): por eso la hoja da los dos y quien suma los junta antes de aplicar la tasa (STAFF-F03). Sin cuenta vinculada, lo cobrado en el mostrador no cuenta para su comisión.
 Si falla: sin permiso de ver compensación, la consulta se rechaza.
-Implicados: SALES-F16, SALES-F28
+Implicados: SALES-F16, SALES-F28, REC_PELUQUERIA-F15
 QA: B-08 (discrepa)
 
 ### STAFF-F22 Cambiar los ajustes de Personal

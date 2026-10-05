@@ -17,8 +17,7 @@ Pasos:
 Entra: el servicio del catálogo (Servicios, lectura opcional, hasta 500): se guarda su identificador y una copia del nombre. Los minutos valen si son un entero mayor que 0 (si no, se guarda «sin minutos propios» sin avisar); el precio se teclea en la moneda del hub y, vacío, significa «el del catálogo», nunca «gratis».
 Sale: la competencia, activa y no principal (`staff.service.assigned`). Citas la lee para filtrar los profesionales de un servicio, para tomar la duración y el precio propios en lugar de los del catálogo y para rechazar una pareja servicio-profesional que no cuadra (STAFF-F12). Renombrar o borrar el servicio en Servicios no cambia esta lista: la copia del nombre se queda y la competencia sigue.
 Si falla: dentro de la sección, «No se pudieron actualizar los servicios» o el motivo concreto («No se pudo asignar el servicio: ese profesional no existe en este negocio.», o el importe ilegible, negativo o ambiguo). Sin el módulo Servicios: «Instala el módulo Servicios para asignar servicios a este profesional.» y el resto de la ficha funciona.
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12
-Pendiente de enlazar: services — el catálogo de servicios del que se elige (lectura `services.services.list`)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SERVICES-F02, SERVICES-F10, REC_PELUQUERIA-F03, REC_PELUQUERIA-F06
 QA: BD-06
 
 ### STAFF-F11 Cambiar o quitar un servicio de un profesional
@@ -48,9 +47,9 @@ Pasos:
 3. Citas filtra el selector de profesionales con esa lista y, al guardar, rechaza al profesional que no está en ella.
 4. Si la lista sale vacía, Citas no restringe: acepta a cualquier profesional reservable.
 Entra: el servicio (`staff.services.eligible_for_service`).
-Sale: la lista, de solo lectura. Vacía quiere decir «nadie ha declarado competencias para este servicio» **o** «quien las tiene no está Activo y Reservable»: en los dos casos Citas acepta a todo el equipo reservable, incluso a quien no hace ese servicio (`appointments/handler/src/lib.rs:1983`). Es decir, desactivar o quitar de la agenda al único especialista de un servicio abre ese servicio a todos.
+Sale: la lista, de solo lectura. Vacía quiere decir «nadie ha declarado competencias para este servicio» **o** «quien las tiene no está Activo y Reservable»: en los dos casos Citas acepta a todo el equipo reservable, incluso a quien no hace ese servicio (`appointments/handler/src/lib.rs:1983`). Es decir, desactivar o quitar de la agenda al único especialista de un servicio abre ese servicio a todos. La regla es de Citas: ni Personal ni Servicios la guardan ni la deciden (SERVICES-F10, APPOINTMENTS-F01).
 Si falla: si la lectura no llega, Citas rechaza la reserva y no reserva a ciegas (`appointments.catalog_unavailable`, APPOINTMENTS-F01).
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F04, APPOINTMENTS-F12, APPOINTMENTS-F13, APPOINTMENTS-F14, APPOINTMENTS-F21
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F04, APPOINTMENTS-F12, APPOINTMENTS-F13, APPOINTMENTS-F14, APPOINTMENTS-F21, REC_PELUQUERIA-F06
 QA: B-02, BD-06
 
 ### STAFF-F13 Crear el horario semanal de un profesional
@@ -66,7 +65,7 @@ Pasos:
 Entra: la persona elegida y la semana tecleada.
 Sale: la plantilla y sus horas (`staff.schedule.created`). Si es «Por defecto», los demás horarios de esa persona dejan de serlo en la misma operación. **Qué horario manda un día:** de los horarios activos y vigentes ese día gana el que **no** es «Por defecto» (uno con fechas, o uno sin fechas, gana siempre al habitual); entre varios, el de vigencia «desde» más reciente y luego el más nuevo; si ninguno vale ese día, la persona no tiene turno ese día y Citas no restringe por turno. Un horario con vigencia de un solo día es la forma de dar una excepción.
 Si falla: dentro del panel, la primera falta: «Marca al menos un día de trabajo», «{día}: indica hora de inicio y fin», «{día}: la hora de inicio debe ser anterior a la de fin», «{día}: el descanso necesita inicio y fin (o ninguno)», «{día}: el descanso debe caer dentro del intervalo de trabajo», una hora o una fecha que no se entiende, o ««Vigente desde» tiene que ser anterior o igual a «Vigente hasta».». El servidor repite las comprobaciones: «La vigencia del horario termina antes de empezar.», «Un horario necesita al menos un día de trabajo con horas.»; otro fallo: «No se pudo crear el horario». Un turno que cruza la medianoche (fin anterior al inicio) no se admite. Con más de 50 personas, el selector de miembro solo ofrece las 50 primeras (por id).
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02, REC_PELUQUERIA-F03
 QA: B-02, BD-06
 
 ### STAFF-F14 Editar un horario
@@ -114,5 +113,5 @@ Pasos:
 Entra: el profesional y el día o el instante; el reloj del negocio, que inyecta el hub.
 Sale: solo lectura. Una ausencia pendiente, rechazada o cancelada no cuenta. Una ficha dada de baja no tiene horario que mande (la consulta lo une con la ficha viva), pero sus ausencias aprobadas siguen saliendo en las lecturas de un día (las de Citas); la consulta por rango de fechas no devuelve nada de una ficha dada de baja.
 Si falla: si la lectura no llega, Citas rechaza la reserva (`appointments.staff_hours_unavailable`) en vez de abrir la puerta (`appointments/handler/src/lib.rs:1287-1305`).
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02, APPOINTMENTS-F04, APPOINTMENTS-F13, APPOINTMENTS-F14, APPOINTMENTS-F21, REC_WA_CITA-F04
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02, APPOINTMENTS-F04, APPOINTMENTS-F13, APPOINTMENTS-F14, APPOINTMENTS-F21, REC_PELUQUERIA-F06, REC_WA_CITA-F04
 QA: B-02, BD-06, W-02

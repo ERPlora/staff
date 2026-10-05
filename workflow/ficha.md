@@ -17,7 +17,7 @@ Pasos:
 Entra: los datos del formulario; los roles de Roles (STAFF-F04); las cuentas activas del hub (lectura `hub.users.list`). La tarifa se teclea en la moneda del hub y se guarda en céntimos enteros; la comisión es un número de 0 a 100.
 Sale: la ficha (`staff.member.created`), que refresca los paneles de plantilla; no crea cuenta de acceso ni avisa a nadie. No avisa de otra ficha con el mismo nombre, email o nº de empleado.
 Si falla: el motivo sale dentro del panel y lo tecleado se conserva: «Ese rol no está disponible: no existe en este negocio, o se ha eliminado o retirado.», la cuenta ya vinculada a otra ficha (STAFF-F03), o una tarifa que no se lee como importe («Esto no es un importe. Escribe una cifra, por ejemplo 12,50.»), negativa («Este importe no puede ser negativo.») o ambigua. Una fecha de alta que no se lee como fecha se rechaza («Hay una fecha que no se entiende — escríbela como dd/mm/aaaa (p. ej. 05/10/2026).»). Texto de la negativa del servidor ante una sesión sin permiso: sin confirmar.
-Implicados: pendiente
+Implicados: FLOWS-F04, REC_PELUQUERIA-F03
 Pendiente de enlazar: hub — la pantalla Empleados del hub, donde se crea la cuenta de acceso que luego se vincula
 QA: ninguno
 
@@ -147,7 +147,6 @@ Pasos:
 Entra: nada; es una lectura.
 Sale: el directorio de fichas vivas, incluidas las Inactivo y De baja; no escribe nada. El asistente de WhatsApp recibe este directorio y las cabeceras de horario de cada persona (nombre, vigencia, activo; no las horas, que da `staff.schedules.hours_for_member`, STAFF-F16).
 Si falla: cada módulo lo trata a su manera (el TPV sigue cobrando con la sesión). Sin Personal instalado, el TPV ofrece solo las cuentas del hub, porque lo lee como integración opcional.
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
-Pendiente de enlazar: kitchen — el nombre de quien dispara la comanda en la pantalla de cocina (kitchen#82)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, KITCHEN-F10, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
 Pendiente de enlazar: hub — el shell lee el directorio para imprimir la comanda con el nombre de quien atiende
 QA: ninguno
