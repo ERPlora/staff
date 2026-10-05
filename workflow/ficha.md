@@ -17,8 +17,7 @@ Pasos:
 Entra: los datos del formulario; los roles de Roles (STAFF-F04); las cuentas activas del hub (lectura `hub.users.list`). La tarifa se teclea en la moneda del hub y se guarda en céntimos enteros; la comisión es un número de 0 a 100.
 Sale: la ficha (`staff.member.created`), que refresca los paneles de plantilla; no crea cuenta de acceso ni avisa a nadie. No avisa de otra ficha con el mismo nombre, email o nº de empleado.
 Si falla: el motivo sale dentro del panel y lo tecleado se conserva: «Ese rol no está disponible: no existe en este negocio, o se ha eliminado o retirado.», la cuenta ya vinculada a otra ficha (STAFF-F03), o una tarifa que no se lee como importe («Esto no es un importe. Escribe una cifra, por ejemplo 12,50.»), negativa («Este importe no puede ser negativo.») o ambigua. Una fecha de alta que no se lee como fecha se rechaza («Hay una fecha que no se entiende — escríbela como dd/mm/aaaa (p. ej. 05/10/2026).»). Texto de la negativa del servidor ante una sesión sin permiso: sin confirmar.
-Implicados: FLOWS-F04, REC_PELUQUERIA-F03
-Pendiente de enlazar: hub — la pantalla Empleados del hub, donde se crea la cuenta de acceso que luego se vincula
+Implicados: FLOWS-F04, REC_PELUQUERIA-F03, HUB-F145, HUB-F146, HUB-F158, HUB_SHELL-F81, HUB_SHELL-F82
 QA: ninguno
 
 ### STAFF-F02 Editar la ficha de un profesional
@@ -50,8 +49,7 @@ Pasos:
 Entra: la lista de cuentas del hub (solo identificador, nombre y rol; sin email ni forma de acceso).
 Sale: el vínculo, y con él los dos identificadores bajo los que aparece una persona (el de la ficha y el de su cuenta), que Personal publica junto a la comisión (STAFF-F21) y que el TPV pliega en una sola fila al elegir quién atiende. No cambia ningún permiso: los da el rol de la cuenta, no la ficha ni su rol de Personal. Dar de baja la ficha libera la cuenta (STAFF-F06); desactivar o dar de baja la cuenta en el hub no toca la ficha.
 Si falla: «Ese usuario del Hub ya está vinculado a {nombre}. Un usuario del Hub solo puede pertenecer a un miembro del equipo: desvincúlalo allí primero o elige otro usuario.», con el nombre de la ficha que la tiene. Si dos personas la vinculan a la vez, a la segunda le sale ese mismo mensaje (un índice único lo garantiza). Si la lista de cuentas no se puede leer, el selector queda solo con «Sin acceso al Hub»: en un alta la ficha se guarda sin vínculo.
-Implicados: SALES-F16
-Pendiente de enlazar: hub — la pantalla Empleados del hub, que es dueña de las cuentas, su rol de permisos y el PIN
+Implicados: SALES-F16, HUB-F146, HUB-F148, HUB-F149, HUB-F158, HUB_SHELL-F80, HUB_SHELL-F84, HUB_SHELL-F85, HUB_SHELL-F88
 QA: ninguno
 
 ### STAFF-F04 Crear un rol de catálogo
@@ -147,6 +145,5 @@ Pasos:
 Entra: nada; es una lectura.
 Sale: el directorio de fichas vivas, incluidas las Inactivo y De baja; no escribe nada. El asistente de WhatsApp recibe este directorio y las cabeceras de horario de cada persona (nombre, vigencia, activo; no las horas, que da `staff.schedules.hours_for_member`, STAFF-F16).
 Si falla: cada módulo lo trata a su manera (el TPV sigue cobrando con la sesión). Sin Personal instalado, el TPV ofrece solo las cuentas del hub, porque lo lee como integración opcional.
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, KITCHEN-F10, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
-Pendiente de enlazar: hub — el shell lee el directorio para imprimir la comanda con el nombre de quien atiende
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, KITCHEN-F10, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04, HUB_SHELL-F72
 QA: ninguno
