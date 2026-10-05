@@ -17,7 +17,7 @@ Pasos:
 Entra: el servicio del catálogo (Servicios, lectura opcional, hasta 500): se guarda su identificador y una copia del nombre. Los minutos valen si son un entero mayor que 0 (si no, se guarda «sin minutos propios» sin avisar); el precio se teclea en la moneda del hub y, vacío, significa «el del catálogo», nunca «gratis».
 Sale: la competencia, activa y no principal (`staff.service.assigned`). Citas la lee para filtrar los profesionales de un servicio, para tomar la duración y el precio propios en lugar de los del catálogo y para rechazar una pareja servicio-profesional que no cuadra (STAFF-F12). Renombrar o borrar el servicio en Servicios no cambia esta lista: la copia del nombre se queda y la competencia sigue.
 Si falla: dentro de la sección, «No se pudieron actualizar los servicios» o el motivo concreto («No se pudo asignar el servicio: ese profesional no existe en este negocio.», o el importe ilegible, negativo o ambiguo). Sin el módulo Servicios: «Instala el módulo Servicios para asignar servicios a este profesional.» y el resto de la ficha funciona.
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SERVICES-F02, SERVICES-F10, REC_PELUQUERIA-F03
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SERVICES-F02, SERVICES-F10, REC_PELUQUERIA-F03, REC_PELUQUERIA-F06
 QA: BD-06
 
 ### STAFF-F11 Cambiar o quitar un servicio de un profesional
