@@ -147,7 +147,6 @@ Pasos:
 Entra: nada; es una lectura.
 Sale: el directorio de fichas vivas, incluidas las Inactivo y De baja; no escribe nada. El asistente de WhatsApp recibe este directorio y las cabeceras de horario de cada persona (nombre, vigencia, activo; no las horas, que da `staff.schedules.hours_for_member`, STAFF-F16).
 Si falla: cada módulo lo trata a su manera (el TPV sigue cobrando con la sesión). Sin Personal instalado, el TPV ofrece solo las cuentas del hub, porque lo lee como integración opcional.
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
-Pendiente de enlazar: kitchen — el nombre de quien dispara la comanda en la pantalla de cocina (kitchen#82)
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F12, KITCHEN-F10, SALES-F16, WHATSAPP_INBOX-F21, REC_WA_CITA-F04
 Pendiente de enlazar: hub — el shell lee el directorio para imprimir la comanda con el nombre de quien atiende
 QA: ninguno
