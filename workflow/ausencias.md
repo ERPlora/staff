@@ -17,8 +17,7 @@ Pasos:
 Entra: la persona (cualquier ficha viva, también una Inactivo), el tipo, las fechas, las horas si no es de día entero y el motivo; la pantalla no recoge notas. Con horas, valen las mismas cada día del rango.
 Sale: la ausencia Pendiente (`staff.time_off.created`), que refresca «Ausencias pendientes» y «Ausentes hoy» y puede disparar una automatización de Flujos (su disparador se llama «alguien pide vacaciones» aunque el tipo sea cualquiera y la registre el responsable). Una ausencia pendiente no cambia todavía la agenda: solo cuenta al aprobarla (STAFF-F18). No avisa a la persona.
 Si falla: dentro del formulario y sin perder lo tecleado: «Elige de quién es la ausencia.», «Indica la fecha de inicio y la de fin.», «La fecha de fin no puede ser anterior a la de inicio.», «Una ausencia de medio día necesita hora de inicio y de fin.», «La hora de inicio tiene que ser anterior a la de fin.», una fecha que no se entiende, y del servidor «Ese miembro ya tiene una ausencia pendiente o aprobada en esas fechas.» (el solape se mide solo por fechas: una de mañana y otra de tarde del mismo día chocan; las rechazadas y canceladas no cuentan) o «Ese miembro del personal no existe en este negocio.»; otro fallo: «No se pudo registrar la ausencia». Con más de 50 personas, el selector de miembro solo ofrece las 50 primeras (por id).
-Implicados: pendiente
-Pendiente de enlazar: flows — el disparador «alguien pide vacaciones» que sale con este aviso
+Implicados: FLOWS-F13, REC_PELUQUERIA-F03
 QA: ninguno
 
 ### STAFF-F18 Aprobar o rechazar una ausencia
@@ -34,7 +33,7 @@ Pasos:
 Entra: la ausencia y las demás pendientes o aprobadas de la misma persona.
 Sale: el estado nuevo y, al aprobar, quién aprobó y cuándo (se guardan; la tabla no los enseña) (`staff.time_off.status_changed`). **Aprobada** resta esas horas al turno de la persona para la agenda (STAFF-F16) y la cuenta en «Ausentes hoy» si cubre hoy; Rechazada no cambia nada. No mira ni avisa de las citas que esa persona ya tenga esos días, no cambia el estado de la ficha y no avisa a la persona.
 Si falla: un aviso sobre la tabla con el motivo: «Ese miembro ya tiene una ausencia pendiente o aprobada en esas fechas.» (al aprobar, si otra **aprobada** de la misma persona solapa; como el alta ya impide los solapes, solo puede ocurrir con datos anteriores o con dos altas a la vez), «Esa solicitud de ausencia no puede pasar a ese estado desde el actual.», «Esa solicitud de ausencia no existe en este negocio.» o «No se pudo cambiar el estado».
-Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02
+Implicados: APPOINTMENTS-F01, APPOINTMENTS-F02, REC_PELUQUERIA-F03
 QA: ninguno
 
 ### STAFF-F19 Cancelar una ausencia
@@ -66,5 +65,5 @@ Pasos:
 Entra: las ausencias y el estado de las fichas.
 Sale: solo lectura. «Ausentes hoy» cuenta personas distintas con una ausencia **aprobada** que cubre la fecha de hoy en el día del negocio, sea de día entero o de horas (no mira la hora actual); una pendiente o una aprobada de otro día no cuenta. «Ausencias pendientes» cuenta todas las pendientes, también las de una ficha dada de baja, que ya no salen en la lista. Cómo pinta «Ausencias de hoy» el tipo de ausencia (sin traducir o traducido): sin confirmar.
 Si falla: sin ausencias, los paneles dicen 0 o vacío; cómo pinta el inicio un fallo de lectura: sin confirmar.
-Implicados: ninguno
+Implicados: REC_PELUQUERIA-F05
 QA: ninguno

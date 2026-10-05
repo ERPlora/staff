@@ -17,7 +17,7 @@ Pasos:
 Entra: los datos del formulario; los roles de Roles (STAFF-F04); las cuentas activas del hub (lectura `hub.users.list`). La tarifa se teclea en la moneda del hub y se guarda en céntimos enteros; la comisión es un número de 0 a 100.
 Sale: la ficha (`staff.member.created`), que refresca los paneles de plantilla; no crea cuenta de acceso ni avisa a nadie. No avisa de otra ficha con el mismo nombre, email o nº de empleado.
 Si falla: el motivo sale dentro del panel y lo tecleado se conserva: «Ese rol no está disponible: no existe en este negocio, o se ha eliminado o retirado.», la cuenta ya vinculada a otra ficha (STAFF-F03), o una tarifa que no se lee como importe («Esto no es un importe. Escribe una cifra, por ejemplo 12,50.»), negativa («Este importe no puede ser negativo.») o ambigua. Una fecha de alta que no se lee como fecha se rechaza («Hay una fecha que no se entiende — escríbela como dd/mm/aaaa (p. ej. 05/10/2026).»). Texto de la negativa del servidor ante una sesión sin permiso: sin confirmar.
-Implicados: pendiente
+Implicados: FLOWS-F04, REC_PELUQUERIA-F03
 Pendiente de enlazar: hub — la pantalla Empleados del hub, donde se crea la cuenta de acceso que luego se vincula
 QA: ninguno
 

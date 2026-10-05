@@ -19,7 +19,7 @@ La plantilla del negocio como recurso de trabajo: quién trabaja, qué rol de ca
 2. En **Personal → Roles**, crea los roles de catálogo del negocio (STAFF-F04). Un rol no es un permiso.
 3. En **Personal → Personal**, da de alta a cada profesional (STAFF-F01), márcalo **Reservable** si va a recibir citas y vincula su cuenta si la tiene (STAFF-F03).
 4. Para la peluquería: instala **Servicios** (Citas lo instala con ella) y asigna a cada profesional los servicios que hace (STAFF-F10). Mientras un servicio no tenga a nadie asignado, Citas deja que lo haga todo el equipo reservable (STAFF-F12).
-5. En **Horarios**, crea el turno semanal de cada profesional (STAFF-F13). Sin turno, Citas no restringe por turno: solo una ausencia aprobada puede impedir la reserva (STAFF-F16).
+5. En la pestaña **Horarios** de Personal (no el módulo Horarios, que guarda el horario del negocio), crea el turno semanal de cada profesional (STAFF-F13). Sin turno, Citas no restringe por turno: solo una ausencia aprobada puede impedir la reserva (STAFF-F16).
 6. Registra las ausencias previstas en **Ausencias** (STAFF-F17); solo cuentan para la agenda cuando están **Aprobada** (STAFF-F18).
 7. La zona horaria del negocio (ajustes del hub) decide qué es «hoy» para «Ausentes hoy», para el bloqueo de Desactivar y para el último día de una baja.
 8. Los **Ajustes de Personal** existen pero ninguno cambia nada hoy (STAFF-F22).
@@ -237,3 +237,4 @@ Contra el código de `origin/main` (v2.3.12), una línea por discrepancia:
 - El diálogo «Dar de baja» dice «sus horarios y ausencias futuras dejan de contar»; el código solo cierra la ficha (`commands/member_delete.sql`): sus horarios dejan de gobernar la disponibilidad porque la consulta los une con la ficha viva, sus ausencias dejan de salir en la lista y en «Ausentes hoy», y el panel «Ausencias pendientes» las sigue contando (`queries/members_stats.sql:24`) (STAFF-F06).
 - «Dar de baja» pide el «Último día» con un campo de fecha del navegador (`erp-staff-members.ts:878`), no con el texto en el orden del idioma del hub que usan las demás fechas del módulo (staff#87).
 - La pestaña interna «Personal» de la pantalla Empleados del hub (`hub/apps/web/src/i18n/locales/es.ts`, `employees.tabStaff`) y este módulo se llaman igual y son cosas distintas (STAFF-F03).
+- Oleada 2 (Servicios y Horarios, 05/10/2026): confirmado en `appointments/handler/src/lib.rs` que la regla «un servicio sin nadie asignado lo puede hacer todo el equipo reservable» es de Citas; Servicios tampoco la tiene (STAFF-F12). La pestaña **Horarios** de Personal es el turno de cada profesional; el horario del negocio es del módulo Horarios, que Personal no lee (`qa-hub-beauty`, aprovisionamiento, punto 5, los confunde).
