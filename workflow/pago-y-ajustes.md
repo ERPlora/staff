@@ -26,7 +26,7 @@ Vertical: comun
 Actor: administrador
 Pantalla: Ajustes de Personal
 Pasos:
-1. En Personal abre la pestaña Ajustes (la ven todos; solo el administrador puede cambiarla desde la pantalla).
+1. En Personal abre la pestaña Ajustes (la ven el administrador y el responsable, que tienen el permiso de ajustes; solo el administrador puede cambiarla desde la pantalla, HUB_SHELL-F43, hub#2588).
 2. Cambia los campos: jornada (inicio y fin en HH:MM), «Duración del descanso (minutos)» de 0 a 480, «Antelación mínima de reserva (horas)» de 0 a 168, «Horas máximas por día» de 1 a 24, «Umbral de horas extra (horas/semana)» de 1 a 168, y los interruptores de fotos, biografía, elegir profesional y avisos.
 3. Pulsa Guardar.
 4. Sale «Ajustes guardados.».
