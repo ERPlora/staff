@@ -23,17 +23,17 @@ QA: B-08 (discrepa)
 ### STAFF-F22 Cambiar los ajustes de Personal
 Estado: parcial — los once ajustes se guardan y ningún módulo los lee; el formulario de horario no usa la jornada por defecto
 Vertical: comun
-Actor: administrador
+Actor: responsable, administrador
 Pantalla: Ajustes de Personal
 Pasos:
-1. En Personal abre la pestaña Ajustes (la ven el administrador y el responsable, que tienen el permiso de ajustes; solo el administrador puede cambiarla desde la pantalla, HUB_SHELL-F43, hub#2588).
+1. En Personal abre la pestaña Ajustes (la ven y la guardan el administrador y el responsable, que tienen el permiso de ajustes, HUB_SHELL-F43, hub#2588, HUB_SHELL-F44, ERPlora/hub#2621).
 2. Cambia los campos: jornada (inicio y fin en HH:MM), «Duración del descanso (minutos)» de 0 a 480, «Antelación mínima de reserva (horas)» de 0 a 168, «Horas máximas por día» de 1 a 24, «Umbral de horas extra (horas/semana)» de 1 a 168, y los interruptores de fotos, biografía, elegir profesional y avisos.
 3. Pulsa Guardar.
 4. Sale «Ajustes guardados.».
 Entra: los valores del formulario; mientras el negocio no tiene fila de ajustes, el formulario enseña los valores propuestos como si estuvieran guardados.
 Sale: la fila de ajustes del negocio, que se crea en el primer guardado (`staff.settings.updated`); las horas se guardan siempre en HH:MM. Nada más cambia: ni Personal, ni Citas, ni el TPV, ni el hub leen ninguno de los once. «Permitir elegir profesional» no es el ajuste del mismo nombre de la reserva online, que es suyo, y la antelación mínima de reserva que cuenta es la de Citas.
-Si falla: «No se pudieron guardar los ajustes.» o «Revisa los campos marcados y vuelve a guardar.» con «Este valor no se admite.» en el campo.
-Implicados: ninguno
+Si falla: «No se pudieron guardar los ajustes.» o «Revisa los campos marcados y vuelve a guardar.» con «Este valor no se admite.» en el campo. Si con la pestaña abierta entra otra persona sin el permiso (relevo de turno), los campos se bloquean, desaparece «Guardar» y sale «No tienes permiso para cambiar estos ajustes. Pídeselo a un administrador si lo necesitas.» (HUB_SHELL-F44).
+Implicados: HUB_SHELL-F43, HUB_SHELL-F44
 QA: ninguno
 
 ### STAFF-F23 Ver la plantilla por rol en el inicio
